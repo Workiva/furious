@@ -13,6 +13,9 @@ libraries:
 builtins:
 - remote_api: on
 
+includes:
+- include-python27.yaml
+
 handlers:
 - url: .*
   script: example.app
