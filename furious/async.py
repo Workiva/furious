@@ -43,8 +43,12 @@ try:
 except ImportError:
     import simplejson as json
 
+import sys
 
 from .job_utils import check_job
+
+
+__all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async']
 
 
 ASYNC_DEFAULT_QUEUE = 'default'
@@ -142,4 +146,56 @@ class Async(object):
             async['task_args']['eta'] = datetime.datetime.fromtimestamp(eta)
 
         return Async(**async)
+
+
+def run_job(async):
+    """Takes an async object and executes its job."""
+    async_options = async.get_options()
+
+    job = async_options.get('job')
+    if not job:
+        raise Exception('This async contains no job to execute!')
+
+    function_path, args, kwargs = job
+
+    if args is None:
+        args = ()
+
+    if kwargs is None:
+        kwargs = {}
+
+    function = _get_function_reference(function_path)
+
+    return function(*args, **kwargs)
+
+
+def _get_function_reference(function_path):
+    """Convert a function path reference to a reference."""
+    if '.' not in function_path:
+        try:
+            return globals()["__builtins__"][function_path]
+        except KeyError:
+            try:
+                return getattr(globals()["__builtins__"], function_path)
+            except AttributeError:
+                pass
+
+        try:
+            return globals()[function_path]
+        except KeyError:
+            pass
+
+        raise Exception('Unable to find function "%s".' % (function_path,))
+
+    module_path, function_name = function_path.rsplit('.', 1)
+
+    if module_path in sys.modules:
+        module = sys.modules[module_path]
+    else:
+        module = __import__(name=module_path, fromlist=[function_name])
+
+    try:
+        return getattr(module, function_name)
+    except AttributeError:
+        raise Exception('Unable to find function "%s".' % (function_path,))
 

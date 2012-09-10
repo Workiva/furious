@@ -1,4 +1,3 @@
-import logging
 
 try:
     import json
@@ -6,6 +5,8 @@ except ImportError:
     import simplejson as json
 
 import unittest
+
+from mock import patch
 
 
 class TestAsync(unittest.TestCase):
@@ -191,4 +192,93 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
+
+
+class TestRunJob(unittest.TestCase):
+    """Test that run_job correctly executes functions from Async options."""
+
+    @patch('__builtin__.dir')
+    def test_runs_with_none_arg(self, dir_mock):
+        """Ensure run_job calls with None arg."""
+        from furious.async import Async
+        from furious.async import run_job
+
+        work = Async(job=("dir", [None]))
+
+        run_job(work)
+
+        dir_mock.assert_called_once_with(None)
+
+    @patch('__builtin__.dir')
+    def test_runs_with_none_kwarg(self, dir_mock):
+        """Ensure run_job calls with a kwarg=None."""
+        from furious.async import Async
+        from furious.async import run_job
+
+        work = Async(job=("dir", {'something': None}))
+
+        run_job(work)
+
+        dir_mock.assert_called_once_with(something=None)
+
+    @patch('__builtin__.dir')
+    def test_runs_with_non_arg_and_kwarg(self, dir_mock):
+        """Ensure run_job calls with a None arg and kwarg=None."""
+        from furious.async import Async
+        from furious.async import run_job
+
+        work = Async(job=("dir", [None], {'something': None}))
+
+        run_job(work)
+
+        dir_mock.assert_called_once_with(None, something=None)
+
+    def test_raises_on_missing_job(self):
+        """Ensure run_job raises an exception on bogus standard import."""
+        from furious.async import Async
+        from furious.async import run_job
+
+        work = Async()
+
+        self.assertRaisesRegexp(
+            Exception, "contains no job to execute",
+            run_job, work)
+
+
+class TestGetFunctionReference(unittest.TestCase):
+    """Test that _get_function_reference can find and load functions."""
+
+    @patch('__builtin__.dir')
+    def test_runs_builtin(self, dir_mock):
+        """Ensure run_job is able to correctly run a builtin."""
+        from furious.async import _get_function_reference
+
+        function = _get_function_reference("dir")
+
+        self.assertIs(dir_mock, function)
+
+    def test_raises_on_bogus_builtin(self):
+        """Ensure run_job raises an exception on bogus builtin."""
+        from furious.async import _get_function_reference
+
+        self.assertRaisesRegexp(
+            Exception, "Unable to find function",
+            _get_function_reference, "something_made_up")
+
+    @patch('email.parser.Parser')
+    def test_runs_std_imported(self, parser_mock):
+        """Ensure run_job is able to correctly run bundled python functions."""
+        from furious.async import _get_function_reference
+
+        function = _get_function_reference("email.parser.Parser")
+
+        self.assertIs(parser_mock, function)
+
+    def test_raises_on_bogus_std_imported(self):
+        """Ensure run_job raises an exception on bogus standard import."""
+        from furious.async import _get_function_reference
+
+        self.assertRaisesRegexp(
+            Exception, "Unable to find function",
+            _get_function_reference, "email.parser.NonExistentThing")
 

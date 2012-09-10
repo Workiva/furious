@@ -57,7 +57,7 @@ stub_config = {
 
 def run():
     parser = argparse.ArgumentParser(description='Run tests')
-    parser.add_argument('tests', nargs='+', default='', help="Path to tests to be run.")
+    parser.add_argument('tests', nargs='*', default='', help="Path to tests to be run.")
     parser.add_argument('--failfast', action='store_true', default=False)
     parser.add_argument('--verbosity', '-v', type=int, default=2)
 
