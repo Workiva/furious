@@ -60,8 +60,9 @@ except ImportError:
 from functools import wraps
 
 import sys
+from .job_utils import function_path_to_reference
+from .job_utils import get_function_path_and_options
 
-from .job_utils import check_job
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
@@ -91,22 +92,31 @@ def defaults(**options):
 
 
 class Async(object):
-    def __init__(self, job=None, **kwargs):
+    def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
-        self._function_path = None
 
-        if job:
-            job = check_job(job)
-            self._options['job'] = job
-            self._function_path = job[0]
+        # Make sure nothing is snuck in.
+        _check_options(options)
 
-        self.update_options(**kwargs)
+        self._update_job(target, args, kwargs)
 
-    def set_job(self, function, *args, **kwargs):
+        self.update_options(**options)
+
+    @property
+    def _function_path(self):
+        return self._options['job'][0]
+
+    def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
-        job = check_job((function, args, kwargs))
-        self._options['job'] = job
-        self._function_path = job[0]
+        target_path, options = get_function_path_and_options(target)
+
+        assert isinstance(args, (tuple, list)) or args is None
+        assert isinstance(kwargs, (dict)) or kwargs is None
+
+        if options:
+            self.update_options(**options)
+
+        self._options['job'] = (target_path, args, kwargs)
 
     def get_options(self):
         """Return this async job's configuration options."""
@@ -114,7 +124,9 @@ class Async(object):
 
     def update_options(self, **options):
         """Safely update this async job's configuration options."""
-        # TODO: What logic needs enforced here?
+
+        _check_options(options)
+
         self._options.update(options)
 
     def get_headers(self):
@@ -173,14 +185,18 @@ class Async(object):
     def from_dict(cls, async):
         """Return an async job from a dict output by Async.to_dict."""
 
+        async_options = async.copy()
+
         # JSON don't like datetimes.
-        eta = async.get('task_args', {}).get('eta')
+        eta = async_options.get('task_args', {}).get('eta')
         if eta:
-            import datetime
+            from datetime import datetime
 
-            async['task_args']['eta'] = datetime.datetime.fromtimestamp(eta)
+            async_options['task_args']['eta'] = datetime.fromtimestamp(eta)
 
-        return Async(**async)
+        target, args, kwargs = async_options.pop('job')
+
+        return Async(target, args, kwargs, **async_options)
 
 
 def _check_options(options):
@@ -207,38 +223,7 @@ def run_job(async):
     if kwargs is None:
         kwargs = {}
 
-    function = _get_function_reference(function_path)
+    function = function_path_to_reference(function_path)
 
     return function(*args, **kwargs)
-
-
-def _get_function_reference(function_path):
-    """Convert a function path reference to a reference."""
-    if '.' not in function_path:
-        try:
-            return globals()["__builtins__"][function_path]
-        except KeyError:
-            try:
-                return getattr(globals()["__builtins__"], function_path)
-            except AttributeError:
-                pass
-
-        try:
-            return globals()[function_path]
-        except KeyError:
-            pass
-
-        raise Exception('Unable to find function "%s".' % (function_path,))
-
-    module_path, function_name = function_path.rsplit('.', 1)
-
-    if module_path in sys.modules:
-        module = sys.modules[module_path]
-    else:
-        module = __import__(name=module_path, fromlist=[function_name])
-
-    try:
-        return getattr(module, function_name)
-    except AttributeError:
-        raise Exception('Unable to find function "%s".' % (function_path,))
 

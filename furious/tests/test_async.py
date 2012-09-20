@@ -54,14 +54,90 @@ class TestDefaultsDecorator(unittest.TestCase):
 class TestAsync(unittest.TestCase):
     """Make sure Async produces correct Task objects."""
 
+    def test_none_function(self):
+        """Ensure passing None as function raises."""
+        from furious.async import Async
+        from furious.job_utils import BadFunctionPathError
+
+        self.assertRaises(BadFunctionPathError, Async, None)
+
+    def test_empty_function_path(self):
+        """Ensure passing None as function raises."""
+        from furious.async import Async
+        from furious.job_utils import BadFunctionPathError
+
+        self.assertRaises(BadFunctionPathError, Async, '')
+
+    def test_job_params(self):
+        """Ensure good args and kwargs generate a well-formed job tuple."""
+        from furious.async import Async
+
+        job = ("test", [1, 2, 3], {'a': 1, 'b': 2, 'c': 3})
+        async_job = Async(*job)
+
+        self.assertEqual(job, async_job._options['job'])
+
+    def test_no_args_or_kwargs(self):
+        """Ensure no args and no kwargs generate a well-formed job tuple."""
+        from furious.async import Async
+
+        function = "test"
+        async_job = Async(function)
+
+        self.assertEqual((function, None, None), async_job._options['job'])
+
+    def test_args_with_no_kwargs(self):
+        """Ensure args and no kwargs generate a well-formed job tuple."""
+        from furious.async import Async
+
+        job = ("test", (1, 2, 3))
+        async_job = Async(*job)
+
+        self.assertEqual(job + (None,), async_job._options['job'])
+
+    def test_no_args_with_kwargs(self):
+        """Ensure no args with kwargs generate a well-formed job tuple."""
+        from furious.async import Async
+
+        job = ("test", None, {'a': 1, 'b': 'c', 'alpha': True})
+        async_job = Async(*job)
+
+        self.assertEqual(job, async_job._options['job'])
+
+    def test_gets_callable_path(self):
+        """Ensure the job tuple contains the callable path."""
+        from furious.async import Async
+
+        def some_function():
+            """Will look like is at the module level."""
+            pass
+
+        job_args = ([1, 2, 3], {'a': 1, 'b': 2, 'c': 3})
+        async_job = Async(some_function, *job_args)
+
+        self.assertEqual(
+            ('furious.tests.test_async.some_function',) + job_args,
+            async_job._options['job'])
+
+    def test_none_args_and_kwargs(self):
+        """Ensure args and kwargs may be None."""
+        from furious.async import Async
+
+        job = ("something", None, None,)
+        async_job = Async(*job)
+
+        self.assertEqual(job, async_job._options['job'])
+
     def test_update_options(self):
         """Ensure update_options updates the options."""
         from furious.async import Async
 
         options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
 
-        job = Async()
-        job.update_options(**options)
+        job = Async("nonexistant")
+        job.update_options(**options.copy())
+
+        options['job'] = ("nonexistant", None, None)
 
         self.assertEqual(options, job._options)
 
@@ -71,22 +147,10 @@ class TestAsync(unittest.TestCase):
 
         options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
 
-        job = Async()
+        job = Async("nonexistant")
         job._options = options
 
         self.assertEqual(options, job.get_options())
-
-    def test_set_job(self):
-        """Ensure set_job correctly updates options and function path."""
-        from furious.async import Async
-
-        function = "test.func"
-
-        job = Async()
-        job.set_job(function)
-
-        self.assertEqual(function, job._function_path)
-        self.assertEqual((function, (), {}), job._options['job'])
 
     def test_init_with_job(self):
         """Ensure set_job correctly updates options and function path."""
@@ -94,7 +158,7 @@ class TestAsync(unittest.TestCase):
 
         function = "test.func"
 
-        job = Async(job=function)
+        job = Async(function)
 
         self.assertEqual(function, job._function_path)
         self.assertEqual((function, None, None), job._options['job'])
@@ -106,7 +170,7 @@ class TestAsync(unittest.TestCase):
         headers = {'other': 'zzz', 'nested': 1}
         options = {'headers': headers}
 
-        job = Async(**options)
+        job = Async('nonexistant', **options)
 
         self.assertEqual(headers, job.get_headers())
 
@@ -114,7 +178,7 @@ class TestAsync(unittest.TestCase):
         """Ensure get_headers returns the job headers."""
         from furious.async import Async
 
-        job = Async()
+        job = Async('nonexistant')
 
         self.assertEqual({}, job.get_headers())
 
@@ -124,7 +188,7 @@ class TestAsync(unittest.TestCase):
 
         queue = "test"
 
-        job = Async(queue=queue)
+        job = Async('nonexistant', queue=queue)
 
         self.assertEqual(queue, job.get_queue())
 
@@ -132,7 +196,7 @@ class TestAsync(unittest.TestCase):
         """Ensure get_queue returns the default queue if non was given."""
         from furious.async import Async
 
-        job = Async()
+        job = Async('nonexistant')
 
         self.assertEqual('default', job.get_queue())
 
@@ -143,7 +207,7 @@ class TestAsync(unittest.TestCase):
         task_args = {'other': 'zzz', 'nested': 1}
         options = {'task_args': task_args}
 
-        job = Async(**options)
+        job = Async('nonexistant', **options)
 
         self.assertEqual(task_args, job.get_task_args())
 
@@ -151,7 +215,7 @@ class TestAsync(unittest.TestCase):
         """Ensure get_task_args returns {} if no task_args."""
         from furious.async import Async
 
-        job = Async()
+        job = Async('nonexistant')
 
         self.assertEqual({}, job.get_task_args())
 
@@ -161,10 +225,11 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'other': 'zzz', 'nested': 1}
         headers = {'some': 'thing', 'fun': 1}
-        job = ('test', None, None)
-        options = {'job': job, 'headers': headers, 'task_args': task_args}
+        options = {'headers': headers, 'task_args': task_args}
 
-        job = Async(**options)
+        job = Async('nonexistant', **options.copy())
+
+        options['job'] = ('nonexistant', None, None)
 
         self.assertEqual(options, job.to_dict())
 
@@ -193,7 +258,7 @@ class TestAsync(unittest.TestCase):
         task_args = {'other': 'zzz', 'nested': 1}
         options = {'job': job, 'headers': headers, 'task_args': task_args}
 
-        async_job = Async(**options)
+        async_job = Async.from_dict(options)
 
         self.assertEqual(options, async_job.to_dict())
 
@@ -209,7 +274,6 @@ class TestAsync(unittest.TestCase):
         # to handle all the rounding crap.
         eta = datetime.datetime.now() + datetime.timedelta(30)
         eta_posix = time.mktime(eta.timetuple())
-        eta = datetime.datetime.fromtimestamp(eta_posix)
 
         headers = {'some': 'thing', 'fun': 1}
 
@@ -217,10 +281,10 @@ class TestAsync(unittest.TestCase):
 
         expected_url = "%s/%s" % (ASYNC_ENDPOINT, 'test')
 
-        task_args = {'eta': eta}
+        task_args = {'eta': eta_posix}
         options = {'job': job, 'headers': headers, 'task_args': task_args}
 
-        task = Async(**options).to_task()
+        task = Async.from_dict(options).to_task()
 
         # App Engine sets this header by default.
         full_headers = {
@@ -245,7 +309,7 @@ class TestRunJob(unittest.TestCase):
         from furious.async import Async
         from furious.async import run_job
 
-        work = Async(job=("dir", [None]))
+        work = Async("dir", [None])
 
         run_job(work)
 
@@ -257,7 +321,7 @@ class TestRunJob(unittest.TestCase):
         from furious.async import Async
         from furious.async import run_job
 
-        work = Async(job=("dir", {'something': None}))
+        work = Async("dir", kwargs={'something': None})
 
         run_job(work)
 
@@ -269,7 +333,7 @@ class TestRunJob(unittest.TestCase):
         from furious.async import Async
         from furious.async import run_job
 
-        work = Async(job=("dir", [None], {'something': None}))
+        work = Async("dir", [None], {'something': None})
 
         run_job(work)
 
@@ -280,47 +344,11 @@ class TestRunJob(unittest.TestCase):
         from furious.async import Async
         from furious.async import run_job
 
-        work = Async()
+        work = Async("nothere")
+        work._options.pop('job')
+        assert 'job' not in work._options
 
         self.assertRaisesRegexp(
             Exception, "contains no job to execute",
             run_job, work)
-
-
-class TestGetFunctionReference(unittest.TestCase):
-    """Test that _get_function_reference can find and load functions."""
-
-    @patch('__builtin__.dir')
-    def test_runs_builtin(self, dir_mock):
-        """Ensure run_job is able to correctly run a builtin."""
-        from furious.async import _get_function_reference
-
-        function = _get_function_reference("dir")
-
-        self.assertIs(dir_mock, function)
-
-    def test_raises_on_bogus_builtin(self):
-        """Ensure run_job raises an exception on bogus builtin."""
-        from furious.async import _get_function_reference
-
-        self.assertRaisesRegexp(
-            Exception, "Unable to find function",
-            _get_function_reference, "something_made_up")
-
-    @patch('email.parser.Parser')
-    def test_runs_std_imported(self, parser_mock):
-        """Ensure run_job is able to correctly run bundled python functions."""
-        from furious.async import _get_function_reference
-
-        function = _get_function_reference("email.parser.Parser")
-
-        self.assertIs(parser_mock, function)
-
-    def test_raises_on_bogus_std_imported(self):
-        """Ensure run_job raises an exception on bogus standard import."""
-        from furious.async import _get_function_reference
-
-        self.assertRaisesRegexp(
-            Exception, "Unable to find function",
-            _get_function_reference, "email.parser.NonExistentThing")
 
