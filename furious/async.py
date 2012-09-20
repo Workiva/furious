@@ -52,17 +52,12 @@ The order of precedence is:
     4) options specified by @defaults decorator.
 """
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
 from functools import wraps
 
-import sys
-from .job_utils import function_path_to_reference
-from .job_utils import get_function_path_and_options
+import json
 
+from .job_utils import get_function_path_and_options
+from .job_utils import function_path_to_reference
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
