@@ -356,6 +356,18 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
 
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start(self, queue_mock):
+        """Ensure the Task is inserted into the specified queue."""
+        from furious.async import Async
+
+        async_job = Async("something", queue='my_queue')
+        # task = async_job.to_task()
+        async_job.start()
+
+        # TODO: Check that the task is the same.
+        # self.assertEqual(task, queue_mock.add.call_args)
+
 
 class TestRunJob(unittest.TestCase):
     """Test that run_job correctly executes functions from Async options."""
