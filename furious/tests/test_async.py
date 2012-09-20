@@ -47,6 +47,22 @@ class TestDefaultsDecorator(unittest.TestCase):
 
         self.assertRaises(AssertionError, defaults, **options)
 
+    def test_function_is_runnable(self):
+        """Ensure the decorated function still runs."""
+        from furious.async import defaults
+
+        options = {'other': 'option'}
+
+        check_value = {'ran': False}
+
+        @defaults(**options)
+        def some_method():
+            check_value['ran'] = True
+
+        some_method()
+
+        self.assertTrue(check_value['ran'])
+
 
 class TestAsync(unittest.TestCase):
     """Make sure Async produces correct Task objects."""
