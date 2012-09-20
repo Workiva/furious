@@ -57,16 +57,37 @@ try:
 except ImportError:
     import simplejson as json
 
+from functools import wraps
+
 import sys
 
 from .job_utils import check_job
 
 
-__all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async']
+__all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 
 
 ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
+
+
+def defaults(**options):
+    """Set default Async options on the function decorated.
+
+    Note: you must pass the decorated function by reference, not as a
+    "path.string.to.function" for this to have any effect.
+    """
+    _check_options(options)
+
+    def real_decorator(function):
+        function._async_options = options
+
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            return function(*args, **kwargs)
+        return wrapper
+
+    return real_decorator
 
 
 class Async(object):
@@ -160,6 +181,14 @@ class Async(object):
             async['task_args']['eta'] = datetime.datetime.fromtimestamp(eta)
 
         return Async(**async)
+
+
+def _check_options(options):
+    """Make sure no one passes something not allowed in."""
+    if not options:
+        return
+
+    assert 'job' not in options
 
 
 def run_job(async):

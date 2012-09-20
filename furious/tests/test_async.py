@@ -9,6 +9,48 @@ import unittest
 from mock import patch
 
 
+class TestDefaultsDecorator(unittest.TestCase):
+    """Ensure that defaults decorator works as expected."""
+
+    def test_decorated_name_is_preserved(self):
+        """Ensure defaults decorator sets options on decorated function."""
+        from furious.async import defaults
+
+        @defaults(test=None)
+        def decorated_function():
+            pass
+
+        self.assertEqual('decorated_function', decorated_function.__name__)
+
+    def test_decorate_with_options(self):
+        """Ensure defaults decorator sets options on decorated function."""
+        from furious.async import defaults
+
+        options = {'test': 'me'}
+
+        @defaults(**options)
+        def decorated_function():
+            pass
+
+        self.assertEqual(options, decorated_function._async_options)
+
+    def test_raises_on_bad_option(self):
+        """Ensure defaults decorator sets options on decorated function."""
+        from furious.async import defaults
+
+        options = {'job': 'me'}
+
+        self.assertRaises(AssertionError, defaults, **options)
+
+    def test_raises_on_good_with_bad_options(self):
+        """Ensure defaults decorator sets options on decorated function."""
+        from furious.async import defaults
+
+        options = {'job': 'me', 'other': 'option'}
+
+        self.assertRaises(AssertionError, defaults, **options)
+
+
 class TestAsync(unittest.TestCase):
     """Make sure Async produces correct Task objects."""
 
