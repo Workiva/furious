@@ -94,9 +94,10 @@ class TestAsync(unittest.TestCase):
         """Ensure no args and no kwargs generate a well-formed job tuple."""
         from furious.async import Async
 
-        function = "test"
+        function = "test.func"
         async_job = Async(function)
 
+        self.assertEqual(function, async_job._function_path)
         self.assertEqual((function, None, None), async_job._options['job'])
 
     def test_args_with_no_kwargs(self):
@@ -141,6 +142,43 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(job, async_job._options['job'])
 
+    def test_decorated_options(self):
+        """Ensure the defaults decorator sets Async options."""
+        from furious.async import Async
+        from furious.async import defaults
+
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+
+        @defaults(**options.copy())
+        def some_function():
+            pass
+
+        job = Async(some_function)
+
+        options['job'] = ("furious.tests.test_async.some_function", None, None)
+
+        self.assertEqual(options, job._options)
+
+    def test_init_opts_supersede_decorated_options(self):
+        """Ensure options passed to init override decorated options."""
+        from furious.async import Async
+        from furious.async import defaults
+
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+
+        @defaults(**options.copy())
+        def some_function():
+            pass
+
+        job = Async(some_function, value=17, other='abc')
+
+        options['value'] = 17
+        options['other'] = 'abc'
+
+        options['job'] = ("furious.tests.test_async.some_function", None, None)
+
+        self.assertEqual(options, job._options)
+
     def test_update_options(self):
         """Ensure update_options updates the options."""
         from furious.async import Async
@@ -149,6 +187,23 @@ class TestAsync(unittest.TestCase):
 
         job = Async("nonexistant")
         job.update_options(**options.copy())
+
+        options['job'] = ("nonexistant", None, None)
+
+        self.assertEqual(options, job._options)
+
+    def test_update_options_supersede_init_opts(self):
+        """Ensure update_options supersedes the options set in init."""
+        from furious.async import Async
+
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+
+        job = Async("nonexistant", **options.copy())
+
+        job.update_options(value=23, other='stuff')
+
+        options['value'] = 23
+        options['other'] = 'stuff'
 
         options['job'] = ("nonexistant", None, None)
 
@@ -164,17 +219,6 @@ class TestAsync(unittest.TestCase):
         job._options = options
 
         self.assertEqual(options, job.get_options())
-
-    def test_init_with_job(self):
-        """Ensure set_job correctly updates options and function path."""
-        from furious.async import Async
-
-        function = "test.func"
-
-        job = Async(function)
-
-        self.assertEqual(function, job._function_path)
-        self.assertEqual((function, None, None), job._options['job'])
 
     def test_get_headers(self):
         """Ensure get_headers returns the job headers."""
