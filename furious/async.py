@@ -1,41 +1,55 @@
-"""
-Core async task wrapper.  This module contains the Async class, which is
-used to create asynchronous jobs.  To use,
+"""Core async task wrapper.  This module contains the `Async` class, which is
+used to create asynchronous jobs, and a `defaults` decorator you may use to
+specify default settings for a particular async task.  To use,
 
     # Create a task.
     work = Async(
-        job=("function.to.run", args, kwargs),
-        task_args={"task": "kwargs"},
+        target="function.to.run",
+        args=(args, for, function),
+        kwargs={'keyword': arguments, 'to': target},
+        task_args={"appengine": 1, "task": "kwargs"},
         queue="yourqueue"
     )
 
     # Enqueue the task.
     work.start()
 
-*or*, the equivalent more verbose form:
+*or*, set default arguments for a function:
+
+    @defaults(task_args={"appengine": 1, "task": "kwargs"}, queue="yourqueue")
+    def run_me(*args, **kwargs):
+        pass
 
     # Create a task.
-    work = Async()
-    work.set_job("function.to.run", *args, **kwargs)
-    work.update_options(task_args={"task": "kwargs"}, queue="yourqueue")
+    work = Async(
+        target=run_me,
+        args=(args, for, function),
+        kwargs={'keyword': arguments, 'to': target},
+    )
 
     # Enqueue the task.
     work.start()
 
-Job may be one of the following supported formats:
+You may also update options after instantiation:
 
-    "path_to_function_with_no_args"
-    ("path_to_function_with_no_args")
-    ("path_to_function", args, kwargs)
-    ("path_to_function", args)
-    ("path_to_function", kwargs)
+    # Create a task.
+    work = Async(
+        target="function.to.run",
+        args=(args, for, function),
+        kwargs={'keyword': arguments, 'to': target}
+    )
 
-    reference_to_function_with_no_args
-    (reference_to_function_with_no_args)
-    (reference_to_function, args, kwargs)
-    (reference_to_function, args)
-    (reference_to_function, kwargs)
+    work.update_options(task_args={"appengine":1, "task": "kwargs"},
+                        queue="yourqueue")
 
+    # Enqueue the task.
+    work.start()
+
+The order of precedence is:
+    1) options specified when calling start.
+    2) options specified using update_options.
+    3) options specified in the constructor.
+    4) options specified by @defaults decorator.
 """
 
 try:
