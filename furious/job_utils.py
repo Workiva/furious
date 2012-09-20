@@ -48,8 +48,35 @@ def get_function_path_and_options(function):
     raise BadFunctionPathError("Must provide a function path or reference.")
 
 
+def function_path_to_reference(function_path):
+    """Convert a function path reference to a reference."""
+    if '.' not in function_path:
+        try:
+            return globals()["__builtins__"][function_path]
+        except KeyError:
+            try:
+                return getattr(globals()["__builtins__"], function_path)
+            except AttributeError:
+                pass
 
-        raise BadFunctionPath("Unable to determine path to callable.")
+        try:
+            return globals()[function_path]
+        except KeyError:
+            pass
 
-    raise BadFunctionPath("Must provide a function path or reference.")
+        raise BadFunctionPathError(
+            'Unable to find function "%s".' % (function_path,))
+
+    module_path, function_name = function_path.rsplit('.', 1)
+
+    if module_path in sys.modules:
+        module = sys.modules[module_path]
+    else:
+        module = __import__(name=module_path, fromlist=[function_name])
+
+    try:
+        return getattr(module, function_name)
+    except AttributeError:
+        raise BadFunctionPathError(
+            'Unable to find function "%s".' % (function_path,))
 

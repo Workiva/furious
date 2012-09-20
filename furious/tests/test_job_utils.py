@@ -1,5 +1,6 @@
 import unittest
 
+from mock import patch
 
 
 class TestGetFunctionPathAndOptions(unittest.TestCase):
@@ -117,5 +118,42 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         self.assertEqual(default_options, options)
 
 
+class TestFunctionPathToReference(unittest.TestCase):
+    """Test that function_path_to_reference finds and load functions."""
 
+    @patch('__builtin__.dir')
+    def test_runs_builtin(self, dir_mock):
+        """Ensure builtins are able to be loaded and correctly run."""
+        from furious.job_utils import function_path_to_reference
+
+        function = function_path_to_reference("dir")
+
+        self.assertIs(dir_mock, function)
+
+    def test_raises_on_bogus_builtin(self):
+        """Ensure bad "builins" raise an exception."""
+        from furious.job_utils import function_path_to_reference
+        from furious.job_utils import BadFunctionPathError
+
+        self.assertRaisesRegexp(
+            BadFunctionPathError, "Unable to find function",
+            function_path_to_reference, "something_made_up")
+
+    @patch('email.parser.Parser')
+    def test_runs_std_imported(self, parser_mock):
+        """Ensure run_job is able to correctly run bundled python functions."""
+        from furious.job_utils import function_path_to_reference
+
+        function = function_path_to_reference("email.parser.Parser")
+
+        self.assertIs(parser_mock, function)
+
+    def test_raises_on_bogus_std_imported(self):
+        """Ensure run_job raises an exception on bogus standard import."""
+        from furious.job_utils import function_path_to_reference
+        from furious.job_utils import BadFunctionPathError
+
+        self.assertRaisesRegexp(
+            BadFunctionPathError, "Unable to find function",
+            function_path_to_reference, "email.parser.NonExistentThing")
 
