@@ -117,6 +117,21 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         self.assertEqual('this.is.a.test.function', path)
         self.assertEqual(default_options, options)
 
+    def test_damaged_method_raises(self):
+        """Ensure a broken mehtod raises BadFunctionPathError."""
+        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import get_function_path_and_options
+
+        class FakeFunk(object):
+            def __call__():
+                pass
+
+        some_method = FakeFunk()
+
+        self.assertRaisesRegexp(
+            BadFunctionPathError, "Unable to determine path to callable.",
+            get_function_path_and_options, some_method)
+
 
 class TestFunctionPathToReference(unittest.TestCase):
     """Test that function_path_to_reference finds and load functions."""
