@@ -67,25 +67,6 @@ ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
 
 
-def defaults(**options):
-    """Set default Async options on the function decorated.
-
-    Note: you must pass the decorated function by reference, not as a
-    "path.string.to.function" for this to have any effect.
-    """
-    _check_options(options)
-
-    def real_decorator(function):
-        function._async_options = options
-
-        @wraps(function)
-        def wrapper(*args, **kwargs):
-            return function(*args, **kwargs)
-        return wrapper
-
-    return real_decorator
-
-
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
@@ -192,6 +173,25 @@ class Async(object):
         target, args, kwargs = async_options.pop('job')
 
         return Async(target, args, kwargs, **async_options)
+
+
+def defaults(**options):
+    """Set default Async options on the function decorated.
+
+    Note: you must pass the decorated function by reference, not as a
+    "path.string.to.function" for this to have any effect.
+    """
+    _check_options(options)
+
+    def real_decorator(function):
+        function._async_options = options
+
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            return function(*args, **kwargs)
+        return wrapper
+
+    return real_decorator
 
 
 def _check_options(options):
