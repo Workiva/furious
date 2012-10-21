@@ -87,7 +87,7 @@ class Async(object):
         target_path, options = get_function_path_and_options(target)
 
         assert isinstance(args, (tuple, list)) or args is None
-        assert isinstance(kwargs, (dict)) or kwargs is None
+        assert isinstance(kwargs, dict) or kwargs is None
 
         if options:
             self.update_options(**options)
