@@ -3,6 +3,12 @@ import unittest
 from mock import patch
 
 
+class ThrowAway(object):
+    @classmethod
+    def run_me(cls):
+        cls.i_was_ran = True
+
+
 class TestGetFunctionPathAndOptions(unittest.TestCase):
     """Make sure junk paths raise exceptions and function args get remapped
     to a path.
@@ -155,6 +161,19 @@ class TestFunctionPathToReference(unittest.TestCase):
         function = function_path_to_reference("dir")
 
         self.assertIs(dir_mock, function)
+
+    def test_runs_classmethod(self):
+        """Ensure classmethods are able to be loaded and correctly run."""
+        from furious.job_utils import function_path_to_reference
+
+        ThrowAway.i_was_ran = False
+
+        function = function_path_to_reference(
+            'furious.tests.test_job_utils.'
+            'ThrowAway.run_me')
+
+        function()
+        self.assertTrue(ThrowAway.i_was_ran)
 
     def test_raises_on_bogus_builtin(self):
         """Ensure bad "builins" raise an exception."""

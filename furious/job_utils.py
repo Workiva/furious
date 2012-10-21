@@ -76,7 +76,12 @@ def function_path_to_reference(function_path):
     if module_path in sys.modules:
         module = sys.modules[module_path]
     else:
-        module = __import__(name=module_path, fromlist=[function_name])
+        try:
+            module = __import__(name=module_path, fromlist=[function_name])
+        except ImportError:
+            module_path, class_name = module_path.rsplit('.', 1)
+            module = __import__(name=module_path, fromlist=[class_name])
+            module = getattr(module, class_name)
 
     try:
         return getattr(module, function_name)
