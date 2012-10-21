@@ -57,6 +57,17 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         self.assertEqual('furious.tests.test_job_utils.some_function', path)
         self.assertIsNone(options)
 
+    def test_gets_class_method_path(self):
+        """Ensure get function path returns the path of a classmethod."""
+        from furious.job_utils import get_function_path_and_options
+
+        path, options = get_function_path_and_options(
+            TestGetFunctionPathAndOptions.test_gets_class_method_path)
+        self.assertEqual(
+            'furious.tests.test_job_utils.TestGetFunctionPathAndOptions.'
+            'test_gets_class_method_path', path)
+        self.assertIsNone(options)
+
     def test_gets_logging_path(self):
         """Ensure check job function returns the path of logging callable."""
         from furious.job_utils import get_function_path_and_options

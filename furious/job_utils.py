@@ -37,8 +37,12 @@ def get_function_path_and_options(function):
     if callable(function):
         # Try to figure out the path to the function.
         try:
-            return ('.'.join((function.__module__, function.func_name)),
-                    options)
+            parts = [function.__module__]
+            if hasattr(function, 'im_class'):
+                parts.append(function.im_class.__name__)
+            parts.append(function.func_name)
+
+            return ('.'.join(parts), options)
         except AttributeError:
             if function.__module__ == '__builtin__':
                 return function.__name__, options
