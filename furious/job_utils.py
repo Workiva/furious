@@ -2,58 +2,14 @@
 Functions to help with encoding and decoding job information.
 """
 
+import sys
 
-class BadFunctionPath(Exception):
+
+class BadFunctionPathError(Exception):
     """Invalid function path."""
 
-class InvalidJobTuple(Exception):
-    """Invalid job tuple."""
 
-
-def check_job(job):
-    """Ensure job is of an expected form and return the standard format.
-
-    Note: This is an amazingly ugly function.
-    """
-    if isinstance(job, basestring) or callable(job):
-        # This is probably a function with no arguments.
-        return (_check_job_function(job), None, None)
-
-    if len(job) == 1:
-        # This might be a function only job tuple.
-        return (_check_job_function(job[0]), None, None)
-
-    # First part of the job should be the method str or callable.
-    method_path = _check_job_function(job[0])
-
-    if len(job) == 3:
-        # Hopefully of the form (method, *args, **kwargs), but lets check.
-
-        _, args, kwargs = job
-
-        if ((isinstance(args, (list, tuple)) or args is None) and
-            (isinstance(kwargs, dict) or kwargs is None)):
-            # We seem to be good.
-            return (method_path, args, kwargs)
-
-    if len(job) != 2:
-        raise InvalidJobTuple(
-            "Job tuple should be of the form (job, args, kwrgs)")
-
-    mystery_part = job[-1]
-    if isinstance(mystery_part, dict):
-        # assume we're given a kwargs dict.
-        return (method_path, None, mystery_part)
-
-    if isinstance(mystery_part, (list, tuple)):
-        # assume mystery_part is args.
-        return (method_path, mystery_part, None)
-
-    raise InvalidJobTuple("Poorly formed job tuple.  Job tuple should be of "
-                          "the form (job, args, kwrgs)")
-
-
-def _check_job_function(function):
+def get_function_path_and_options(function):
     """Validates `function` is a potentially valid path or reference to
     a function and returns the cleansed path to the function.
 
@@ -63,25 +19,73 @@ def _check_job_function(function):
 
     Functions passed by reference must be at the top-level of the containing
     module.
+
+    Returns the function path and options.
     """
+    # Try to pop the options off whatever they passed in.
+    options = getattr(function, '_async_options', None)
+
     if isinstance(function, basestring):
         # This is a function name in str form.
         import re
         if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', function):
-            raise BadFunctionPath(
+            raise BadFunctionPathError(
                 'Invalid function path, must meet Python\'s identifier '
                 'requirements, passed value was "%s".', function)
-        return function
+        return function, options
 
     if callable(function):
         # Try to figure out the path to the function.
         try:
-            return '.'.join((function.__module__, function.func_name))
+            parts = [function.__module__]
+            if hasattr(function, 'im_class'):
+                parts.append(function.im_class.__name__)
+            parts.append(function.func_name)
+
+            return ('.'.join(parts), options)
         except AttributeError:
             if function.__module__ == '__builtin__':
-                return function.__name__
+                return function.__name__, options
 
-        raise BadFunctionPath("Unable to determine path to callable.")
+        raise BadFunctionPathError("Unable to determine path to callable.")
 
-    raise BadFunctionPath("Must provide a function path or reference.")
+    raise BadFunctionPathError("Must provide a function path or reference.")
+
+
+def function_path_to_reference(function_path):
+    """Convert a function path reference to a reference."""
+    if '.' not in function_path:
+        try:
+            return globals()["__builtins__"][function_path]
+        except KeyError:
+            try:
+                return getattr(globals()["__builtins__"], function_path)
+            except AttributeError:
+                pass
+
+        try:
+            return globals()[function_path]
+        except KeyError:
+            pass
+
+        raise BadFunctionPathError(
+            'Unable to find function "%s".' % (function_path,))
+
+    module_path, function_name = function_path.rsplit('.', 1)
+
+    if module_path in sys.modules:
+        module = sys.modules[module_path]
+    else:
+        try:
+            module = __import__(name=module_path, fromlist=[function_name])
+        except ImportError:
+            module_path, class_name = module_path.rsplit('.', 1)
+            module = __import__(name=module_path, fromlist=[class_name])
+            module = getattr(module, class_name)
+
+    try:
+        return getattr(module, function_name)
+    except AttributeError:
+        raise BadFunctionPathError(
+            'Unable to find function "%s".' % (function_path,))
 
