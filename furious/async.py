@@ -149,11 +149,9 @@ class Async(object):
         # JSON don't like datetimes.
         eta = options.get('task_args', {}).get('eta')
         if eta:
-            import datetime
             import time
 
-            options['task_args']['eta'] = time.mktime((
-                datetime.datetime.now() + datetime.timedelta(30)).timetuple())
+            options['task_args']['eta'] = time.mktime(eta.timetuple())
 
         return options
 

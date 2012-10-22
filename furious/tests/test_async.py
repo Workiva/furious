@@ -324,12 +324,17 @@ class TestAsync(unittest.TestCase):
         import datetime
         import time
 
+        from google.appengine.ext import testbed
+
         from furious.async import Async
         from furious.async import ASYNC_ENDPOINT
 
+        testbed = testbed.Testbed()
+        testbed.activate()
+
         # This just drops the microseconds.  It is a total mess, but is needed
         # to handle all the rounding crap.
-        eta = datetime.datetime.now() + datetime.timedelta(30)
+        eta = datetime.datetime.now() + datetime.timedelta(minutes=43)
         eta_posix = time.mktime(eta.timetuple())
 
         headers = {'some': 'thing', 'fun': 1}
@@ -343,8 +348,9 @@ class TestAsync(unittest.TestCase):
 
         task = Async.from_dict(options).to_task()
 
-        # App Engine sets this header by default.
+        # App Engine sets these headers by default.
         full_headers = {
+            'Host': 'testbed.example.com',
             'X-AppEngine-Current-Namespace': ''
         }
         full_headers.update(headers)
