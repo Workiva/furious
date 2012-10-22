@@ -139,6 +139,7 @@ class Async(object):
 
         task = self.to_task()
         Queue(name=self.get_queue()).add(task)
+        # TODO: Return a "result" object.
 
     def to_dict(self):
         """Return this async job as a dict suitable for json encoding."""
