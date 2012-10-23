@@ -40,6 +40,8 @@ Usage:
 
 import threading
 
+from google.appengine.api import taskqueue
+
 _local_context = threading.local()
 
 
@@ -49,6 +51,27 @@ def new():
     new_context = Context()
     _local_context.registry.append(new_context)
     return new_context
+
+
+def _insert_tasks(tasks, queue, transactional=False):
+    """Insert a batch of tasks into the specified queue. If an error occurs
+    during insertion, split the batch and retry until they are successfully
+    inserted.
+    """
+    if not tasks:
+        return
+
+    try:
+        taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
+    except (taskqueue.TransientError,
+            taskqueue.TaskAlreadyExistsError,
+            taskqueue.TombstonedTaskError):
+        count = len(tasks)
+        if count <= 1:
+            return
+
+        _insert_tasks(tasks[:count / 2], queue, transactional)
+        _insert_tasks(tasks[count / 2:], queue, transactional)
 
 
 class Context(object):
