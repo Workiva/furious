@@ -23,6 +23,10 @@ from google.appengine.ext import testbed
 
 class TestContext(unittest.TestCase):
     """Test that the Context object functions in some basic way."""
+    def setUp(self):
+        harness = testbed.Testbed()
+        harness.activate()
+        harness.init_taskqueue_stub()
 
     def test_context_works(self):
         """Ensure using a Context as a context manager works."""
@@ -31,7 +35,8 @@ class TestContext(unittest.TestCase):
         with Context():
             pass
 
-    def test_add_job_to_context_works(self):
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_add_job_to_context_works(self, queue_add_mock):
         """Ensure adding a job works."""
         from furious.async import Async
         from furious.context import Context
@@ -40,6 +45,58 @@ class TestContext(unittest.TestCase):
             job = ctx.add('test', args=[1, 2])
 
         self.assertIsInstance(job, Async)
+        queue_add_mock.assert_called_once()
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_add_multiple_jobs_to_context_works(self, queue_add_mock):
+        """Ensure adding multiple jobs works."""
+        from furious.context import Context
+
+        with Context() as ctx:
+            for _ in range(10):
+                ctx.add('test', args=[1, 2])
+
+        queue_add_mock.assert_called_once()
+        self.assertEqual(10, len(queue_add_mock.call_args[0][0]))
+
+    @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
+    def test_added_to_correct_queue(self, queue_mock):
+        """Ensure jobs are added to the correct queue."""
+        from furious.context import Context
+
+        with Context() as ctx:
+            ctx.add('test', args=[1, 2], queue='A')
+            ctx.add('test', args=[1, 2], queue='A')
+
+        queue_mock.assert_called_once_with(name='A')
+
+    def test_add_jobs_to_multiple_queues(self):
+        """Ensure adding jobs to multiple queues works as expected."""
+        from google.appengine.api.taskqueue import Queue
+        from furious.context import Context
+
+        queue_registry = {}
+
+        class AwesomeQueue(Queue):
+            def __init__(self, *args, **kwargs):
+                super(AwesomeQueue, self).__init__(*args, **kwargs)
+
+                queue_registry[kwargs.get('name')] = self
+                self._calls = []
+
+            def add(self, *args, **kwargs):
+                self._calls.append((args, kwargs))
+
+        with patch('google.appengine.api.taskqueue.Queue', AwesomeQueue):
+            with Context() as ctx:
+                ctx.add('test', args=[1, 2], queue='A')
+                ctx.add('test', args=[1, 2], queue='A')
+                ctx.add('test', args=[1, 2], queue='B')
+                ctx.add('test', args=[1, 2], queue='C')
+
+        self.assertEqual(2, len(queue_registry['A']._calls[0][0][0]))
+        self.assertEqual(1, len(queue_registry['B']._calls[0][0][0]))
+        self.assertEqual(1, len(queue_registry['C']._calls[0][0][0]))
 
 
 class TestNew(unittest.TestCase):

@@ -80,14 +80,33 @@ class Context(object):
     NOTE: Use the module's new function to get a context, do not manually
     instantiate.
     """
-    def __init__(self):
+    def __init__(self, insert_tasks=_insert_tasks):
         self._tasks = []
+        self.insert_tasks = insert_tasks
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._tasks:
+            self._handle_tasks()
+
         return False
+
+    def _handle_tasks(self):
+        """Convert all Async's into tasks, then insert them into queues."""
+        task_map = self._get_tasks_by_queue()
+        for queue, tasks in task_map.iteritems():
+            self.insert_tasks(tasks, queue=queue)
+
+    def _get_tasks_by_queue(self):
+        """Return the tasks for this Context, grouped by queue."""
+        task_map = {}
+        for async in self._tasks:
+            queue = async.get_queue()
+            task = async.to_task()
+            task_map.setdefault(queue, []).append(task)
+        return task_map
 
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
