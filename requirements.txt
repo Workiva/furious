@@ -2,5 +2,5 @@ nose
 rednose
 mock
 coverage
-google-appengine
+http://pypi.webfilings.com/packages/wf-gae-sdk-1.7.1-3.tar.gz
 
