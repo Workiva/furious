@@ -2,3 +2,5 @@ nose
 rednose
 mock
 coverage
+googleappengine
+
