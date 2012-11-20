@@ -19,7 +19,7 @@ import json
 import logging
 
 from ..async import Async
-from ..async import run_job
+from ..processors import run_job
 
 
 def process_async_task(headers, request_body):

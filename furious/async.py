@@ -73,7 +73,6 @@ from functools import wraps
 import json
 
 from .job_utils import get_function_path_and_options
-from .job_utils import function_path_to_reference
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
@@ -215,25 +214,4 @@ def _check_options(options):
         return
 
     assert 'job' not in options
-
-
-def run_job(async):
-    """Takes an async object and executes its job."""
-    async_options = async.get_options()
-
-    job = async_options.get('job')
-    if not job:
-        raise Exception('This async contains no job to execute!')
-
-    function_path, args, kwargs = job
-
-    if args is None:
-        args = ()
-
-    if kwargs is None:
-        kwargs = {}
-
-    function = function_path_to_reference(function_path)
-
-    return function(*args, **kwargs)
 
