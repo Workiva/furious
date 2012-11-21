@@ -60,14 +60,13 @@ class TestRunJob(unittest.TestCase):
 
     def test_raises_on_missing_job(self):
         """Ensure run_job raises an exception on bogus standard import."""
+        from furious.context import NotInContextError
         from furious.async import Async
         from furious.processors import run_job
 
         work = Async("nothere")
         work._options.pop('job')
+        self.assertRaises(NotInContextError, run_job)
         assert 'job' not in work._options
 
-        self.assertRaisesRegexp(
-            Exception, "contains no job to execute",
-            run_job, work)
 

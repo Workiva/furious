@@ -45,12 +45,26 @@ from google.appengine.api import taskqueue
 _local_context = threading.local()
 
 
+class NotInContextError(Exception):
+    """Call that requires context made outside context."""
+
+
 def new():
     """Get a new furious context and add it to the registry."""
     _init()
     new_context = Context()
     _local_context.registry.append(new_context)
     return new_context
+
+
+def get_current_async():
+    """Return a reference to the currently executing Async job object
+    or None if not in an Async job.
+    """
+    if _local_context._executing_async:
+        return _local_context._executing_async
+
+    raise NotInContextError('Not in an executing JobContext.')
 
 
 def _insert_tasks(tasks, queue, transactional=False):
