@@ -57,6 +57,18 @@ def new():
     return new_context
 
 
+def init_context_with_async(async):
+    """Instantiate a new JobContext and store a reference to it in the global
+    async context to make later retrieval easier."""
+    if not _local_context._executing_async_context:
+        raise ContextExistsError
+
+    _init()
+    job_context = JobContext(async)
+    _local_context._executing_async_context = job_context
+    return job_context
+
+
 def get_current_async():
     """Return a reference to the currently executing Async job object
     or None if not in an Async job.
@@ -178,7 +190,14 @@ def _init():
     if hasattr(_local_context, '_initialized'):
         return
 
+    # Used to track the context object stack.
     _local_context.registry = []
+
+    # Used to provide easy access to the currently running Async job.
+    _local_context._executing_async_context = None
+    _local_context._executing_async = None
+
+    # So that we do not inadvertently reinitialize the local context.
     _local_context._initialized = True
 
     return _local_context
