@@ -54,8 +54,18 @@ class TestDefaultsDecorator(unittest.TestCase):
 
         self.assertRaises(AssertionError, defaults, **options)
 
+    def test_raises_on_callbacks_in_options(self):
+        """Ensure defaults decorator raise error if callbacks is in options."""
+        from furious.async import defaults
+
+        options = {'callbacks': 'me'}
+
+        self.assertRaises(AssertionError, defaults, **options)
+
     def test_raises_on_good_with_bad_options(self):
-        """Ensure defaults decorator sets options on decorated function."""
+        """Ensure defaults decorator raises error with a mix of good/bad
+        options.
+        """
         from furious.async import defaults
 
         options = {'job': 'me', 'other': 'option'}

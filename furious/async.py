@@ -120,6 +120,10 @@ class Async(object):
 
         self._options.update(options)
 
+    def get_callbacks(self):
+        """Return this async job's callback map."""
+        return self._options.get('callbacks', {})
+
     def get_headers(self):
         """Create and return task headers."""
         # TODO: Encode some options into a header here.
@@ -214,4 +218,5 @@ def _check_options(options):
         return
 
     assert 'job' not in options
+    assert 'callbacks' not in options
 
