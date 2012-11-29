@@ -25,7 +25,7 @@ class TestDefaultsDecorator(unittest.TestCase):
     """Ensure that defaults decorator works as expected."""
 
     def test_decorated_name_is_preserved(self):
-        """Ensure defaults decorator sets options on decorated function."""
+        """Ensure defaults decorator preserves decorated function's name."""
         from furious.async import defaults
 
         @defaults(test=None)
@@ -46,8 +46,8 @@ class TestDefaultsDecorator(unittest.TestCase):
 
         self.assertEqual(options, decorated_function._async_options)
 
-    def test_raises_on_bad_option(self):
-        """Ensure defaults decorator sets options on decorated function."""
+    def test_raises_on_job_in_options(self):
+        """Ensure defaults decorator raise error if job in options."""
         from furious.async import defaults
 
         options = {'job': 'me'}
