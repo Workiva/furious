@@ -26,11 +26,13 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_none_arg(self, dir_mock):
         """Ensure run_job calls with None arg."""
         from furious.async import Async
+        from furious.context import JobContext
         from furious.processors import run_job
 
-        work = Async("dir", [None])
+        async = Async("dir", [None])
 
-        run_job(work)
+        with JobContext(async):
+            run_job()
 
         dir_mock.assert_called_once_with(None)
 
@@ -38,11 +40,13 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_none_kwarg(self, dir_mock):
         """Ensure run_job calls with a kwarg=None."""
         from furious.async import Async
+        from furious.context import JobContext
         from furious.processors import run_job
 
         work = Async("dir", kwargs={'something': None})
 
-        run_job(work)
+        with JobContext(work):
+            run_job()
 
         dir_mock.assert_called_once_with(something=None)
 
@@ -50,23 +54,25 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_non_arg_and_kwarg(self, dir_mock):
         """Ensure run_job calls with a None arg and kwarg=None."""
         from furious.async import Async
+        from furious.context import JobContext
         from furious.processors import run_job
 
         work = Async("dir", [None], {'something': None})
 
-        run_job(work)
+        with JobContext(work):
+            run_job()
 
         dir_mock.assert_called_once_with(None, something=None)
 
     def test_raises_on_missing_job(self):
         """Ensure run_job raises an exception on bogus standard import."""
-        from furious.context import NotInContextError
         from furious.async import Async
+        from furious.context import NotInContextError
         from furious.processors import run_job
 
         work = Async("nothere")
         work._options.pop('job')
-        self.assertRaises(NotInContextError, run_job)
         assert 'job' not in work._options
 
+        self.assertRaises(NotInContextError, run_job)
 
