@@ -20,10 +20,21 @@ functions.
 
 from .job_utils import function_path_to_reference
 
+from collections import namedtuple
+
+
+AsyncException = namedtuple('AsyncException', 'error args traceback exception')
+
+
+class AsyncError(Exception):
+    """The base class other Async errors can subclass."""
+
+
+def run_job():
+    """Takes an async object and executes its job."""
+    from .context import get_current_async
 
     async = get_current_async()
-    """Takes an async object and executes its job."""
-def run_job(async):
 
     async_options = async.get_options()
 
@@ -41,5 +52,42 @@ def run_job(async):
 
     function = function_path_to_reference(function_path)
 
-    async.result = function(*args, **kwargs)
+    try:
+        async.result = function(*args, **kwargs)
+    except Exception as e:
+        async.result = encode_exception(e)
+
+    results_processor = async_options.get('_process_results')
+    if not results_processor:
+        results_processor = _process_results
+
+    results_processor()
+
+
+def encode_exception(exception):
+    """Encode exception to a form that can be passed around and serialized."""
+    import traceback
+    return AsyncException(unicode(exception),
+                          exception.args,
+                          traceback.extract_stack()[:-2],
+                          exception)
+
+
+def _process_results():
+    """Process the results from an Async job."""
+    from .context import get_current_async
+    current_job = get_current_async()
+    callbacks = current_job.get_callbacks()
+
+    if not isinstance(current_job.get_result(), AsyncError):
+        success_callback = callbacks.get('success')
+        if not success_callback:
+            return
+        success_callback()
+        return
+
+    error_callback = callbacks.get('error')
+    if not error_callback:
+        return
+    error_callback()
 
