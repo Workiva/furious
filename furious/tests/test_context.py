@@ -179,3 +179,111 @@ class TestInsertTasks(unittest.TestCase):
         _insert_tasks(('A', 1, 'B'), 'AbCd')
         self.assertEqual(5, queue_add_mock.call_count)
 
+
+class TestJobContext(unittest.TestCase):
+    """Test that the Context object functions in some basic way."""
+    def setUp(self):
+        harness = testbed.Testbed()
+        harness.activate()
+        harness.init_taskqueue_stub()
+
+    def test_context_requires_async(self):
+        """Ensure JobContext requires an async object as its first arg."""
+        from furious.context import JobContext
+
+        self.assertRaises(TypeError, JobContext)
+
+    def test_context_works(self):
+        """Ensure using a JobContext as a context manager works."""
+        from furious.async import Async
+        from furious.context import JobContext
+
+        with JobContext(Async(target=dir)):
+            pass
+
+    def test_async_is_preserved(self):
+        """Ensure JobContext exposes the async as a property."""
+        from furious.async import Async
+        from furious.context import JobContext
+
+        job = Async(target=dir)
+
+        context = JobContext(job)
+
+        self.assertIs(job, context.async)
+
+    def test_async_is_not_settable(self):
+        """Ensure JobContext async can not be set."""
+        from furious.async import Async
+        from furious.context import JobContext
+
+        job = Async(target=dir)
+
+        context = JobContext(job)
+
+        def set_job():
+            context.async = None
+
+        self.assertRaises(AttributeError, set_job)
+
+    def test_job_added_to_local_context(self):
+        """Ensure entering the context adds the job to the context stack."""
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.context import _local_context
+
+        job = Async(target=dir)
+        with JobContext(job):
+            self.assertIn(job, _local_context._executing_async)
+
+    def test_job_removed_from_local_context(self):
+        """Ensure exiting the context removes the job from the context stack.
+        """
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.context import _local_context
+
+        job = Async(target=dir)
+        with JobContext(job):
+            pass
+
+        self.assertNotIn(job, _local_context._executing_async)
+
+    def test_job_added_to_end_of_local_context(self):
+        """Ensure entering the context adds the job to the end of the job
+        context stack.
+        """
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.context import _local_context
+
+        job_outer = Async(target=dir)
+        job_inner = Async(target=dir)
+        with JobContext(job_outer):
+            self.assertEqual(1, len(_local_context._executing_async))
+            self.assertEqual(job_outer,
+                             _local_context._executing_async[-1])
+
+            with JobContext(job_inner):
+                self.assertEqual(2, len(_local_context._executing_async))
+                self.assertEqual(job_inner,
+                                 _local_context._executing_async[-1])
+
+    def test_job_removed_from_end_of_local_context(self):
+        """Ensure entering the context removes the job from the end of the job
+        context stack.
+        """
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.context import _local_context
+
+        job_outer = Async(target=dir)
+        job_inner = Async(target=dir)
+        with JobContext(job_outer):
+            with JobContext(job_inner):
+                pass
+
+            self.assertEqual(1, len(_local_context._executing_async))
+            self.assertEqual(job_outer,
+                             _local_context._executing_async[-1])
+

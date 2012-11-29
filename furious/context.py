@@ -62,7 +62,7 @@ def get_current_async():
     or None if not in an Async job.
     """
     if _local_context._executing_async:
-        return _local_context._executing_async
+        return _local_context._executing_async[-1]
 
     raise NotInContextError('Not in an executing JobContext.')
 
@@ -134,6 +134,40 @@ class Context(object):
 
         self._tasks.append(target)
         return target
+
+
+class JobContext(object):
+    """JobContexts are used when running an async task to provide easy access
+    to the async object.
+    """
+    def __init__(self, async):
+        """Initialize a context with an async task."""
+        from .async import Async
+
+        if not isinstance(async, Async):
+            raise TypeError("async must be an Async instance.")
+
+        self._async = async
+
+    @property
+    def async(self):
+        """Get a reference to this context's async object."""
+        return self._async
+
+    def __enter__(self):
+        """Enter the context, add this async to the executing context stack."""
+        if not _local_context._executing_async:
+            _local_context._executing_async = []
+
+        _local_context._executing_async.append(self._async)
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context, pop this async from the executing context stack.
+        """
+        _local_context._executing_async.pop()
+        return False
 
 
 def _init():
