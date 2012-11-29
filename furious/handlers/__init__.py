@@ -25,11 +25,12 @@ from ..processors import run_job
 def process_async_task(headers, request_body):
     """Process an Async task and execute the requested function."""
     async_options = json.loads(request_body)
-    work = Async.from_dict(async_options)
+    async = Async.from_dict(async_options)
 
     logging.info(work._function_path)
 
-    run_job(work)
+    with context.job_context_from_async(async):
+        run_job(async)
 
     return 200, work._function_path
 
