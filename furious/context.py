@@ -226,3 +226,11 @@ def _init():
 
     return _local_context
 
+
+def _get_local_context():
+    """Return a reference to the current _local_context.
+
+    NOTE: This function is not for general usage, it is meant for
+    special uses, like unit tests.
+    """
+    return _local_context

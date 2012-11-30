@@ -112,13 +112,13 @@ class TestNew(unittest.TestCase):
     def test_new_adds_to_registry(self):
         """Ensure new returns a new context."""
         from furious.context import Context
-        from furious.context import _local_context
+        from furious.context import _get_local_context
         from furious.context import new
 
         ctx = new()
 
         self.assertIsInstance(ctx, Context)
-        self.assertIn(ctx, _local_context.registry)
+        self.assertIn(ctx, _get_local_context().registry)
 
 
 class TestInsertTasks(unittest.TestCase):
@@ -230,24 +230,24 @@ class TestJobContext(unittest.TestCase):
         """Ensure entering the context adds the job to the context stack."""
         from furious.async import Async
         from furious.context import JobContext
-        from furious.context import _local_context
+        from furious.context import _get_local_context
 
         job = Async(target=dir)
         with JobContext(job):
-            self.assertIn(job, _local_context._executing_async)
+            self.assertIn(job, _get_local_context()._executing_async)
 
     def test_job_removed_from_local_context(self):
         """Ensure exiting the context removes the job from the context stack.
         """
         from furious.async import Async
         from furious.context import JobContext
-        from furious.context import _local_context
+        from furious.context import _get_local_context
 
         job = Async(target=dir)
         with JobContext(job):
             pass
 
-        self.assertNotIn(job, _local_context._executing_async)
+        self.assertNotIn(job, _get_local_context()._executing_async)
 
     def test_job_added_to_end_of_local_context(self):
         """Ensure entering the context adds the job to the end of the job
@@ -255,19 +255,19 @@ class TestJobContext(unittest.TestCase):
         """
         from furious.async import Async
         from furious.context import JobContext
-        from furious.context import _local_context
+        from furious.context import _get_local_context
 
         job_outer = Async(target=dir)
         job_inner = Async(target=dir)
         with JobContext(job_outer):
-            self.assertEqual(1, len(_local_context._executing_async))
+            self.assertEqual(1, len(_get_local_context()._executing_async))
             self.assertEqual(job_outer,
-                             _local_context._executing_async[-1])
+                             _get_local_context()._executing_async[-1])
 
             with JobContext(job_inner):
-                self.assertEqual(2, len(_local_context._executing_async))
+                self.assertEqual(2, len(_get_local_context()._executing_async))
                 self.assertEqual(job_inner,
-                                 _local_context._executing_async[-1])
+                                 _get_local_context()._executing_async[-1])
 
     def test_job_removed_from_end_of_local_context(self):
         """Ensure entering the context removes the job from the end of the job
@@ -275,7 +275,7 @@ class TestJobContext(unittest.TestCase):
         """
         from furious.async import Async
         from furious.context import JobContext
-        from furious.context import _local_context
+        from furious.context import _get_local_context
 
         job_outer = Async(target=dir)
         job_inner = Async(target=dir)
@@ -283,7 +283,8 @@ class TestJobContext(unittest.TestCase):
             with JobContext(job_inner):
                 pass
 
-            self.assertEqual(1, len(_local_context._executing_async))
+            self.assertEqual(1, len(_get_local_context()._executing_async))
             self.assertEqual(job_outer,
-                             _local_context._executing_async[-1])
+                             _get_local_context()._executing_async[-1])
+
 
