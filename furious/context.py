@@ -38,11 +38,12 @@ Usage:
 
 """
 
+import os
 import threading
 
 from google.appengine.api import taskqueue
 
-_local_context = threading.local()
+_local_context = None
 
 
 class NotInContextError(Exception):
@@ -73,6 +74,7 @@ def get_current_async():
     """Return a reference to the currently executing Async job object
     or None if not in an Async job.
     """
+    _init()
     if _local_context._executing_async:
         return _local_context._executing_async[-1]
 
@@ -109,6 +111,8 @@ class Context(object):
     def __init__(self, insert_tasks=_insert_tasks):
         self._tasks = []
         self.insert_tasks = insert_tasks
+
+        _init()
 
     def __enter__(self):
         return self
@@ -161,6 +165,8 @@ class JobContext(object):
 
         self._async = async
 
+        _init()
+
     @property
     def async(self):
         """Get a reference to this context's async object."""
@@ -187,20 +193,25 @@ def _init():
 
     NOTE: Do not directly run this method.
     """
-    if hasattr(_local_context, '_initialized'):
+    global _local_context
+
+    # If there is a context and it is initialized to this request,
+    # return, otherwise reinitialize the _local_context.
+    if (hasattr(_local_context, '_initialized') and
+            _local_context._initialized == os.environ['REQUEST_ID_HASH']):
         return
+
+    _local_context = threading.local()
+
+    # So that we do not inadvertently reinitialize the local context.
+    _local_context._initialized = os.environ['REQUEST_ID_HASH']
 
     # Used to track the context object stack.
     _local_context.registry = []
 
     # Used to provide easy access to the currently running Async job.
     _local_context._executing_async_context = None
-    _local_context._executing_async = None
-
-    # So that we do not inadvertently reinitialize the local context.
-    _local_context._initialized = True
+    _local_context._executing_async = []
 
     return _local_context
-
-_init()  # Initialize the context objects.
 
