@@ -24,9 +24,15 @@ from google.appengine.ext import testbed
 class TestContext(unittest.TestCase):
     """Test that the Context object functions in some basic way."""
     def setUp(self):
+        import os
+        import uuid
+
         harness = testbed.Testbed()
         harness.activate()
         harness.init_taskqueue_stub()
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
     def test_context_works(self):
         """Ensure using a Context as a context manager works."""
@@ -181,11 +187,14 @@ class TestInsertTasks(unittest.TestCase):
 
 
 class TestJobContext(unittest.TestCase):
-    """Test that the Context object functions in some basic way."""
+    """Test that the JobContext object functions in some basic way."""
+
     def setUp(self):
-        harness = testbed.Testbed()
-        harness.activate()
-        harness.init_taskqueue_stub()
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
     def test_context_requires_async(self):
         """Ensure JobContext requires an async object as its first arg."""
