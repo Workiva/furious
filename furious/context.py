@@ -50,6 +50,10 @@ class NotInContextError(Exception):
     """Call that requires context made outside context."""
 
 
+class ContextExistsError(Exception):
+    """Call made within context that should not be."""
+
+
 def new():
     """Get a new furious context and add it to the registry."""
     _init()
@@ -58,13 +62,15 @@ def new():
     return new_context
 
 
-def init_context_with_async(async):
+def init_job_context_with_async(async):
     """Instantiate a new JobContext and store a reference to it in the global
-    async context to make later retrieval easier."""
-    if not _local_context._executing_async_context:
+    async context to make later retrieval easier.
+    """
+    _init()
+
+    if _local_context._executing_async_context:
         raise ContextExistsError
 
-    _init()
     job_context = JobContext(async)
     _local_context._executing_async_context = job_context
     return job_context
@@ -174,11 +180,7 @@ class JobContext(object):
 
     def __enter__(self):
         """Enter the context, add this async to the executing context stack."""
-        if not _local_context._executing_async:
-            _local_context._executing_async = []
-
         _local_context._executing_async.append(self._async)
-
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
