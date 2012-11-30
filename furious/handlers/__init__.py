@@ -19,6 +19,7 @@ import json
 import logging
 
 from ..async import Async
+from .. import context
 from ..processors import run_job
 
 
@@ -27,12 +28,12 @@ def process_async_task(headers, request_body):
     async_options = json.loads(request_body)
     async = Async.from_dict(async_options)
 
-    logging.info(work._function_path)
+    logging.info(async._function_path)
 
     with context.job_context_from_async(async):
-        run_job(async)
+        run_job()
 
-    return 200, work._function_path
+    return 200, async._function_path
 
 
 

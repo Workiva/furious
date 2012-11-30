@@ -193,6 +193,12 @@ class TestJobContext(unittest.TestCase):
 
         self.assertRaises(TypeError, JobContext)
 
+    def test_context_requires_async_type_arg(self):
+        """Ensure JobContext requires an Async object as its first arg."""
+        from furious.context import JobContext
+
+        self.assertRaises(TypeError, JobContext, object())
+
     def test_context_works(self):
         """Ensure using a JobContext as a context manager works."""
         from furious.async import Async
@@ -287,4 +293,46 @@ class TestJobContext(unittest.TestCase):
             self.assertEqual(job_outer,
                              _get_local_context()._executing_async[-1])
 
+
+class TestJobContextFromAsync(unittest.TestCase):
+    """Test that the Context object functions in some basic way."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def test_async_required_as_first_argument(self):
+        """Ensure JobContext requires an async object as its first arg."""
+        from furious.context import job_context_from_async
+
+        self.assertRaises(TypeError, job_context_from_async)
+
+    def test_async_type_required_as_first_argument(self):
+        """Ensure JobContext requires an Async type object as its first arg.
+        """
+        from furious.context import job_context_from_async
+
+        self.assertRaises(TypeError, job_context_from_async, object())
+
+    def test_double_init_raises_error(self):
+        """Ensure initing twice raises a ContextExistsError."""
+        from furious.async import Async
+        from furious.context import ContextExistsError
+        from furious.context import job_context_from_async
+
+        job_context_from_async(Async(target=dir))
+        self.assertRaises(
+            ContextExistsError, job_context_from_async, Async(target=dir))
+
+    def test_context_set_on_local_context(self):
+        """Ensure the context is set on the local_context."""
+        from furious.async import Async
+        from furious.context import _get_local_context
+        from furious.context import job_context_from_async
+
+        context = job_context_from_async(Async(target=dir))
+        self.assertIs(context, _get_local_context()._executing_async_context)
 

@@ -70,7 +70,7 @@ def new():
     return new_context
 
 
-def init_job_context_with_async(async):
+def job_context_from_async(async):
     """Instantiate a new JobContext and store a reference to it in the global
     async context to make later retrieval easier.
     """
