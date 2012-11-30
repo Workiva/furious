@@ -43,6 +43,8 @@ import threading
 
 from google.appengine.api import taskqueue
 
+# NOTE: Do not import this directly.  If you MUST use this, access it
+# through _get_local_context.
 _local_context = None
 
 
