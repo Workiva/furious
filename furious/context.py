@@ -54,6 +54,12 @@ class ContextExistsError(Exception):
     """Call made within context that should not be."""
 
 
+class AlreadyInContextError(Exception):
+    """Attempt to set context on an Async that is already executing in a
+    context.
+    """
+
+
 def new():
     """Get a new furious context and add it to the registry."""
     _init()
@@ -170,6 +176,7 @@ class JobContext(object):
             raise TypeError("async must be an Async instance.")
 
         self._async = async
+        async.set_job_context(self)
 
         _init()
 
