@@ -53,6 +53,7 @@ def run_job():
     function = function_path_to_reference(function_path)
 
     try:
+        async.executing = True
         async.result = function(*args, **kwargs)
     except Exception as e:
         async.result = encode_exception(e)
@@ -79,7 +80,7 @@ def _process_results():
     current_job = get_current_async()
     callbacks = current_job.get_callbacks()
 
-    if not isinstance(current_job.get_result(), AsyncError):
+    if not isinstance(current_job.result, AsyncError):
         success_callback = callbacks.get('success')
         if not success_callback:
             return

@@ -409,6 +409,53 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
 
+    def test_getting_result_fails(self):
+        """Ensure attempting to get the result before executing raises."""
+        from furious.async import Async
+        from furious.async import NotExecutedError
+
+        job = Async(target=dir)
+
+        def get_result():
+            return job.result
+
+        self.assertRaises(NotExecutedError, get_result)
+        self.assertFalse(job.executed)
+
+    def test_getting_result(self):
+        """Ensure getting the result after executing works."""
+        from furious.async import Async
+
+        job = Async(target=dir)
+        job._executing = True
+        job.result = 123456
+
+        self.assertEqual(123456, job.result)
+        self.assertTrue(job.executed)
+
+    def test_setting_result_fails(self):
+        """Ensure the result can not be set."""
+        from furious.async import Async
+        from furious.async import NotExecutingError
+
+        job = Async(target=dir)
+
+        def set_result():
+            job.result = 123
+
+        self.assertRaises(NotExecutingError, set_result)
+        self.assertFalse(job.executed)
+
+    def test_setting_result(self):
+        """Ensure the result can not be set."""
+        from furious.async import Async
+
+        job = Async(target=dir)
+        job.executing = True
+        job.result = 123
+        self.assertEqual(123, job.result)
+        self.assertTrue(job.executed)
+
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start(self, queue_mock):
         """Ensure the Task is inserted into the specified queue."""
