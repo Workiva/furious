@@ -1,5 +1,5 @@
-application: big-sky
-version: async-recalc-test
+application: furious-async
+version: test
 runtime: python27
 api_version: 1
 threadsafe: true
