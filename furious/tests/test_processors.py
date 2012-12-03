@@ -36,6 +36,19 @@ class TestRunJob(unittest.TestCase):
 
         dir_mock.assert_called_once_with(None)
 
+    def test_dies_if_no_job(self):
+        """Ensure run_job raises if there is no job in the Async."""
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.processors import run_job
+
+        work = Async("dir", kwargs={'something': None})
+        work._options.pop('job')
+        assert 'job' not in work._options
+
+        with JobContext(work):
+            self.assertRaises(Exception, run_job)
+
     @patch('__builtin__.dir')
     def test_runs_with_none_kwarg(self, dir_mock):
         """Ensure run_job calls with a kwarg=None."""
