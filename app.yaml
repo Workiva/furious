@@ -1,0 +1,23 @@
+application: big-sky
+version: async-recalc-test
+runtime: python27
+api_version: 1
+threadsafe: true
+
+libraries:
+- name: webob
+  version: latest
+- name: jinja2
+  version: 2.6
+
+builtins:
+- remote_api: on
+
+includes:
+- include-python27.yaml
+
+handlers:
+- url: .*
+  script: example.app
+  login: admin
+

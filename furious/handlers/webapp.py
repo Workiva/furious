@@ -36,3 +36,7 @@ class AsyncJobHandler(webapp2.RequestHandler):
         self.response.set_status(staus_code)
         self.response.out.write(output)
 
+app = webapp2.WSGIApplication([
+    ('.*', AsyncJobHandler)
+])
+
