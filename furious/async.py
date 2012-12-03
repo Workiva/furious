@@ -1,54 +1,82 @@
-"""
-Core async task wrapper.  This module contains the Async class, which is
-used to create asynchronous jobs.  To use,
+#
+# Copyright 2012 WebFilings, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+"""Core async task wrapper.  This module contains the `Async` class, which is
+used to create asynchronous jobs, and a `defaults` decorator you may use to
+specify default settings for a particular async task.  To use,
 
     # Create a task.
     work = Async(
-        job=("function.to.run", args, kwargs),
-        task_args={"task": "kwargs"},
+        target="function.to.run",
+        args=(args, for, function),
+        kwargs={'keyword': arguments, 'to': target},
+        task_args={"appengine": 1, "task": "kwargs"},
         queue="yourqueue"
     )
 
     # Enqueue the task.
     work.start()
 
-*or*, the equivalent more verbose form:
+*or*, set default arguments for a function:
+
+    @defaults(task_args={"appengine": 1, "task": "kwargs"}, queue="yourqueue")
+    def run_me(*args, **kwargs):
+        pass
 
     # Create a task.
-    work = Async()
-    work.set_job("function.to.run", *args, **kwargs)
-    work.update_options(task_args={"task": "kwargs"}, queue="yourqueue")
+    work = Async(
+        target=run_me,
+        args=(args, for, function),
+        kwargs={'keyword': arguments, 'to': target},
+    )
 
     # Enqueue the task.
     work.start()
 
-Job may be one of the following supported formats:
+You may also update options after instantiation:
 
-    "path_to_function_with_no_args"
-    ("path_to_function_with_no_args")
-    ("path_to_function", args, kwargs)
-    ("path_to_function", args)
-    ("path_to_function", kwargs)
+    # Create a task.
+    work = Async(
+        target="function.to.run",
+        args=(args, for, function),
+        kwargs={'keyword': arguments, 'to': target}
+    )
 
-    reference_to_function_with_no_args
-    (reference_to_function_with_no_args)
-    (reference_to_function, args, kwargs)
-    (reference_to_function, args)
-    (reference_to_function, kwargs)
+    work.update_options(task_args={"appengine":1, "task": "kwargs"},
+                        queue="yourqueue")
 
+    # Enqueue the task.
+    work.start()
+
+The order of precedence is:
+    1) options specified when calling start.
+    2) options specified using update_options.
+    3) options specified in the constructor.
+    4) options specified by @defaults decorator.
 """
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
+from functools import wraps
 
-import sys
+import json
 
-from .job_utils import check_job
+from .job_utils import get_function_path_and_options
+from .job_utils import function_path_to_reference
 
 
-__all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async']
+__all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 
 
 ASYNC_DEFAULT_QUEUE = 'default'
@@ -56,22 +84,31 @@ ASYNC_ENDPOINT = '/_ah/queue/async'
 
 
 class Async(object):
-    def __init__(self, job=None, **kwargs):
+    def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
-        self._function_path = None
 
-        if job:
-            job = check_job(job)
-            self._options['job'] = job
-            self._function_path = job[0]
+        # Make sure nothing is snuck in.
+        _check_options(options)
 
-        self.update_options(**kwargs)
+        self._update_job(target, args, kwargs)
 
-    def set_job(self, function, *args, **kwargs):
+        self.update_options(**options)
+
+    @property
+    def _function_path(self):
+        return self._options['job'][0]
+
+    def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
-        job = check_job((function, args, kwargs))
-        self._options['job'] = job
-        self._function_path = job[0]
+        target_path, options = get_function_path_and_options(target)
+
+        assert isinstance(args, (tuple, list)) or args is None
+        assert isinstance(kwargs, dict) or kwargs is None
+
+        if options:
+            self.update_options(**options)
+
+        self._options['job'] = (target_path, args, kwargs)
 
     def get_options(self):
         """Return this async job's configuration options."""
@@ -79,7 +116,9 @@ class Async(object):
 
     def update_options(self, **options):
         """Safely update this async job's configuration options."""
-        # TODO: What logic needs enforced here?
+
+        _check_options(options)
+
         self._options.update(options)
 
     def get_headers(self):
@@ -116,6 +155,7 @@ class Async(object):
 
         task = self.to_task()
         Queue(name=self.get_queue()).add(task)
+        # TODO: Return a "result" object.
 
     def to_dict(self):
         """Return this async job as a dict suitable for json encoding."""
@@ -126,11 +166,9 @@ class Async(object):
         # JSON don't like datetimes.
         eta = options.get('task_args', {}).get('eta')
         if eta:
-            import datetime
             import time
 
-            options['task_args']['eta'] = time.mktime((
-                datetime.datetime.now() + datetime.timedelta(30)).timetuple())
+            options['task_args']['eta'] = time.mktime(eta.timetuple())
 
         return options
 
@@ -138,14 +176,45 @@ class Async(object):
     def from_dict(cls, async):
         """Return an async job from a dict output by Async.to_dict."""
 
+        async_options = async.copy()
+
         # JSON don't like datetimes.
-        eta = async.get('task_args', {}).get('eta')
+        eta = async_options.get('task_args', {}).get('eta')
         if eta:
-            import datetime
+            from datetime import datetime
 
-            async['task_args']['eta'] = datetime.datetime.fromtimestamp(eta)
+            async_options['task_args']['eta'] = datetime.fromtimestamp(eta)
 
-        return Async(**async)
+        target, args, kwargs = async_options.pop('job')
+
+        return Async(target, args, kwargs, **async_options)
+
+
+def defaults(**options):
+    """Set default Async options on the function decorated.
+
+    Note: you must pass the decorated function by reference, not as a
+    "path.string.to.function" for this to have any effect.
+    """
+    _check_options(options)
+
+    def real_decorator(function):
+        function._async_options = options
+
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            return function(*args, **kwargs)
+        return wrapper
+
+    return real_decorator
+
+
+def _check_options(options):
+    """Make sure no one passes something not allowed in."""
+    if not options:
+        return
+
+    assert 'job' not in options
 
 
 def run_job(async):
@@ -164,38 +233,7 @@ def run_job(async):
     if kwargs is None:
         kwargs = {}
 
-    function = _get_function_reference(function_path)
+    function = function_path_to_reference(function_path)
 
     return function(*args, **kwargs)
-
-
-def _get_function_reference(function_path):
-    """Convert a function path reference to a reference."""
-    if '.' not in function_path:
-        try:
-            return globals()["__builtins__"][function_path]
-        except KeyError:
-            try:
-                return getattr(globals()["__builtins__"], function_path)
-            except AttributeError:
-                pass
-
-        try:
-            return globals()[function_path]
-        except KeyError:
-            pass
-
-        raise Exception('Unable to find function "%s".' % (function_path,))
-
-    module_path, function_name = function_path.rsplit('.', 1)
-
-    if module_path in sys.modules:
-        module = sys.modules[module_path]
-    else:
-        module = __import__(name=module_path, fromlist=[function_name])
-
-    try:
-        return getattr(module, function_name)
-    except AttributeError:
-        raise Exception('Unable to find function "%s".' % (function_path,))
 
