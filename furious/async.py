@@ -73,7 +73,6 @@ from functools import wraps
 import json
 
 from .job_utils import get_function_path_and_options
-from .job_utils import function_path_to_reference
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
@@ -81,6 +80,22 @@ __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 
 ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
+
+
+class NotExecutedError(Exception):
+    """This Async has not yet been executed."""
+
+
+class NotExecutingError(Exception):
+    """This Async in not currently executing."""
+
+
+class AlreadyExecutedError(Exception):
+    """This Async has already been executed."""
+
+
+class AlreadyExecutingError(Exception):
+    """This Async is currently executing."""
 
 
 class Async(object):
@@ -93,6 +108,51 @@ class Async(object):
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
+
+        self._job_context = None
+
+        self._executing = False
+        self._executed = False
+
+        self._result = None
+
+    @property
+    def executed(self):
+        return self._executed
+
+    @property
+    def executing(self):
+        return self._executing
+
+    @executing.setter
+    def executing(self, executing):
+        if self._executed:
+            raise AlreadyExecutedError(
+                'You can not execute and executed job.')
+
+        if self._executing:
+            raise AlreadyExecutingError(
+                'Job is already executing, can not set executing.')
+
+        self._executing = executing
+
+    @property
+    def result(self):
+        if not self.executed:
+            raise NotExecutedError(
+                'You must execute this Async before getting its result.')
+
+        return self._result
+
+    @result.setter
+    def result(self, result):
+        if not self._executing:
+            raise NotExecutingError(
+                'The Async must be executing to set its result.')
+
+        self._result = result
+        self._executing = False
+        self._executed = True
 
     @property
     def _function_path(self):
@@ -110,6 +170,14 @@ class Async(object):
 
         self._options['job'] = (target_path, args, kwargs)
 
+    def set_job_context(self, job_context):
+        """Set the JobContext this async is executing under."""
+        if self._job_context:
+            from .context import AlreadyInContextError
+            raise AlreadyInContextError
+
+        self._job_context = job_context
+
     def get_options(self):
         """Return this async job's configuration options."""
         return self._options
@@ -120,6 +188,10 @@ class Async(object):
         _check_options(options)
 
         self._options.update(options)
+
+    def get_callbacks(self):
+        """Return this async job's callback map."""
+        return self._options.get('callbacks', {})
 
     def get_headers(self):
         """Create and return task headers."""
@@ -215,25 +287,5 @@ def _check_options(options):
         return
 
     assert 'job' not in options
-
-
-def run_job(async):
-    """Takes an async object and executes its job."""
-    async_options = async.get_options()
-
-    job = async_options.get('job')
-    if not job:
-        raise Exception('This async contains no job to execute!')
-
-    function_path, args, kwargs = job
-
-    if args is None:
-        args = ()
-
-    if kwargs is None:
-        kwargs = {}
-
-    function = function_path_to_reference(function_path)
-
-    return function(*args, **kwargs)
+    #assert 'callbacks' not in options
 

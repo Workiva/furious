@@ -25,7 +25,7 @@ class TestDefaultsDecorator(unittest.TestCase):
     """Ensure that defaults decorator works as expected."""
 
     def test_decorated_name_is_preserved(self):
-        """Ensure defaults decorator sets options on decorated function."""
+        """Ensure defaults decorator preserves decorated function's name."""
         from furious.async import defaults
 
         @defaults(test=None)
@@ -46,16 +46,27 @@ class TestDefaultsDecorator(unittest.TestCase):
 
         self.assertEqual(options, decorated_function._async_options)
 
-    def test_raises_on_bad_option(self):
-        """Ensure defaults decorator sets options on decorated function."""
+    def test_raises_on_job_in_options(self):
+        """Ensure defaults decorator raise error if job in options."""
         from furious.async import defaults
 
         options = {'job': 'me'}
 
         self.assertRaises(AssertionError, defaults, **options)
 
+    @unittest.skip('Not sure if this is needed.')
+    def test_raises_on_callbacks_in_options(self):
+        """Ensure defaults decorator raise error if callbacks is in options."""
+        from furious.async import defaults
+
+        options = {'callbacks': 'me'}
+
+        self.assertRaises(AssertionError, defaults, **options)
+
     def test_raises_on_good_with_bad_options(self):
-        """Ensure defaults decorator sets options on decorated function."""
+        """Ensure defaults decorator raises error with a mix of good/bad
+        options.
+        """
         from furious.async import defaults
 
         options = {'job': 'me', 'other': 'option'}
@@ -193,6 +204,28 @@ class TestAsync(unittest.TestCase):
         options['job'] = ("furious.tests.test_async.some_function", None, None)
 
         self.assertEqual(options, job._options)
+
+    def test_set_job_context(self):
+        """Ensure set_job_context doesn't blow up."""
+        from furious.async import Async
+        Async(target=dir).set_job_context(object())
+
+    def test_set_job_context_requires_context(self):
+        """Ensure set_job_context requires a context argument."""
+        from furious.async import Async
+        async = Async(target=dir)
+        self.assertRaises(TypeError, async.set_job_context)
+
+    def test_set_job_context_disallows_double_set(self):
+        """Ensure calling set_job_context twice raises AlreadyInContextError.
+        """
+        from furious.async import Async
+        from furious.context import AlreadyInContextError
+
+        async = Async(target=dir)
+        async.set_job_context(object())
+        self.assertRaises(
+            AlreadyInContextError, async.set_job_context, object())
 
     def test_update_options(self):
         """Ensure update_options updates the options."""
@@ -377,6 +410,53 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
 
+    def test_getting_result_fails(self):
+        """Ensure attempting to get the result before executing raises."""
+        from furious.async import Async
+        from furious.async import NotExecutedError
+
+        job = Async(target=dir)
+
+        def get_result():
+            return job.result
+
+        self.assertRaises(NotExecutedError, get_result)
+        self.assertFalse(job.executed)
+
+    def test_getting_result(self):
+        """Ensure getting the result after executing works."""
+        from furious.async import Async
+
+        job = Async(target=dir)
+        job._executing = True
+        job.result = 123456
+
+        self.assertEqual(123456, job.result)
+        self.assertTrue(job.executed)
+
+    def test_setting_result_fails(self):
+        """Ensure the result can not be set."""
+        from furious.async import Async
+        from furious.async import NotExecutingError
+
+        job = Async(target=dir)
+
+        def set_result():
+            job.result = 123
+
+        self.assertRaises(NotExecutingError, set_result)
+        self.assertFalse(job.executed)
+
+    def test_setting_result(self):
+        """Ensure the result can not be set."""
+        from furious.async import Async
+
+        job = Async(target=dir)
+        job.executing = True
+        job.result = 123
+        self.assertEqual(123, job.result)
+        self.assertTrue(job.executed)
+
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start(self, queue_mock):
         """Ensure the Task is inserted into the specified queue."""
@@ -388,57 +468,4 @@ class TestAsync(unittest.TestCase):
 
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
-
-
-class TestRunJob(unittest.TestCase):
-    """Test that run_job correctly executes functions from Async options."""
-
-    @patch('__builtin__.dir')
-    def test_runs_with_none_arg(self, dir_mock):
-        """Ensure run_job calls with None arg."""
-        from furious.async import Async
-        from furious.async import run_job
-
-        work = Async("dir", [None])
-
-        run_job(work)
-
-        dir_mock.assert_called_once_with(None)
-
-    @patch('__builtin__.dir')
-    def test_runs_with_none_kwarg(self, dir_mock):
-        """Ensure run_job calls with a kwarg=None."""
-        from furious.async import Async
-        from furious.async import run_job
-
-        work = Async("dir", kwargs={'something': None})
-
-        run_job(work)
-
-        dir_mock.assert_called_once_with(something=None)
-
-    @patch('__builtin__.dir')
-    def test_runs_with_non_arg_and_kwarg(self, dir_mock):
-        """Ensure run_job calls with a None arg and kwarg=None."""
-        from furious.async import Async
-        from furious.async import run_job
-
-        work = Async("dir", [None], {'something': None})
-
-        run_job(work)
-
-        dir_mock.assert_called_once_with(None, something=None)
-
-    def test_raises_on_missing_job(self):
-        """Ensure run_job raises an exception on bogus standard import."""
-        from furious.async import Async
-        from furious.async import run_job
-
-        work = Async("nothere")
-        work._options.pop('job')
-        assert 'job' not in work._options
-
-        self.assertRaisesRegexp(
-            Exception, "contains no job to execute",
-            run_job, work)
 
