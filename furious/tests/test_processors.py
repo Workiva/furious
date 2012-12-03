@@ -76,3 +76,70 @@ class TestRunJob(unittest.TestCase):
 
         self.assertRaises(NotInContextError, run_job)
 
+    def test_catches_job_exception(self):
+        """Ensure run_job catches exceptions raised by the job."""
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.processors import run_job
+        from furious.processors import AsyncException
+
+        work = Async(target=dir, args=[1, 2])
+
+        with JobContext(work):
+            run_job()
+
+        self.assertIsInstance(work.result, AsyncException)
+
+    def test_calls_success_callback(self):
+        """Ensure run_job calls the success callback after a successful run."""
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.processors import run_job
+
+        global call_count
+        call_count = 0
+
+        def do_things():
+            global call_count
+            call_count += 1
+
+        work = Async(target=dir, args=[1],
+                     callbacks={'success': do_things})
+
+        with JobContext(work):
+            run_job()
+
+        self.assertEqual(1, call_count)
+
+    def test_calls_error_callback(self):
+        """Ensure run_job catches any exceptions raised by the job, then calls
+        the error callback.
+        """
+        from furious.async import Async
+        from furious.context import JobContext
+        from furious.processors import run_job
+
+        global call_count, handle_count
+        call_count = 0
+        handle_count = 0
+
+        def handle_success():
+            global call_count
+            call_count += 1
+
+        def handle_errors():
+            global handle_count
+            handle_count += 1
+
+        work = Async(target=dir, args=[1, 2],
+                     callbacks={'success': handle_success,
+                                'error': handle_errors})
+
+        with JobContext(work):
+            run_job()
+
+        self.assertEqual(1, handle_count,
+                         "Error handler called wrong number of times.")
+        self.assertEqual(0, call_count,
+                         "Success handler unexpectedly called.")
+

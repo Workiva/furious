@@ -80,15 +80,16 @@ def _process_results():
     current_job = get_current_async()
     callbacks = current_job.get_callbacks()
 
-    if not isinstance(current_job.result, AsyncError):
-        success_callback = callbacks.get('success')
-        if not success_callback:
+    if isinstance(current_job.result, AsyncException):
+        error_callback = callbacks.get('error')
+        if not error_callback:
             return
-        success_callback()
+        error_callback()
         return
 
-    error_callback = callbacks.get('error')
-    if not error_callback:
+    success_callback = callbacks.get('success')
+    if not success_callback:
         return
-    error_callback()
+    success_callback()
+
 
