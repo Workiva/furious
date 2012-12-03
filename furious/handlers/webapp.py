@@ -22,12 +22,12 @@ from . import process_async_task
 class AsyncJobHandler(webapp2.RequestHandler):
     """Handles requests for the webapp framework."""
     def get(self):
-        self.handle_task()
+        self._handle_task()
 
     def post(self):
-        self.handle_task()
+        self._handle_task()
 
-    def handle_task(self):
+    def _handle_task(self):
         """Pass request info to the async framework."""
         headers = self.request.headers
 
