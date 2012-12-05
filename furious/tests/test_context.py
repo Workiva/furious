@@ -186,8 +186,8 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(5, queue_add_mock.call_count)
 
 
-class TestJobContext(unittest.TestCase):
-    """Test that the JobContext object functions in some basic way."""
+class TestExecutionContext(unittest.TestCase):
+    """Test that the ExecutionContext object functions in some basic way."""
 
     def setUp(self):
         import os
@@ -197,44 +197,44 @@ class TestJobContext(unittest.TestCase):
         os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
     def test_context_requires_async(self):
-        """Ensure JobContext requires an async object as its first arg."""
-        from furious.context import JobContext
+        """Ensure _ExecutionContext requires an async object as its first arg."""
+        from furious.context import _ExecutionContext
 
-        self.assertRaises(TypeError, JobContext)
+        self.assertRaises(TypeError, _ExecutionContext)
 
     def test_context_requires_async_type_arg(self):
-        """Ensure JobContext requires an Async object as its first arg."""
-        from furious.context import JobContext
+        """Ensure _ExecutionContext requires an Async object as its first arg."""
+        from furious.context import _ExecutionContext
 
-        self.assertRaises(TypeError, JobContext, object())
+        self.assertRaises(TypeError, _ExecutionContext, object())
 
     def test_context_works(self):
-        """Ensure using a JobContext as a context manager works."""
+        """Ensure using a _ExecutionContext as a context manager works."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
 
-        with JobContext(Async(target=dir)):
+        with _ExecutionContext(Async(target=dir)):
             pass
 
     def test_async_is_preserved(self):
-        """Ensure JobContext exposes the async as a property."""
+        """Ensure _ExecutionContext exposes the async as a property."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
 
         job = Async(target=dir)
 
-        context = JobContext(job)
+        context = _ExecutionContext(job)
 
         self.assertIs(job, context.async)
 
     def test_async_is_not_settable(self):
-        """Ensure JobContext async can not be set."""
+        """Ensure _ExecutionContext async can not be set."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
 
         job = Async(target=dir)
 
-        context = JobContext(job)
+        context = _ExecutionContext(job)
 
         def set_job():
             context.async = None
@@ -244,22 +244,22 @@ class TestJobContext(unittest.TestCase):
     def test_job_added_to_local_context(self):
         """Ensure entering the context adds the job to the context stack."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.context import _get_local_context
 
         job = Async(target=dir)
-        with JobContext(job):
+        with _ExecutionContext(job):
             self.assertIn(job, _get_local_context()._executing_async)
 
     def test_job_removed_from_local_context(self):
         """Ensure exiting the context removes the job from the context stack.
         """
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.context import _get_local_context
 
         job = Async(target=dir)
-        with JobContext(job):
+        with _ExecutionContext(job):
             pass
 
         self.assertNotIn(job, _get_local_context()._executing_async)
@@ -269,17 +269,17 @@ class TestJobContext(unittest.TestCase):
         context stack.
         """
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.context import _get_local_context
 
         job_outer = Async(target=dir)
         job_inner = Async(target=dir)
-        with JobContext(job_outer):
+        with _ExecutionContext(job_outer):
             self.assertEqual(1, len(_get_local_context()._executing_async))
             self.assertEqual(job_outer,
                              _get_local_context()._executing_async[-1])
 
-            with JobContext(job_inner):
+            with _ExecutionContext(job_inner):
                 self.assertEqual(2, len(_get_local_context()._executing_async))
                 self.assertEqual(job_inner,
                                  _get_local_context()._executing_async[-1])
@@ -289,13 +289,13 @@ class TestJobContext(unittest.TestCase):
         context stack.
         """
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.context import _get_local_context
 
         job_outer = Async(target=dir)
         job_inner = Async(target=dir)
-        with JobContext(job_outer):
-            with JobContext(job_inner):
+        with _ExecutionContext(job_outer):
+            with _ExecutionContext(job_inner):
                 pass
 
             self.assertEqual(1, len(_get_local_context()._executing_async))
@@ -303,7 +303,7 @@ class TestJobContext(unittest.TestCase):
                              _get_local_context()._executing_async[-1])
 
 
-class TestJobContextFromAsync(unittest.TestCase):
+class TestExecutionContextFromAsync(unittest.TestCase):
     """Test that the Context object functions in some basic way."""
 
     def setUp(self):
@@ -314,34 +314,37 @@ class TestJobContextFromAsync(unittest.TestCase):
         os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
     def test_async_required_as_first_argument(self):
-        """Ensure JobContext requires an async object as its first arg."""
-        from furious.context import job_context_from_async
+        """Ensure ExecutionContext requires an async object as its first arg.
+        """
+        from furious.context import execution_context_from_async
 
-        self.assertRaises(TypeError, job_context_from_async)
+        self.assertRaises(TypeError, execution_context_from_async)
 
     def test_async_type_required_as_first_argument(self):
-        """Ensure JobContext requires an Async type object as its first arg.
+        """Ensure ExecutionContext requires an Async type object as its first
+        arg.
         """
-        from furious.context import job_context_from_async
+        from furious.context import execution_context_from_async
 
-        self.assertRaises(TypeError, job_context_from_async, object())
+        self.assertRaises(TypeError, execution_context_from_async, object())
 
     def test_double_init_raises_error(self):
         """Ensure initing twice raises a ContextExistsError."""
         from furious.async import Async
         from furious.context import ContextExistsError
-        from furious.context import job_context_from_async
+        from furious.context import execution_context_from_async
 
-        job_context_from_async(Async(target=dir))
+        execution_context_from_async(Async(target=dir))
         self.assertRaises(
-            ContextExistsError, job_context_from_async, Async(target=dir))
+            ContextExistsError,
+            execution_context_from_async, Async(target=dir))
 
     def test_context_set_on_local_context(self):
         """Ensure the context is set on the local_context."""
         from furious.async import Async
         from furious.context import _get_local_context
-        from furious.context import job_context_from_async
+        from furious.context import execution_context_from_async
 
-        context = job_context_from_async(Async(target=dir))
+        context = execution_context_from_async(Async(target=dir))
         self.assertIs(context, _get_local_context()._executing_async_context)
 
