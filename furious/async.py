@@ -109,7 +109,7 @@ class Async(object):
 
         self.update_options(**options)
 
-        self._job_context = None
+        self._execution_context = None
 
         self._executing = False
         self._executed = False
@@ -170,13 +170,13 @@ class Async(object):
 
         self._options['job'] = (target_path, args, kwargs)
 
-    def set_job_context(self, job_context):
-        """Set the JobContext this async is executing under."""
-        if self._job_context:
+    def set_execution_context(self, execution_context):
+        """Set the ExecutionContext this async is executing under."""
+        if self._execution_context:
             from .context import AlreadyInContextError
             raise AlreadyInContextError
 
-        self._job_context = job_context
+        self._execution_context = execution_context
 
     def get_options(self):
         """Return this async job's configuration options."""

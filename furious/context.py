@@ -70,18 +70,18 @@ def new():
     return new_context
 
 
-def job_context_from_async(async):
-    """Instantiate a new JobContext and store a reference to it in the global
-    async context to make later retrieval easier.
+def execution_context_from_async(async):
+    """Instantiate a new _ExecutionContext and store a reference to it in the
+    global async context to make later retrieval easier.
     """
     _init()
 
     if _local_context._executing_async_context:
         raise ContextExistsError
 
-    job_context = JobContext(async)
-    _local_context._executing_async_context = job_context
-    return job_context
+    execution_context = _ExecutionContext(async)
+    _local_context._executing_async_context = execution_context
+    return execution_context
 
 
 def get_current_async():
@@ -92,7 +92,7 @@ def get_current_async():
     if _local_context._executing_async:
         return _local_context._executing_async[-1]
 
-    raise NotInContextError('Not in an executing JobContext.')
+    raise NotInContextError('Not in an _ExecutionContext.')
 
 
 def _insert_tasks(tasks, queue, transactional=False):
@@ -166,9 +166,9 @@ class Context(object):
         return target
 
 
-class JobContext(object):
-    """JobContexts are used when running an async task to provide easy access
-    to the async object.
+class _ExecutionContext(object):
+    """_ExecutionContext objects are used when running an async task to provide
+    easy access to the async object.
     """
     def __init__(self, async):
         """Initialize a context with an async task."""
@@ -178,7 +178,7 @@ class JobContext(object):
             raise TypeError("async must be an Async instance.")
 
         self._async = async
-        async.set_job_context(self)
+        async.set_execution_context(self)
 
         _init()
 

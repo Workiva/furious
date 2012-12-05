@@ -26,12 +26,12 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_none_arg(self, dir_mock):
         """Ensure run_job calls with None arg."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
 
         async = Async("dir", [None])
 
-        with JobContext(async):
+        with _ExecutionContext(async):
             run_job()
 
         dir_mock.assert_called_once_with(None)
@@ -39,26 +39,26 @@ class TestRunJob(unittest.TestCase):
     def test_dies_if_no_job(self):
         """Ensure run_job raises if there is no job in the Async."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
 
         work = Async("dir", kwargs={'something': None})
         work._options.pop('job')
         assert 'job' not in work._options
 
-        with JobContext(work):
+        with _ExecutionContext(work):
             self.assertRaises(Exception, run_job)
 
     @patch('__builtin__.dir')
     def test_runs_with_none_kwarg(self, dir_mock):
         """Ensure run_job calls with a kwarg=None."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
 
         work = Async("dir", kwargs={'something': None})
 
-        with JobContext(work):
+        with _ExecutionContext(work):
             run_job()
 
         dir_mock.assert_called_once_with(something=None)
@@ -67,12 +67,12 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_non_arg_and_kwarg(self, dir_mock):
         """Ensure run_job calls with a None arg and kwarg=None."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
 
         work = Async("dir", [None], {'something': None})
 
-        with JobContext(work):
+        with _ExecutionContext(work):
             run_job()
 
         dir_mock.assert_called_once_with(None, something=None)
@@ -92,13 +92,13 @@ class TestRunJob(unittest.TestCase):
     def test_catches_job_exception(self):
         """Ensure run_job catches exceptions raised by the job."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
         from furious.processors import AsyncException
 
         work = Async(target=dir, args=[1, 2])
 
-        with JobContext(work):
+        with _ExecutionContext(work):
             run_job()
 
         self.assertIsInstance(work.result, AsyncException)
@@ -106,7 +106,7 @@ class TestRunJob(unittest.TestCase):
     def test_calls_success_callback(self):
         """Ensure run_job calls the success callback after a successful run."""
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
 
         global call_count
@@ -119,7 +119,7 @@ class TestRunJob(unittest.TestCase):
         work = Async(target=dir, args=[1],
                      callbacks={'success': do_things})
 
-        with JobContext(work):
+        with _ExecutionContext(work):
             run_job()
 
         self.assertEqual(1, call_count)
@@ -129,7 +129,7 @@ class TestRunJob(unittest.TestCase):
         the error callback.
         """
         from furious.async import Async
-        from furious.context import JobContext
+        from furious.context import _ExecutionContext
         from furious.processors import run_job
 
         global call_count, handle_count
@@ -148,7 +148,7 @@ class TestRunJob(unittest.TestCase):
                      callbacks={'success': handle_success,
                                 'error': handle_errors})
 
-        with JobContext(work):
+        with _ExecutionContext(work):
             run_job()
 
         self.assertEqual(1, handle_count,

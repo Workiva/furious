@@ -205,27 +205,28 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(options, job._options)
 
-    def test_set_job_context(self):
-        """Ensure set_job_context doesn't blow up."""
+    def test_set_execution_context(self):
+        """Ensure set_execution_context doesn't blow up."""
         from furious.async import Async
-        Async(target=dir).set_job_context(object())
+        Async(target=dir).set_execution_context(object())
 
-    def test_set_job_context_requires_context(self):
-        """Ensure set_job_context requires a context argument."""
+    def test_set_execution_context_requires_context(self):
+        """Ensure set_execution_context requires a context argument."""
         from furious.async import Async
         async = Async(target=dir)
-        self.assertRaises(TypeError, async.set_job_context)
+        self.assertRaises(TypeError, async.set_execution_context)
 
-    def test_set_job_context_disallows_double_set(self):
-        """Ensure calling set_job_context twice raises AlreadyInContextError.
+    def test_set_execution_context_disallows_double_set(self):
+        """Ensure calling set_execution_context twice raises
+        AlreadyInContextError.
         """
         from furious.async import Async
         from furious.context import AlreadyInContextError
 
         async = Async(target=dir)
-        async.set_job_context(object())
+        async.set_execution_context(object())
         self.assertRaises(
-            AlreadyInContextError, async.set_job_context, object())
+            AlreadyInContextError, async.set_execution_context, object())
 
     def test_update_options(self):
         """Ensure update_options updates the options."""

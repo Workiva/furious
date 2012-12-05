@@ -30,7 +30,7 @@ def process_async_task(headers, request_body):
 
     logging.info(async._function_path)
 
-    with context.job_context_from_async(async):
+    with context.execution_context_from_async(async):
         run_job()
 
     return 200, async._function_path
