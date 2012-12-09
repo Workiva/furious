@@ -62,6 +62,13 @@ class AlreadyInContextError(Exception):
     """
 
 
+class CorruptContextError(Exception):
+    """ExecutionContext raised when the execution context stack is corrupted.
+    """
+    def __init__(self, *exc_info):
+        self.exc_info = exc_info
+
+
 def new():
     """Get a new furious context and add it to the registry."""
     _init()
@@ -192,10 +199,14 @@ class _ExecutionContext(object):
         _local_context._executing_async.append(self._async)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *exc_info):
         """Exit the context, pop this async from the executing context stack.
         """
-        _local_context._executing_async.pop()
+        last = _local_context._executing_async.pop()
+        if last is not self._async:
+            _local_context._executing_async.append(last)
+            raise CorruptContextError(*exc_info)
+
         return False
 
 

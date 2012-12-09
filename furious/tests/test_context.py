@@ -333,6 +333,21 @@ class TestExecutionContext(unittest.TestCase):
             self.assertEqual(job_outer,
                              _get_local_context()._executing_async[-1])
 
+    def test_corrupt_context(self):
+        """Ensure wrong context is not popped from execution context stack."""
+        from furious.async import Async
+        from furious.context import CorruptContextError
+        from furious.context import _ExecutionContext
+        from furious.context import _get_local_context
+
+        with self.assertRaises(CorruptContextError) as cm:
+            job_outer = Async(target=dir)
+            with _ExecutionContext(job_outer):
+                local_context = _get_local_context()
+                local_context._executing_async.append(object())
+
+        self.assertEqual((None, None, None), cm.exception.exc_info)
+
 
 class TestExecutionContextFromAsync(unittest.TestCase):
     """Test that the Context object functions in some basic way."""
