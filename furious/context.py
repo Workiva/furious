@@ -72,6 +72,7 @@ class CorruptContextError(Exception):
 def new():
     """Get a new furious context and add it to the registry."""
     _init()
+
     new_context = Context()
     _local_context.registry.append(new_context)
     return new_context
@@ -96,6 +97,7 @@ def get_current_async():
     or None if not in an Async job.
     """
     _init()
+
     if _local_context._executing_async:
         return _local_context._executing_async[-1]
 
@@ -225,15 +227,15 @@ def _init():
 
     _local_context = threading.local()
 
-    # So that we do not inadvertently reinitialize the local context.
-    _local_context._initialized = os.environ['REQUEST_ID_HASH']
-
     # Used to track the context object stack.
     _local_context.registry = []
 
     # Used to provide easy access to the currently running Async job.
     _local_context._executing_async_context = None
     _local_context._executing_async = []
+
+    # So that we do not inadvertently reinitialize the local context.
+    _local_context._initialized = os.environ['REQUEST_ID_HASH']
 
     return _local_context
 
