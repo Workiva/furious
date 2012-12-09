@@ -54,6 +54,22 @@ class TestContext(unittest.TestCase):
         queue_add_mock.assert_called_once()
 
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_bubbling_exceptions(self, queue_add_mock):
+        """Ensure exceptions cause tasks to not insert."""
+        from furious.context import Context
+
+        class TestError(Exception):
+            """Testing generated error."""
+
+        def wrapper():
+            with Context() as ctx:
+                ctx.add('test', args=[1, 2])
+                raise TestError('ka pow')
+
+        self.assertRaises(TestError, wrapper)
+        self.assertEqual(0, queue_add_mock.call_count)
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_add_multiple_jobs_to_context_works(self, queue_add_mock):
         """Ensure adding multiple jobs works."""
         from furious.context import Context

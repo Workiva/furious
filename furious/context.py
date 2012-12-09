@@ -132,7 +132,7 @@ class Context(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._tasks:
+        if not exc_type and self._tasks:
             self._handle_tasks()
 
         return False
