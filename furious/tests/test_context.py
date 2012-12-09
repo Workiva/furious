@@ -70,6 +70,21 @@ class TestContext(unittest.TestCase):
         self.assertEqual(0, queue_add_mock.call_count)
 
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_nested_context_works(self, queue_add_mock):
+        """Ensure adding a job works."""
+        from furious.async import Async
+        from furious.context import Context
+
+        with Context() as ctx:
+            job = ctx.add('test', args=[1, 2])
+            with Context() as ctx2:
+                job2 = ctx2.add('test', args=[1, 2])
+
+        self.assertIsInstance(job, Async)
+        self.assertIsInstance(job2, Async)
+        self.assertEqual(2, queue_add_mock.call_count)
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_add_multiple_jobs_to_context_works(self, queue_add_mock):
         """Ensure adding multiple jobs works."""
         from furious.context import Context
