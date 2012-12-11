@@ -18,6 +18,7 @@
 functions.
 """
 
+from .context import get_current_async
 from .job_utils import function_path_to_reference
 
 from collections import namedtuple
@@ -32,10 +33,7 @@ class AsyncError(Exception):
 
 def run_job():
     """Takes an async object and executes its job."""
-    from .context import get_current_async
-
     async = get_current_async()
-
     async_options = async.get_options()
 
     job = async_options.get('job')
@@ -76,20 +74,18 @@ def encode_exception(exception):
 
 def _process_results():
     """Process the results from an Async job."""
-    from .context import get_current_async
-    current_job = get_current_async()
-    callbacks = current_job.get_callbacks()
+    async = get_current_async()
+    callbacks = async.get_callbacks()
 
-    if isinstance(current_job.result, AsyncException):
+    if isinstance(async.result, AsyncException):
         error_callback = callbacks.get('error')
         if not error_callback:
-            return
-        error_callback()
-        return
+            return async.result
+        return error_callback()
 
     success_callback = callbacks.get('success')
     if not success_callback:
-        return
-    success_callback()
+        return async.result
+    return success_callback()
 
 
