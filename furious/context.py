@@ -155,10 +155,12 @@ class Context(object):
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
         task_map = {}
+
         for async in self._tasks:
             queue = async.get_queue()
             task = async.to_task()
             task_map.setdefault(queue, []).append(task)
+
         return task_map
 
     def add(self, target, args=None, kwargs=None, **options):
@@ -168,10 +170,12 @@ class Context(object):
         object as argumnets.  Returns the newly added Async object.
         """
         from .async import Async
+
         if not isinstance(target, Async):
             target = Async(target, args, kwargs, **options)
 
         self._tasks.append(target)
+
         return target
 
 
