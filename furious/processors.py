@@ -81,15 +81,17 @@ def _process_results():
     callbacks = current_job.get_callbacks()
 
     if isinstance(current_job.result, AsyncException):
-        error_callback = callbacks.get('error')
-        if not error_callback:
+        error_callback_path = callbacks.get('error')
+        if not error_callback_path:
             return
+        error_callback = function_path_to_reference(error_callback_path)
         error_callback()
         return
 
-    success_callback = callbacks.get('success')
-    if not success_callback:
+    success_callback_path = callbacks.get('success')
+    if not success_callback_path:
         return
+    success_callback = function_path_to_reference(success_callback_path)
     success_callback()
 
 
