@@ -117,12 +117,10 @@ class TestRunJob(unittest.TestCase):
         from furious.context import _ExecutionContext
         from furious.processors import run_job
 
-        global call_count
-        call_count = 0
+        call_count = []
 
         def do_things():
-            global call_count
-            call_count += 1
+            call_count.append(1)
 
         work = Async(target=dir, args=[1],
                      callbacks={'success': do_things})
@@ -130,7 +128,7 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             run_job()
 
-        self.assertEqual(1, call_count)
+        self.assertEqual(1, len(call_count))
 
     def test_calls_error_callback(self):
         """Ensure run_job catches any exceptions raised by the job, then calls
@@ -140,17 +138,14 @@ class TestRunJob(unittest.TestCase):
         from furious.context import _ExecutionContext
         from furious.processors import run_job
 
-        global call_count, handle_count
-        call_count = 0
-        handle_count = 0
+        call_count = []
+        handle_count = []
 
         def handle_success():
-            global call_count
-            call_count += 1
+            call_count.append(1)
 
         def handle_errors():
-            global handle_count
-            handle_count += 1
+            handle_count.append(1)
 
         work = Async(target=dir, args=[1, 2],
                      callbacks={'success': handle_success,
@@ -159,9 +154,9 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             run_job()
 
-        self.assertEqual(1, handle_count,
+        self.assertEqual(1, len(handle_count),
                          "Error handler called wrong number of times.")
-        self.assertEqual(0, call_count,
+        self.assertEqual(0, len(call_count),
                          "Success handler unexpectedly called.")
 
     def test_calls_async_callbacks(self):
