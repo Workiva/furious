@@ -348,15 +348,18 @@ class TestAsync(unittest.TestCase):
 
         options = {'callbacks': {
             'success': self.__class__.test_to_dict_with_callbacks,
-            'failure': "failure_function"
+            'failure': "failure_function",
+            'exec': Async(target=dir)
         }}
 
         job = Async('nonexistant', **options.copy())
 
         options['job'] = ('nonexistant', None, None)
         options['callbacks'] = {
-            'success': "furious.tests.test_async.TestAsync.test_to_dict_with_callbacks",
-            'failure': "failure_function"
+            'success': ("furious.tests.test_async."
+                        "TestAsync.test_to_dict_with_callbacks"),
+            'failure': "failure_function",
+            'exec': {'job': ('dir', None, None)}
         }
 
         self.assertEqual(options, job.to_dict())
@@ -385,7 +388,8 @@ class TestAsync(unittest.TestCase):
         callbacks = {
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
-            'failure': "dir"
+            'failure': "dir",
+            'exec': {'job': ('dir', None, None)}
         }
 
         options = {'job': job, 'callbacks': callbacks}
@@ -397,7 +401,11 @@ class TestAsync(unittest.TestCase):
             'failure': dir
         }
 
-        self.assertEqual(check_callbacks, async_job.get_callbacks())
+        callbacks = async_job.get_callbacks()
+        exec_callback = callbacks.pop('exec')
+
+        self.assertEqual(check_callbacks, callbacks)
+        self.assertEqual({'job': ('dir', None, None)}, exec_callback.to_dict())
 
     def test_reconstitution(self):
         """Ensure to_dict(job.from_dict()) returns the same thing."""
