@@ -92,8 +92,8 @@ class AsyncCallbackHandler(webapp2.RequestHandler):
 
 
 class AsyncAsyncCallbackHandler(webapp2.RequestHandler):
+    """Demonstrate using an Async as a callback for another Async."""
     def get(self):
-        """Create and insert a single furious task."""
         from furious.async import Async
 
         # Instantiate an Async object to act as our success callback.
