@@ -79,13 +79,23 @@ def _process_results():
 
     if isinstance(async.result, AsyncException):
         error_callback = callbacks.get('error')
-        if not error_callback:
-            return async.result
-        return error_callback()
+        return _execute_callback(async, error_callback)
 
     success_callback = callbacks.get('success')
-    if not success_callback:
-        return async.result
-    return success_callback()
+    return _execute_callback(async, success_callback)
 
+
+def _execute_callback(async, callback):
+    """Execute the given callback or insert the Async callback, or if no
+    callback is given return the async.result.
+    """
+    from furious.async import Async
+
+    if not callback:
+        return async.result
+
+    if isinstance(callback, Async):
+        return callback.start()
+
+    return callback()
 

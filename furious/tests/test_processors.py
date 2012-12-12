@@ -16,11 +16,19 @@
 
 import unittest
 
+from mock import Mock
 from mock import patch
 
 
 class TestRunJob(unittest.TestCase):
     """Test that run_job correctly executes functions from Async options."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
     @patch('__builtin__.dir')
     def test_runs_with_none_arg(self, dir_mock):
@@ -155,4 +163,19 @@ class TestRunJob(unittest.TestCase):
                          "Error handler called wrong number of times.")
         self.assertEqual(0, call_count,
                          "Success handler unexpectedly called.")
+
+    def test_calls_async_callbacks(self):
+        """Ensure run_job will call start on an Async object callback."""
+        from furious.async import Async
+        from furious.context import _ExecutionContext
+        from furious.processors import run_job
+
+        callback = Mock(spec=Async)
+
+        work = Async(target=dir, args=[1], callbacks={'success': callback})
+
+        with _ExecutionContext(work):
+            run_job()
+
+        callback.start.assert_called_once_with()
 

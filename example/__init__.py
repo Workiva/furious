@@ -90,18 +90,28 @@ class AsyncCallbackHandler(webapp2.RequestHandler):
 
         self.response.out.write('Successfully inserted Async job.')
 
+
+class AsyncAsyncCallbackHandler(webapp2.RequestHandler):
     def get(self):
         """Create and insert a single furious task."""
         from furious.async import Async
 
-        # Instantiate an Async object.
-        async_task = Async(
-            target=example_function, args=[1], kwargs={'some': 'value'},
-            callbacks={'success': all_done}
+        # Instantiate an Async object to act as our success callback.
+        # NOTE: Your async.result is not directly available from the
+        # success_callback Async, you will need to persist the result
+        # and fetch it from the other Async if needed.
+        success_callback = Async(
+            target=example_function, kwargs={'it': 'worked'}
         )
 
-        # Insert the task to run the Async object, not that it may begin
-        # executing immediately or with some delay.
+        # Instantiate an Async object, setting the success_callback to the
+        # above Async object.
+        async_task = Async(
+            target=example_function, kwargs={'trigger': 'job'},
+            callbacks={'success': success_callback}
+        )
+
+        # Insert the task to run the Async object.
         async_task.start()
 
         logging.info('Async job kicked off.')
