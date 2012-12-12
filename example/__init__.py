@@ -73,8 +73,38 @@ class ContextIntroHandler(webapp2.RequestHandler):
         self.response.out.write('Successfully inserted a group of Async jobs.')
 
 
+def all_done():
+    """Will be run if the async task runs successfully."""
+    from furious.context import get_current_async
+
+    async = get_current_async()
+
+    logging.info('async task complete, value returned: %r', async.result)
+
+
+class AsyncCallbackHandler(webapp2.RequestHandler):
+    def get(self):
+        """Create and insert a single furious task."""
+        from furious.async import Async
+
+        # Instantiate an Async object.
+        async_task = Async(
+            target=example_function, args=[1], kwargs={'some': 'value'},
+            callbacks={'success': all_done}
+        )
+
+        # Insert the task to run the Async object, not that it may begin
+        # executing immediately or with some delay.
+        async_task.start()
+
+        logging.info('Async job kicked off.')
+
+        self.response.out.write('Successfully inserted Async job.')
+
+
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
     ('/context', ContextIntroHandler),
+    ('/callback', AsyncCallbackHandler),
 ])
 
