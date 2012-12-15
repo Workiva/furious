@@ -25,6 +25,8 @@ import logging
 
 import webapp2
 
+from furious.async import defaults
+
 
 class AsyncIntroHandler(webapp2.RequestHandler):
     """Demonstrate the creation and insertion of a single furious task."""
@@ -119,6 +121,19 @@ class AsyncAsyncCallbackHandler(webapp2.RequestHandler):
         self.response.out.write('Successfully inserted Async job.')
 
 
+class SimpleWorkflowHandler(webapp2.RequestHandler):
+    """Demonstrate constructing a simple state machine."""
+    def get(self):
+        from furious.async import Async
+
+        # Instantiate an Async object to start the chain.
+        Async(target=simple_state_machine).start()
+
+        logging.info('Async chain kicked off.')
+
+        self.response.out.write('Successfully inserted Async chain starter.')
+
+
 def example_function(*args, **kwargs):
     """This function is called by furious tasks to demonstrate usage."""
     logging.info('example_function executed with args: %r, kwargs: %r',
@@ -136,10 +151,27 @@ def all_done():
     logging.info('async task complete, value returned: %r', async.result)
 
 
+def simple_state_machine():
+    """Pick a number, if it is more than some cuttoff continue the chain."""
+    from random import random
+
+    from furious.async import Async
+
+    number = random()
+    logging.info('Generating a number... %s', number)
+
+    if number > 0.25:
+        logging.info('Continuing to do stuff.')
+        return Async(target=simple_state_machine)
+
+    return number
+
+
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
     ('/context', ContextIntroHandler),
     ('/callback', AsyncCallbackHandler),
     ('/callback/async', AsyncAsyncCallbackHandler),
+    ('/workflow', SimpleWorkflowHandler),
 ])
 
