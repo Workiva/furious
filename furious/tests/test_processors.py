@@ -97,8 +97,10 @@ class TestRunJob(unittest.TestCase):
 
         self.assertRaises(NotInContextError, run_job)
 
-    def test_catches_job_exception(self):
-        """Ensure run_job catches exceptions raised by the job."""
+    def test_handles_job_exception(self):
+        """Ensure run_job catches and encodes exceptions to the async result,
+        then raises them.
+        """
         from furious.async import Async
         from furious.context import _ExecutionContext
         from furious.processors import run_job
@@ -107,7 +109,7 @@ class TestRunJob(unittest.TestCase):
         work = Async(target=dir, args=[1, 2])
 
         with _ExecutionContext(work):
-            run_job()
+            self.assertRaises(TypeError, run_job)
 
         self.assertIsInstance(work.result, AsyncException)
 

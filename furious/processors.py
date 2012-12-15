@@ -83,6 +83,9 @@ def _process_results():
 
     if isinstance(async.result, AsyncException):
         error_callback = callbacks.get('error')
+        if not error_callback:
+            raise async.result.exception
+
         return _execute_callback(async, error_callback)
 
     success_callback = callbacks.get('success')
