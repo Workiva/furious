@@ -93,6 +93,26 @@ class AsyncCallbackHandler(webapp2.RequestHandler):
         self.response.out.write('Successfully inserted Async job.')
 
 
+class AsyncErrorCallbackHandler(webapp2.RequestHandler):
+    """Demonstrate handling an error using an Async callback."""
+    def get(self):
+        from furious.async import Async
+
+        # Instantiate an Async object, specifying a 'error' callback.
+        async_task = Async(
+            target=dir, args=[1, 2, 3],
+            callbacks={'error': handle_an_error}
+        )
+
+        # Insert the task to run the Async object.  The error callback will be
+        # executed in the furious task after the job has raised an exception.
+        async_task.start()
+
+        logging.info('Erroneous Async job kicked off.')
+
+        self.response.out.write('Successfully inserted Async job.')
+
+
 class AsyncAsyncCallbackHandler(webapp2.RequestHandler):
     """Demonstrate using an Async as a callback for another Async."""
     def get(self):
@@ -162,6 +182,15 @@ def all_done():
     async = get_current_async()
 
     logging.info('async task complete, value returned: %r', async.result)
+
+
+def handle_an_error():
+    """Will be run if the async task raises an unhandled exception."""
+    from furious.context import get_current_async
+
+    exception_info = get_current_async().result
+
+    logging.info('async job blew up, exception info: %r', exception_info)
 
 
 def simple_state_machine():
@@ -234,6 +263,7 @@ app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
     ('/context', ContextIntroHandler),
     ('/callback', AsyncCallbackHandler),
+    ('/callback/error', AsyncErrorCallbackHandler),
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
