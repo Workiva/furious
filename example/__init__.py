@@ -134,6 +134,19 @@ class SimpleWorkflowHandler(webapp2.RequestHandler):
         self.response.out.write('Successfully inserted Async chain starter.')
 
 
+class ComplexWorkflowHandler(webapp2.RequestHandler):
+    """Demonstrate constructing a more complex state machine."""
+    def get(self):
+        from furious.async import Async
+
+        # Instantiate an Async object to start the machine in state alpha.
+        Async(target=complex_state_generator_alpha).start()
+
+        logging.info('Async chain kicked off.')
+
+        self.response.out.write('Successfully inserted Async chain starter.')
+
+
 def example_function(*args, **kwargs):
     """This function is called by furious tasks to demonstrate usage."""
     logging.info('example_function executed with args: %r, kwargs: %r',
@@ -167,11 +180,62 @@ def simple_state_machine():
     return number
 
 
+@defaults(callbacks={'success': "example.state_machine_success"})
+def complex_state_generator_alpha(last_state=''):
+    """Pick a state."""
+    from random import choice
+
+    states = ['ALPHA', 'ALPHA', 'ALPHA', 'BRAVO', 'BRAVO', 'DONE']
+    if last_state:
+        states.remove(last_state)  # Slightly lower chances of previous state.
+
+    state = choice(states)
+
+    logging.info('Generating a state... %s', state)
+
+    return state
+
+
+@defaults(callbacks={'success': "example.state_machine_success"})
+def complex_state_generator_bravo(last_state=''):
+    """Pick a state."""
+    from random import choice
+
+    states = ['ALPHA', 'BRAVO', 'BRAVO', 'DONE']
+    if last_state:
+        states.remove(last_state)  # Slightly lower chances of previous state.
+
+    state = choice(states)
+
+    logging.info('Generating a state... %s', state)
+
+    return state
+
+
+def state_machine_success():
+    """A positive result!  Iterate!"""
+    from furious.async import Async
+    from furious.context import get_current_async
+
+    result = get_current_async().result
+
+    if result == 'ALPHA':
+        logging.info('Inserting continuation for state %s.', result)
+        return Async(target=complex_state_generator_alpha, args=[result])
+
+    elif result == 'BRAVO':
+        logging.info('Inserting continuation for state %s.', result)
+        return Async(target=complex_state_generator_bravo, args=[result])
+
+    logging.info('Done working, stop now.')
+
+
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
     ('/context', ContextIntroHandler),
     ('/callback', AsyncCallbackHandler),
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
+    ('/workflow/complex', ComplexWorkflowHandler),
 ])
 
