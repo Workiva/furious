@@ -186,11 +186,19 @@ def all_done():
 
 def handle_an_error():
     """Will be run if the async task raises an unhandled exception."""
+    import os
+
     from furious.context import get_current_async
 
     exception_info = get_current_async().result
 
     logging.info('async job blew up, exception info: %r', exception_info)
+
+    retries = int(os.environ['HTTP_X_APPENGINE_TASKRETRYCOUNT'])
+    if retries < 2:
+        raise exception_info.exception
+    else:
+        logging.info('Caught too many errors, giving up now.')
 
 
 def simple_state_machine():
