@@ -174,3 +174,46 @@ class TestRunJob(unittest.TestCase):
 
         callback.start.assert_called_once_with()
 
+    def test_starts_returned_async(self):
+        """Ensure run_job calls returned Async objects."""
+        from furious.async import Async
+        from furious.context import _ExecutionContext
+        from furious.processors import run_job
+
+        returned_async = Mock(spec=Async)
+
+        work = Async(target=_fake_async_returning_target,
+                     args=[returned_async])
+
+        with _ExecutionContext(work):
+            run_job()
+
+        returned_async.start.assert_called_once_with()
+
+    def test_starts_callback_returned_async(self):
+        """Ensure run_job calls returned Async objects."""
+        from furious.async import Async
+        from furious.context import _ExecutionContext
+        from furious.processors import run_job
+
+        returned_async = Mock(spec=Async)
+
+        work = Async(target=_fake_async_returning_target,
+                     args=[returned_async],
+                     callbacks={'success': _fake_result_returning_callback})
+
+        with _ExecutionContext(work):
+            run_job()
+
+        returned_async.start.assert_called_once_with()
+
+
+def _fake_async_returning_target(async_to_return):
+    return async_to_return
+
+
+def _fake_result_returning_callback():
+    from furious.context import get_current_async
+
+    return get_current_async().result
+
