@@ -470,3 +470,19 @@ class TestAsync(unittest.TestCase):
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
 
+    def test_to_task_with_callbacks(self):
+        """Ensure that Async can be converted to a Task."""
+        from furious.async import Async
+
+        def success():
+            pass
+
+        def error():
+            pass
+
+        callbacks = {"success": success, "error": error}
+        async_job = Async("something", queue='my_queue', callbacks=callbacks)
+
+        # Callback functions are not json serializable.  Test if
+        # Async.to_task() avoids this problem.
+        async_job.to_task()

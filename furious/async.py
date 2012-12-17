@@ -242,6 +242,10 @@ class Async(object):
 
             options['task_args']['eta'] = time.mktime(eta.timetuple())
 
+        # Remove callbacks since JSON cannot serialize them.
+        if "callbacks" in options:
+            del options["callbacks"]
+
         return options
 
     @classmethod
