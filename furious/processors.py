@@ -18,10 +18,12 @@
 functions.
 """
 
+from collections import namedtuple
+
+from .async import Async
+from .context import Context
 from .context import get_current_async
 from .job_utils import function_path_to_reference
-
-from collections import namedtuple
 
 
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
@@ -60,7 +62,9 @@ def run_job():
     if not results_processor:
         results_processor = _process_results
 
-    results_processor()
+    processor_result = results_processor()
+    if isinstance(processor_result, (Async, Context)):
+        processor_result.start()
 
 
 def encode_exception(exception):
@@ -79,6 +83,9 @@ def _process_results():
 
     if isinstance(async.result, AsyncException):
         error_callback = callbacks.get('error')
+        if not error_callback:
+            raise async.result.exception
+
         return _execute_callback(async, error_callback)
 
     success_callback = callbacks.get('success')
