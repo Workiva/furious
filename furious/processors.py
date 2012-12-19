@@ -68,7 +68,11 @@ def run_job():
 
 
 def encode_exception(exception):
-    """Encode exception to a form that can be passed around and serialized."""
+    """Encode exception to a form that can be passed around and serialized.
+
+    This will grab the stack, then strip off the last two calls which are
+    encode_exception and the function that called it.
+    """
     import traceback
     return AsyncException(unicode(exception),
                           exception.args,
