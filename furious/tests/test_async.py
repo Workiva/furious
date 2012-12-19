@@ -488,7 +488,7 @@ class TestAsync(unittest.TestCase):
         self.assertTrue(job.executed)
 
     def test_setting_result_fails(self):
-        """Ensure the result can not be set."""
+        """Ensure the result can not be set without the execute flag set."""
         from furious.async import Async
         from furious.async import NotExecutingError
 
@@ -501,7 +501,7 @@ class TestAsync(unittest.TestCase):
         self.assertFalse(job.executed)
 
     def test_setting_result(self):
-        """Ensure the result can not be set."""
+        """Ensure the result can be set if the execute flag is set."""
         from furious.async import Async
 
         job = Async(target=dir)

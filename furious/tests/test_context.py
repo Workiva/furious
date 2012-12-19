@@ -147,7 +147,7 @@ class TestNew(unittest.TestCase):
         self.assertIsInstance(new(), Context)
 
     def test_new_adds_to_registry(self):
-        """Ensure new returns a new context."""
+        """Ensure new adds new contexts to the context registry."""
         from furious.context import Context
         from furious.context import _get_local_context
         from furious.context import new
