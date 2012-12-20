@@ -21,6 +21,28 @@ from google.appengine.ext import testbed
 from mock import patch
 
 
+class TestNew(unittest.TestCase):
+    """Test that new returns a new context and adds it to the registry."""
+
+    def test_new(self):
+        """Ensure new returns a new context."""
+        from furious.context import Context
+        from furious.context import new
+
+        self.assertIsInstance(new(), Context)
+
+    def test_new_adds_to_registry(self):
+        """Ensure new adds new contexts to the context registry."""
+        from furious.context import Context
+        from furious.context._local import get_local_context
+        from furious.context import new
+
+        ctx = new()
+
+        self.assertIsInstance(ctx, Context)
+        self.assertIn(ctx, get_local_context().registry)
+
+
 class TestContext(unittest.TestCase):
     """Test that the Context object functions in some basic way."""
     def setUp(self):
