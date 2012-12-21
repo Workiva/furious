@@ -34,7 +34,7 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_none_arg(self, dir_mock):
         """Ensure run_job calls with None arg."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         async = Async("dir", [None])
@@ -47,7 +47,7 @@ class TestRunJob(unittest.TestCase):
     def test_dies_if_no_job(self):
         """Ensure run_job raises if there is no job in the Async."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         work = Async("dir", kwargs={'something': None})
@@ -61,7 +61,7 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_none_kwarg(self, dir_mock):
         """Ensure run_job calls with a kwarg=None."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         work = Async("dir", kwargs={'something': None})
@@ -75,7 +75,7 @@ class TestRunJob(unittest.TestCase):
     def test_runs_with_non_arg_and_kwarg(self, dir_mock):
         """Ensure run_job calls with a None arg and kwarg=None."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         work = Async("dir", [None], {'something': None})
@@ -102,7 +102,7 @@ class TestRunJob(unittest.TestCase):
         then raises them.
         """
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
         from furious.processors import AsyncException
 
@@ -116,7 +116,7 @@ class TestRunJob(unittest.TestCase):
     def test_calls_success_callback(self):
         """Ensure run_job calls the success callback after a successful run."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         call_count = []
@@ -137,7 +137,7 @@ class TestRunJob(unittest.TestCase):
         the error callback.
         """
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         call_count = []
@@ -164,7 +164,7 @@ class TestRunJob(unittest.TestCase):
     def test_calls_async_callbacks(self):
         """Ensure run_job will call start on an Async object callback."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         callback = Mock(spec=Async)
@@ -179,7 +179,7 @@ class TestRunJob(unittest.TestCase):
     def test_starts_returned_async(self):
         """Ensure run_job calls returned Async objects."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         returned_async = Mock(spec=Async)
@@ -195,7 +195,7 @@ class TestRunJob(unittest.TestCase):
     def test_starts_callback_returned_async(self):
         """Ensure run_job calls returned Async objects."""
         from furious.async import Async
-        from furious.context import _ExecutionContext
+        from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
         returned_async = Mock(spec=Async)
