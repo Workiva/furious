@@ -85,7 +85,7 @@ Tasks targeted at the same queue will be batch inserted.
 
 ### Workflows via Contexts
 
-*NOTE*: The Context on__complete method is not yet fully implemented.
+*NOTE*: The Context on_complete method is not yet fully implemented.
 
 Contexts allow you to build workflows easily,
 
