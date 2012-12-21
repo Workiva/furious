@@ -10,6 +10,7 @@ make building dynamic workflows easy.
 
 Installation
 ------------
+
 Include `furious` within your App Engine project's libary directory, often
 `/lib`.  If that does not make sense to you, simply include the `furious`
 subdirectory within your application's root directory (where your `app.yaml`
@@ -20,9 +21,16 @@ Usage
 
 In the simplest form, usage looks like:
 
-    from furious import async
+    from furious import Async
 
-    async(job=("your.module.func", ("pos", "args"), {"kwarg": "too"})).start()
+    # Create an Async object.
+    async = Async(
+        target="your.module.func",
+        args=("positstional", "args"),
+        kwargs={"kwargs": "too"})
+
+    # Tell the async to insert itself to be run.
+    async.start()
 
 This inserts a task that will make the following call:
 
@@ -33,32 +41,117 @@ This inserts a task that will make the following call:
 
 You can group jobs together,
 
-    from furious import async, group
+    from furious import context
 
-    groups = [async(job=("square_a_number", i)) for i in range(10)]
-    group(jobs=groups).start()
+    # Instantiate a new Context.
+    with context.new() as batch:
 
-### Workflows via Grouping
+        for number in xrange(10):
 
-Grouping allows you to build workflows easily,
+            # Create a new Async object that will be added to the Context.
+            batch.add(target="square_a_number", args=(number,))
 
-    from furious import async, group
-    from furious.context import get_results
+
+### Setting defaults.
+
+It is possible to set options, like the target queue,
+
+    from furious import context, defaults
+
+    @defaults(queue='square')
+    def square_a_number(number):
+        return number * number
+
+    @defaults(queue='delayed_square', task_args={'countdown': 20})
+    def delayed_square(number):
+        return number * number
+
+    # Instantiate a new Context.
+    with context.new() as batch:
+
+        for number in xrange(10):
+
+            if number % 2:
+                # At insert time, the task is added to the 'square' queue.
+                batch.add(target="square_a_number", args=(number,))
+            else:
+                # At insert time, the task is added to the 'delayed_square'
+                # queue with a 20 second countdown.
+                batch.add(target="delayed_square", args=(number,))
+
+
+Tasks targeted at the same queue will be batch inserted.
+
+
+### Workflows via Contexts
+
+*NOTE*: The Context on__complete method is not yet fully implemented.
+
+Contexts allow you to build workflows easily,
+
+    from furious import Async
+    from furious.context import get_current_context, new
 
     def square_a_number(number):
         return number ** number
 
     def sum_results():
-        results = get_results()
+        # Get the current context.
+        context = get_current_context()
+
+        # Get an iterator that will iterate over the results.
+        results = context.get_results()
+
+        # Do something with the results.
         return sum(result.payload for result in results)
 
-    # Build up your jobs.
-    groups = [async(job=("square_a_number", i)) for i in range(10)]
+    # Instantiate a new Context.
+    with context.new() as batch:
 
-    # Group the jobs, capture their return values.
-    async_group = group(jobs=groups, capture=True)
+        # Set a function to be called when all async jobs are complete.
+        batch.on_complete(sum_results)
 
-    # Once all the jobs have run, call sum_results.
-    async_group.on_complete(sum_results)
-    async_group.start()
+        for number in xrange(10):
+
+            # Create a new Async object that will be added to the Context.
+            batch.add(target="square_a_number", args=(number,))
+
+
+### Workflows via nesting
+
+Asyncs and Contexts maybe nested to build more complex workflows.
+
+    from furious import Async
+    from furious.context import new
+
+    def do_some_work(number):
+        if number > 1000:
+            # We're done! Square once more, then return the number.
+            return number * number
+
+        # The number is not large enough yet!  Recurse!
+        return Async(target="do_some_work", args=(number * number,))
+
+    def all_done():
+        from furious.context import get_current_async
+
+        # Get the executing async.
+        async = get_current_async()
+
+        # Log the result.  This will actually be the result of the
+        # number returned last.
+        logging.info("Result is: %d", async.result)
+
+    # Create an Async object.
+    async = Async(
+        target="do_some_work",
+        args=(2,),
+        callbacks={'success': all_done})
+
+    # Tell the async to insert itself to be run.
+    async.start()
+
+This inserts a task that will keep recursing until the value is large enough,
+then it will log the final value.  Nesting may be combined with Contexts to
+build powerful fan-out / fan-in flows.
 
