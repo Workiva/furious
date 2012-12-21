@@ -155,3 +155,12 @@ This inserts a task that will keep recursing until the value is large enough,
 then it will log the final value.  Nesting may be combined with Contexts to
 build powerful fan-out / fan-in flows.
 
+
+
+Working Examples
+-----
+
+For working examples see `examples/__init__.py`.  To use the examples, start
+dev_appserver.py then step through the code and make a request to the
+corresponding URLs.
+
