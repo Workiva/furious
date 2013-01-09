@@ -41,6 +41,13 @@ Usage:
 from . import _local
 from .context import Context
 
+from . import _execution
+
+
+ContextExistsError = _execution.ContextExistsError
+CorruptContextError = _execution.CorruptContextError
+execution_context_from_async = _execution.execution_context_from_async
+
 
 class AlreadyInContextError(Exception):
     """Attempt to set context on an Async that is already executing in a
