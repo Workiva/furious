@@ -73,17 +73,14 @@ def make_markers_for_asyncs(asyncs,group=None,callback=None):
     if len(asyncs) > 10:
         first_asyncs = asyncs[:len(asyncs)/2]
         second_asyncs = asyncs[len(asyncs)/2:]
-        id = ",".join([group_id,"0"])
+
         first_group = Marker(
-                id=id,
+                id=str(uuid.uuid4()),
                 group=group,)
-        first_group.key = id
         first_group.children = make_markers_for_asyncs(first_asyncs,first_group)
-        id = ",".join([group_id,"1"])
         second_group = Marker(
-                id=id,
+                id=str(uuid.uuid4()),
                 group=group,)
-        second_group.key = id
         second_group.children = make_markers_for_asyncs(second_asyncs,second_group)
         markers.append(first_group)
         markers.append(second_group)
@@ -93,18 +90,50 @@ def make_markers_for_asyncs(asyncs,group=None,callback=None):
 
             markers = [Marker(
                         id=",".join([str(group_id),str(index)]),
-                        group=str(group_id),
+                        group=group,
                         async_id = str(async),
                         callback="") for (index, async) in enumerate(asyncs)]
         except TypeError, e:
             raise
         return markers
 
-def print_markers(markers):
+def build_async_tree(asyncs):
+    """
+from furious.extras.appengine.ndb import FuriousMassTracker
+from furious.extras.appengine.ndb import make_markers_for_asyncs
+from furious.extras.appengine.ndb import Marker
+from furious.extras.appengine.ndb import build_async_tree
+from furious.extras.appengine.ndb import print_marker_tree
+from furious.async import Async
+import uuid
+import pprint
+
+def whatup(num):
+    return num*2
+
+# Instantiate an Async object.
+atasks = []
+for index in range(1,87):
+    atasks.append(Async(
+        target=whatup, args=[100]))
+
+
+marker = build_async_tree(atasks)
+print_marker_tree(marker)
+    """
+    marker = Marker(id=str(uuid.uuid4()),group=None)
+
+    marker.children = make_markers_for_asyncs(asyncs,group=marker,callback="hi")
+    return marker
+
+def print_marker_tree(marker):
+    print_markers([marker],prefix="")
+
+def print_markers(markers,prefix=""):
     for marker in markers:
-        print marker.key
+        print prefix,marker.key, "grp", (marker.group.key if marker.group else "")
         if isinstance(marker,Marker):
-            print_markers(marker.children)
+            print_markers(marker.children,prefix=prefix+"    ")
 
 class FuriousMassTracker(ndb.Model):
     data = ndb.JsonProperty()
