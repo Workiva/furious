@@ -41,6 +41,7 @@ Usage:
             queue='workgroup')
 
 """
+import logging
 
 
 class ContextAlreadyStartedError(Exception):
@@ -73,9 +74,14 @@ class Context(object):
 
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
+        from furious.extras.appengine.ndb import build_async_tree
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
+
+        logging.info("start and make async tree")
+        marker = build_async_tree(self._tasks)
+        marker_persist = marker.persist()
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
@@ -115,6 +121,7 @@ class Context(object):
 
     def start(self):
         """Insert this Context's tasks executing."""
+
         if self._tasks:
             self._handle_tasks()
 

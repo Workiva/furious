@@ -1,4 +1,6 @@
 import uuid
+from furious.async import Async
+from furious import context
 
 __author__ = 'johnlockwood'
 from google.appengine.ext import ndb
@@ -8,24 +10,23 @@ class MarkerPersist(ndb.Model):
     parent is Marker or no parent
     an async will be
 
-
     """
-    group = ndb.StringProperty()
+    group_id = ndb.StringProperty()
     callback = ndb.StringProperty()
     children = ndb.KeyProperty(repeated=True)
     done = ndb.BooleanProperty(default=False)
-    async_id = ndb.StringProperty()
+    async = ndb.JsonProperty()
     result = ndb.JsonProperty()
 
+
 class Marker(object):
-    def __init__(self,id=None,group=None,callback=None,children=[],done=False,async_id=None,result=None):
+    def __init__(self,id=None,group_id=None,callback=None,children=[],
+                 async=None):
         self.key = id
-        self.group = group
+        self.group_id = group_id
         self.callback = callback
         self.children = children
-        self.done = done
-        self.async_id = async_id
-        self.result = result
+        self.async = async
 
     @property
     def key(self):
@@ -34,6 +35,17 @@ class Marker(object):
     @key.setter
     def key(self,key):
         self._key = key
+
+    def persist(self):
+        mp = MarkerPersist(
+            id=self.key,
+            group_id=self.group_id,
+            callback=self.callback)
+        mp.children = [child.persist().key for child in self.children ]
+        if self.async:
+            mp.async = self.async.to_dict()
+        mp.put()
+        return mp
 
 
 
@@ -61,7 +73,7 @@ def count_group_done(marker):
         async_task.start()
         return
 
-def make_markers_for_asyncs(asyncs,group=None,callback=None):
+def make_markers_for_asyncs(asyncs,group=None,context=None):
     markers = []
     if group is None:
 #        bootstrap the top level context marker
@@ -71,16 +83,16 @@ def make_markers_for_asyncs(asyncs,group=None,callback=None):
 
 
     if len(asyncs) > 10:
-        first_asyncs = asyncs[:len(asyncs)/2]
-        second_asyncs = asyncs[len(asyncs)/2:]
+        first_asyncs = asyncs[:10]#asyncs[:len(asyncs)/2]
+        second_asyncs = asyncs[10:]#asyncs[len(asyncs)/2:]
 
         first_group = Marker(
                 id=str(uuid.uuid4()),
-                group=group,)
+                group_id=(group.key if group else ""),)
         first_group.children = make_markers_for_asyncs(first_asyncs,first_group)
         second_group = Marker(
                 id=str(uuid.uuid4()),
-                group=group,)
+                group_id=(group.key if group else ""),)
         second_group.children = make_markers_for_asyncs(second_asyncs,second_group)
         markers.append(first_group)
         markers.append(second_group)
@@ -88,16 +100,30 @@ def make_markers_for_asyncs(asyncs,group=None,callback=None):
     else:
         try:
 
-            markers = [Marker(
-                        id=",".join([str(group_id),str(index)]),
-                        group=group,
-                        async_id = str(async),
-                        callback="") for (index, async) in enumerate(asyncs)]
+#            markers = [Marker(
+#                        id=",".join([str(group_id),str(index)]),
+#                        group_id=(group.key if group else ""),
+#                        async = async,
+#                        callback="") for (index, async) in enumerate(asyncs)]
+#
+#            for index, marker in enumerate(markers):
+#                marker.async._persistence_id =",".join([str(group_id),str(index)])
+
+            markers = []
+            for (index, async) in enumerate(asyncs):
+                id = ",".join([str(group_id),str(index)])
+                async._persistence_id = id
+                markers.append(Marker(
+                    id=id,
+                    group_id=(group.key if group else ""),
+                    async = async,
+                    callback=""))
+
         except TypeError, e:
             raise
         return markers
 
-def build_async_tree(asyncs):
+def build_async_tree(asyncs,context=None):
     """
 from furious.extras.appengine.ndb import FuriousMassTracker
 from furious.extras.appengine.ndb import make_markers_for_asyncs
@@ -121,9 +147,9 @@ for index in range(1,87):
 marker = build_async_tree(atasks)
 print_marker_tree(marker)
     """
-    marker = Marker(id=str(uuid.uuid4()),group=None)
+    marker = Marker(id=str(uuid.uuid4()),group_id=None)
 
-    marker.children = make_markers_for_asyncs(asyncs,group=marker,callback="hi")
+    marker.children = make_markers_for_asyncs(asyncs,group=marker)
     return marker
 
 def print_marker_tree(marker):
@@ -131,7 +157,7 @@ def print_marker_tree(marker):
 
 def print_markers(markers,prefix=""):
     for marker in markers:
-        print prefix,marker.key, "grp", (marker.group.key if marker.group else "")
+        print prefix,marker.key, prefix, marker.group_id
         if isinstance(marker,Marker):
             print_markers(marker.children,prefix=prefix+"    ")
 
@@ -145,8 +171,8 @@ class FuriousMassTracker(ndb.Model):
         gid = "%s:%s"%(level,parent_group_index)
 
         if len(asyncs) > 100000:
-            first_asyncs = asyncs[:len(asyncs)/2]
-            second_asyncs = asyncs[len(asyncs)/2:]
+            first_asyncs = asyncs[:10]#asyncs[:len(asyncs)/2]
+            second_asyncs = asyncs[10:]#asyncs[len(asyncs)/2:]
             first_group_children = self.build_data_with_asyncs(first_asyncs,level+1,0)
             second_group_children = self.build_data_with_asyncs(second_asyncs,level+1,1)
             children.append(first_group_children)

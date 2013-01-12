@@ -105,6 +105,8 @@ class Async(object):
         # Make sure nothing is snuck in.
         _check_options(options)
 
+        self._persistence_id = options.get('_persistence_id')
+
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
@@ -246,6 +248,8 @@ class Async(object):
         if callbacks:
             options['callbacks'] = _encode_callbacks(callbacks)
 
+        options['_persistence_id']=self._persistence_id
+
         return options
 
     @classmethod
@@ -262,6 +266,9 @@ class Async(object):
             async_options['task_args']['eta'] = datetime.fromtimestamp(eta)
 
         target, args, kwargs = async_options.pop('job')
+        if not kwargs:
+            kwargs = {}
+        kwargs.update({'_persistence_id':async.get('_persistence_id')})
 
         # If there are callbacks, reconstitute them.
         callbacks = async_options.get('callbacks', {})
@@ -281,7 +288,6 @@ def defaults(**options):
 
     def real_decorator(function):
         function._async_options = options
-
         @wraps(function)
         def wrapper(*args, **kwargs):
             return function(*args, **kwargs)
