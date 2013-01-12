@@ -1,9 +1,13 @@
+import logging
 import uuid
 from furious.async import Async
 from furious import context
 
 __author__ = 'johnlockwood'
 from google.appengine.ext import ndb
+
+class Result(ndb.Model):
+    result = ndb.JsonProperty()
 
 class MarkerPersist(ndb.Model):
     """
@@ -12,12 +16,69 @@ class MarkerPersist(ndb.Model):
 
     """
     group_id = ndb.StringProperty()
+    group = ndb.KeyProperty()
     callback = ndb.StringProperty()
     children = ndb.KeyProperty(repeated=True)
     done = ndb.BooleanProperty(default=False)
     async = ndb.JsonProperty()
     result = ndb.JsonProperty()
 
+    def is_done(self):
+        if self.done:
+            return True
+        elif self.children:
+            children_markers = ndb.get_multi(self.children)
+            done_markers = [marker for marker in children_markers if marker.done]
+            if len(done_markers) == len(self.children):
+                return True
+
+    def bubble_up_done(self):
+
+        if self.group:
+            logging.info("bubble up")
+            group_marker = self.group.get()
+            if group_marker:
+                group_marker.update_done()
+        else:
+            #it is the top level
+            logging.info("top level reached!")
+            result = Result(result=self.result)
+            result.put()
+            #context callback
+            #cleanup
+            self.delete_children()
+
+
+    def delete_children(self):
+        logging.info("delete %s"%self.key)
+        children_markers = ndb.get_multi(self.children)
+        for child in children_markers:
+            logging.info("child be gone")
+            child.delete_children()
+        self.key.delete()
+
+    def update_done(self):
+        logging.info("update done")
+        if not self.children and self.done:
+            self.bubble_up_done()
+            return True
+        elif self.children and not self.done:
+            children_markers = ndb.get_multi(self.children)
+            done_markers = [marker for marker in children_markers if marker.done]
+            if len(done_markers) == len(self.children):
+                self.done = True
+                #simply set result to list of child results
+                #this would be a custom aggregation function
+                #context callback
+                self.result = [marker.result for marker in done_markers]
+                self.put()
+                #bubble up: tell group marker to update done
+                self.bubble_up_done()
+
+                return True
+        elif self.done:
+            # no need to bubble up, it would have been done already
+            return True
 
 class Marker(object):
     def __init__(self,id=None,group_id=None,callback=None,children=[],
@@ -40,6 +101,7 @@ class Marker(object):
         mp = MarkerPersist(
             id=self.key,
             group_id=self.group_id,
+            group = (ndb.Key('MarkerPersist',self.group_id) if self.group_id else None),
             callback=self.callback)
         mp.children = [child.persist().key for child in self.children ]
         if self.async:

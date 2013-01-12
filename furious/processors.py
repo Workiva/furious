@@ -112,6 +112,7 @@ def _execute_callback(async, callback):
             mp.done = True
             mp.result = async.result
             mp.put()
+            mp.update_done()
 
     if not callback:
         return async.result
