@@ -202,7 +202,6 @@ def make_markers_for_asyncs(asyncs,group=None,context=None):
 
 def build_async_tree(asyncs,context=None):
     """
-from furious.extras.appengine.ndb import FuriousMassTracker
 from furious.extras.appengine.ndb import make_markers_for_asyncs
 from furious.extras.appengine.ndb import Marker
 from furious.extras.appengine.ndb import build_async_tree
