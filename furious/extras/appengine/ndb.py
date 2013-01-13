@@ -1,5 +1,6 @@
 import logging
 import uuid
+from google.appengine.ext.ndb import Future
 from furious.async import Async
 from furious import context
 
@@ -8,6 +9,12 @@ from google.appengine.ext import ndb
 
 class Result(ndb.Model):
     result = ndb.JsonProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
+class MarkerTree(ndb.Model):
+    tree = ndb.JsonProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
 
 class MarkerPersist(ndb.Model):
     """
@@ -42,7 +49,9 @@ class MarkerPersist(ndb.Model):
         else:
             #it is the top level
             logging.info("top level reached!")
-            result = Result(result=self.result)
+            result = Result(
+                id=self.key.id(),
+                result=self.result)
             result.put()
             #context callback
             #cleanup
@@ -97,43 +106,45 @@ class Marker(object):
     def key(self,key):
         self._key = key
 
-    def persist(self):
+    def to_dict(self):
+        return {'key':self.key,
+                'group_id':self.group_id,
+                'callback':self.callback,
+                'children':[child.to_dict() for child in self.children],
+                'async':(self.async.to_dict() if self.async else None)}
+
+    @classmethod
+    def from_dict(cls,marker_dict):
+        return cls(id=marker_dict['key'],
+        group_id=marker_dict['group_id'],
+        callback=marker_dict['callback'],
+        children=[cls.from_dict(child_dict) for child_dict in marker_dict['children']],
+        async=(marker_dict['async'].from_dict() if marker_dict['async'] else None))
+
+    def _persist(self):
         mp = MarkerPersist(
             id=self.key,
             group_id=self.group_id,
             group = (ndb.Key('MarkerPersist',self.group_id) if self.group_id else None),
             callback=self.callback)
-        mp.children = [child.persist().key for child in self.children ]
+        put_futures = []
+        for child in self.children:
+            child_mp, child_futures = child._persist()
+            put_futures.extend(child_futures)
+            mp.children.append(child_mp.key)
+
         if self.async:
             mp.async = self.async.to_dict()
-        mp.put()
+        put_future = mp.put_async()
+        put_futures.append(put_future)
+        return mp, put_futures
+
+    def persist(self):
+        mp, put_futures = self._persist()
+        Future.wait_all(put_futures)
         return mp
 
 
-
-
-def count_group_done(marker):
-    group = marker.key.parent()
-    if group:
-        group_marker = ndb.get(group)
-        done_children_markers = len([marker for marker \
-                                     in ndb.get_multi(group.children) \
-                                     if marker.done])
-        if len(group.children) == done_children_markers:
-            return count_group_done(group_marker.key)
-
-    else:
-        #call group callback
-        from furious.async import Async
-
-        # Instantiate an Async object.
-        async_task = Async(
-            target=marker.callback)
-
-        # Insert the task to run the Async object, note that it may begin
-        # executing immediately or with some delay.
-        async_task.start()
-        return
 
 def make_markers_for_asyncs(asyncs,group=None,context=None):
     markers = []

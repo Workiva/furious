@@ -63,6 +63,8 @@ class Context(object):
 
         self._tasks_inserted = False
 
+        self._persistence_id = None
+
     def __enter__(self):
         return self
 
@@ -75,19 +77,26 @@ class Context(object):
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
         from furious.extras.appengine.ndb import build_async_tree
+        from furious.extras.appengine.ndb import MarkerTree
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         logging.info("start and make async tree")
         marker = build_async_tree(self._tasks)
+        markerTree = MarkerTree(tree=marker.to_dict())
+        mt_future = markerTree.put_async()
         marker_persist = marker.persist()
+        self._persistence_id = marker_persist.key.id()
+        logging.info("self._persistence_id = %s"%self._persistence_id)
+        logging.info("persistence_key = %s"%marker_persist.key)
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
             self.insert_tasks(tasks, queue=queue)
 
         self._tasks_inserted = True
+        mt_future.wait()
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
@@ -103,8 +112,8 @@ class Context(object):
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
 
-        Takes an Async object or the argumnets to construct an Async
-        object as argumnets.  Returns the newly added Async object.
+        Takes an Async object or the arguments to construct an Async
+        object as arguments.  Returns the newly added Async object.
         """
         from ..async import Async
 
