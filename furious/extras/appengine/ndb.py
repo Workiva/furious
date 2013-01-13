@@ -18,9 +18,6 @@ class MarkerTree(ndb.Model):
 
 class MarkerPersist(ndb.Model):
     """
-    parent is Marker or no parent
-    an async will be
-
     """
     group_id = ndb.StringProperty()
     group = ndb.KeyProperty()
@@ -181,16 +178,6 @@ def make_markers_for_asyncs(asyncs,group=None,context=None):
         return markers
     else:
         try:
-
-#            markers = [Marker(
-#                        id=",".join([str(group_id),str(index)]),
-#                        group_id=(group.key if group else ""),
-#                        async = async,
-#                        callback="") for (index, async) in enumerate(asyncs)]
-#
-#            for index, marker in enumerate(markers):
-#                marker.async._persistence_id =",".join([str(group_id),str(index)])
-
             markers = []
             for (index, async) in enumerate(asyncs):
                 id = ",".join([str(group_id),str(index)])
@@ -242,42 +229,3 @@ def print_markers(markers,prefix=""):
         print prefix,marker.key, prefix, marker.group_id
         if isinstance(marker,Marker):
             print_markers(marker.children,prefix=prefix+"    ")
-
-class FuriousMassTracker(ndb.Model):
-    data = ndb.JsonProperty()
-
-    def build_data_with_asyncs(self,asyncs,level=0,parent_group_index=0):
-        children = []
-
-        gid = str(uuid.uuid4())
-        gid = "%s:%s"%(level,parent_group_index)
-
-        if len(asyncs) > 100000:
-            first_asyncs = asyncs[:10]#asyncs[:len(asyncs)/2]
-            second_asyncs = asyncs[10:]#asyncs[len(asyncs)/2:]
-            first_group_children = self.build_data_with_asyncs(first_asyncs,level+1,0)
-            second_group_children = self.build_data_with_asyncs(second_asyncs,level+1,1)
-            children.append(first_group_children)
-            children.append(second_group_children)
-
-        else:
-            children = []
-            for index,async in enumerate(asyncs):
-                id = index
-                async.uuid = id
-                async.gid = gid
-#                children.append({'id':id,'pid':gid,'done':0,'async':async.to_dict()})
-                children.append({'id':id,'pid':gid,'done':0})
-
-#            children = [{'id':uuid.uuid4(),'async':async.to_dict()} for async in asyncs]
-
-        return {'gid':gid,'done':0,'children':children}
-
-    @classmethod
-    def with_asyncs(cls,asyncs):
-        fmt = cls()
-        fmt.data = fmt.build_data_with_asyncs(asyncs)
-        return fmt
-
-    def mark_async_done(self,async,gid,id):
-        pass
