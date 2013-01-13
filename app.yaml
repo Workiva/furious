@@ -17,6 +17,10 @@ includes:
 - include-python27.yaml
 
 handlers:
+- url: /admin.*
+  script: google.appengine.ext.admin.application
+  login: admin
+
 - url: .*
   script: example.app
   login: admin

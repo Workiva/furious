@@ -35,7 +35,7 @@ class AsyncIntroHandler(webapp2.RequestHandler):
 
         # Instantiate an Async object.
         async_task = Async(
-            target=example_function, args=[1], kwargs={'some': 'value'})
+            target=whatup, args=[100])
 
         # Insert the task to run the Async object, note that it may begin
         # executing immediately or with some delay.
@@ -51,26 +51,32 @@ class ContextIntroHandler(webapp2.RequestHandler):
     def get(self):
         from furious.async import Async
         from furious import context
+        from random import randint
 
         # Create a new furious Context.
         with context.new() as ctx:
             # "Manually" instantiate and add an Async object to the Context.
-            async_task = Async(
-                target=example_function, kwargs={'first': 'async'})
-            ctx.add(async_task)
+            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
+            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
+            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
+            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
+            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
+
             logging.info('Added manual job to context.')
 
             # Use the shorthand style, note that add returns the Async object.
-            for i in xrange(5):
-                ctx.add(target=example_function, args=[i])
+            for i in xrange(55):
+                ctx.add(target=whatup, args=[i])
                 logging.info('Added job %d to context.', i)
 
         # When the Context is exited, the tasks are inserted (if there are no
         # errors).
 
+        persistence_id = ctx._persistence_id
+
         logging.info('Async jobs for context batch inserted.')
 
-        self.response.out.write('Successfully inserted a group of Async jobs.')
+        self.response.out.write('Successfully inserted a group of Async jobs. with persistence_id %s'%persistence_id)
 
 
 class AsyncCallbackHandler(webapp2.RequestHandler):
@@ -266,6 +272,21 @@ def state_machine_success():
 
     logging.info('Done working, stop now.')
 
+
+def whatup(num):
+    return num * (num +1)/2.0
+
+def oooeee():
+    from furious.async import Async
+    from furious.context import get_current_async
+
+    result = get_current_async().result
+
+    logging.info('async task complete, value returned: %r', result)
+    if 1e+40 > result > 1:
+        return Async(target=whatup, args=[result],callbacks={'success': oooeee})
+    else:
+        logging.info("whoa!")
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),

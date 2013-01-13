@@ -57,14 +57,23 @@ class MarkerPersist(ndb.Model):
             #cleanup
             self.delete_children()
 
+    def _list_children_keys(self):
+        """
+        returns it's key along with all of it's children's keys
+        """
+        children_markers = ndb.get_multi(self.children)
+        keys = []
+        for child in children_markers:
+            keys.extend(child._list_children_keys())
+
+        keys.append(self.key)
+        return keys
+
 
     def delete_children(self):
         logging.info("delete %s"%self.key)
-        children_markers = ndb.get_multi(self.children)
-        for child in children_markers:
-            logging.info("child be gone")
-            child.delete_children()
-        self.key.delete()
+        keys_to_delete = self._list_children_keys()
+        ndb.delete_multi(keys_to_delete)
 
     def update_done(self):
         logging.info("update done")

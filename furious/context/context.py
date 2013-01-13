@@ -84,10 +84,14 @@ class Context(object):
 
         logging.info("start and make async tree")
         marker = build_async_tree(self._tasks)
-        markerTree = MarkerTree(tree=marker.to_dict())
-        mt_future = markerTree.put_async()
         marker_persist = marker.persist()
         self._persistence_id = marker_persist.key.id()
+        mt_future = None
+        if self._persistence_id:
+            markerTree = MarkerTree(
+                id=self._persistence_id,
+                tree=marker.to_dict())
+            mt_future = markerTree.put_async()
         logging.info("self._persistence_id = %s"%self._persistence_id)
         logging.info("persistence_key = %s"%marker_persist.key)
 
@@ -96,7 +100,8 @@ class Context(object):
             self.insert_tasks(tasks, queue=queue)
 
         self._tasks_inserted = True
-        mt_future.wait()
+        if mt_future:
+            mt_future.wait()
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
