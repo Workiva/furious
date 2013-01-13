@@ -85,7 +85,15 @@ class MarkerPersist(ndb.Model):
                 #simply set result to list of child results
                 #this would be a custom aggregation function
                 #context callback
-                self.result = [marker.result for marker in done_markers]
+
+                #flatten results
+                result = []
+                for marker in done_markers:
+                    if isinstance(marker.result,list):
+                        result.extend(marker.result)
+                    else:
+                        result.append(marker.result)
+                self.result = result
                 self.put()
                 #bubble up: tell group marker to update done
                 self.bubble_up_done()
