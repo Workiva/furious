@@ -1,10 +1,5 @@
 import logging
-import uuid
 from google.appengine.ext.ndb import Future
-from furious.async import Async
-from furious import context
-
-__author__ = 'johnlockwood'
 from google.appengine.ext import ndb
 
 class Result(ndb.Model):
@@ -78,14 +73,19 @@ class MarkerPersist(ndb.Model):
             self.bubble_up_done()
             return True
         elif self.children and not self.done:
+            #early false might be able to be detected here using a bitmap
+            #though that may not really be too much of an optimization because
+            # of
+            #ndb's caching
+
             children_markers = ndb.get_multi(self.children)
-            done_markers = [marker for marker in children_markers if marker.done]
+            done_markers = [marker for marker in children_markers
+                            if marker.done]
             if len(done_markers) == len(self.children):
                 self.done = True
                 #simply set result to list of child results
                 #this would be a custom aggregation function
                 #context callback
-
                 #flatten results
                 result = []
                 for marker in done_markers:
@@ -103,136 +103,49 @@ class MarkerPersist(ndb.Model):
             # no need to bubble up, it would have been done already
             return True
 
-class Marker(object):
-    def __init__(self,id=None,group_id=None,callback=None,children=[],
-                 async=None):
-        self.key = id
-        self.group_id = group_id
-        self.callback = callback
-        self.children = children
-        self.async = async
 
-    @property
-    def key(self):
-        return self._key
-
-    @key.setter
-    def key(self,key):
-        self._key = key
-
-    def to_dict(self):
-        return {'key':self.key,
-                'group_id':self.group_id,
-                'callback':self.callback,
-                'children':[child.to_dict() for child in self.children],
-                'async':(self.async.to_dict() if self.async else None)}
-
-    @classmethod
-    def from_dict(cls,marker_dict):
-        return cls(id=marker_dict['key'],
-        group_id=marker_dict['group_id'],
-        callback=marker_dict['callback'],
-        children=[cls.from_dict(child_dict) for child_dict in marker_dict['children']],
-        async=(marker_dict['async'].from_dict() if marker_dict['async'] else None))
-
-    def _persist(self):
-        mp = MarkerPersist(
-            id=self.key,
-            group_id=self.group_id,
-            group = (ndb.Key('MarkerPersist',self.group_id) if self.group_id else None),
-            callback=self.callback)
-        put_futures = []
-        for child in self.children:
-            child_mp, child_futures = child._persist()
-            put_futures.extend(child_futures)
-            mp.children.append(child_mp.key)
-
-        if self.async:
-            mp.async = self.async.to_dict()
-        put_future = mp.put_async()
-        put_futures.append(put_future)
-        return mp, put_futures
-
-    def persist(self):
-        mp, put_futures = self._persist()
-        Future.wait_all(put_futures)
-        return mp
-
-
-
-def make_markers_for_asyncs(asyncs,group=None,context=None):
-    markers = []
-    if group is None:
-#        bootstrap the top level context marker
-        group_id = str(uuid.uuid4())
-    else:
-        group_id = group.key
-
-
-    if len(asyncs) > 10:
-        first_asyncs = asyncs[:10]#asyncs[:len(asyncs)/2]
-        second_asyncs = asyncs[10:]#asyncs[len(asyncs)/2:]
-
-        first_group = Marker(
-                id=str(uuid.uuid4()),
-                group_id=(group.key if group else ""),)
-        first_group.children = make_markers_for_asyncs(first_asyncs,first_group)
-        second_group = Marker(
-                id=str(uuid.uuid4()),
-                group_id=(group.key if group else ""),)
-        second_group.children = make_markers_for_asyncs(second_asyncs,second_group)
-        markers.append(first_group)
-        markers.append(second_group)
-        return markers
-    else:
-        try:
-            markers = []
-            for (index, async) in enumerate(asyncs):
-                id = ",".join([str(group_id),str(index)])
-                async._persistence_id = id
-                markers.append(Marker(
-                    id=id,
-                    group_id=(group.key if group else ""),
-                    async = async,
-                    callback=""))
-
-        except TypeError, e:
-            raise
-        return markers
-
-def build_async_tree(asyncs,context=None):
+def _persist(marker):
     """
-from furious.extras.appengine.ndb import make_markers_for_asyncs
-from furious.extras.appengine.ndb import Marker
-from furious.extras.appengine.ndb import build_async_tree
-from furious.extras.appengine.ndb import print_marker_tree
-from furious.async import Async
-import uuid
-import pprint
-
-def whatup(num):
-    return num*2
-
-# Instantiate an Async object.
-atasks = []
-for index in range(1,87):
-    atasks.append(Async(
-        target=whatup, args=[100]))
-
-
-marker = build_async_tree(atasks)
-print_marker_tree(marker)
+    ndb Marker persist strategy
     """
-    marker = Marker(id=str(uuid.uuid4()),group_id=None)
+    mp = MarkerPersist(
+        id=marker.key,
+        group_id=marker.group_id,
+        group = (ndb.Key('MarkerPersist',marker.group_id) if marker.group_id else None),
+        callback=marker.callback)
+    put_futures = []
+    for child in marker.children:
+        child_mp, child_futures = _persist(child)
+        put_futures.extend(child_futures)
+        mp.children.append(child_mp.key)
 
-    marker.children = make_markers_for_asyncs(asyncs,group=marker)
-    return marker
+    if marker.async:
+        mp.async = marker.async.to_dict()
+    put_future = mp.put_async()
+    put_futures.append(put_future)
+    return mp, put_futures
 
-def print_marker_tree(marker):
-    print_markers([marker],prefix="")
+def persist(marker):
+    """
+    ndb marker persist strategy
+    """
+    mp, put_futures = _persist(marker)
+    Future.wait_all(put_futures)
 
-def print_markers(markers,prefix=""):
-    for marker in markers:
-        print prefix,marker.key, prefix, marker.group_id
-        if isinstance(marker,Marker):
-            print_markers(marker.children,prefix=prefix+"    ")
+    #save whole marker tree for diagnostics and possible error recovery
+    markerTree = MarkerTree(
+        id=mp.key.id(),
+        tree=marker.to_dict())
+    tree_future = markerTree.put_async()
+    return tree_future.wait
+
+
+def handle_done(async):
+    if async._persistence_id:
+        logging.info("update mp: %s"%async._persistence_id)
+        mp = MarkerPersist.get_by_id(async._persistence_id)
+        if mp:
+            mp.done = True
+            mp.result = async.result
+            mp.put()
+            mp.update_done()

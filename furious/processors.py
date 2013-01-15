@@ -24,6 +24,7 @@ import logging
 from .async import Async
 from .context import Context
 from .context import get_current_async
+from furious.extras.appengine.ndb import handle_done
 from .job_utils import function_path_to_reference
 
 
@@ -55,8 +56,7 @@ def run_job():
 
     try:
         async.executing = True
-        if '_persistence_id' in kwargs.keys():
-            del kwargs['_persistence_id']
+        kwargs.pop('_persistence_id',None)
         async.result = function(*args, **kwargs)
     except Exception as e:
         async.result = encode_exception(e)
@@ -95,6 +95,8 @@ def _process_results():
 
         return _execute_callback(async, error_callback)
 
+    handle_done(async)
+    
     success_callback = callbacks.get('success')
     return _execute_callback(async, success_callback)
 
@@ -104,15 +106,6 @@ def _execute_callback(async, callback):
     callback is given return the async.result.
     """
     from furious.async import Async
-    from furious.extras.appengine.ndb import MarkerPersist
-    if async._persistence_id:
-        logging.info("update mp: %s"%async._persistence_id)
-        mp = MarkerPersist.get_by_id(async._persistence_id)
-        if mp:
-            mp.done = True
-            mp.result = async.result
-            mp.put()
-            mp.update_done()
 
     if not callback:
         return async.result

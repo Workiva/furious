@@ -35,7 +35,7 @@ class AsyncIntroHandler(webapp2.RequestHandler):
 
         # Instantiate an Async object.
         async_task = Async(
-            target=whatup, args=[100])
+            target=example_function, args=[1], kwargs={'some': 'value'})
 
         # Insert the task to run the Async object, note that it may begin
         # executing immediately or with some delay.
@@ -56,17 +56,15 @@ class ContextIntroHandler(webapp2.RequestHandler):
         # Create a new furious Context.
         with context.new() as ctx:
             # "Manually" instantiate and add an Async object to the Context.
-            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
-            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
-            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
-            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
-            ctx.add(target=whatup, args=[randint(1,20)])#,callbacks={'success': oooeee})
+            async_task = Async(
+                target=example_function, kwargs={'first': 'async'})
+            ctx.add(async_task)
 
             logging.info('Added manual job to context.')
 
             # Use the shorthand style, note that add returns the Async object.
-            for i in xrange(55):
-                ctx.add(target=whatup, args=[i])
+            for i in xrange(21):
+                ctx.add(target=example_function, args=[i])
                 logging.info('Added job %d to context.', i)
 
         # When the Context is exited, the tasks are inserted (if there are no

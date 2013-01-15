@@ -42,6 +42,8 @@ Usage:
 
 """
 import logging
+import uuid
+from furious.context.marker import Marker, make_markers_for_tasks
 
 
 class ContextAlreadyStartedError(Exception):
@@ -76,32 +78,29 @@ class Context(object):
 
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
-        from furious.extras.appengine.ndb import build_async_tree
-        from furious.extras.appengine.ndb import MarkerTree
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         logging.info("start and make async tree")
-        marker = build_async_tree(self._tasks)
-        marker_persist = marker.persist()
-        self._persistence_id = marker_persist.key.id()
-        mt_future = None
-        if self._persistence_id:
-            markerTree = MarkerTree(
-                id=self._persistence_id,
-                tree=marker.to_dict())
-            mt_future = markerTree.put_async()
+        marker = self.build_task_tree()
+
+        #persist strategy be implemented in an asynchronous way
+        #so while it's working, tasks can be inserted
+        #then when complete, make sure it is waited for.
+        asynchronous_wait_function = marker.persist()
+
         logging.info("self._persistence_id = %s"%self._persistence_id)
-        logging.info("persistence_key = %s"%marker_persist.key)
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
             self.insert_tasks(tasks, queue=queue)
 
         self._tasks_inserted = True
-        if mt_future:
-            mt_future.wait()
+
+        if asynchronous_wait_function and \
+                callable(asynchronous_wait_function):
+            asynchronous_wait_function()
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
@@ -138,6 +137,17 @@ class Context(object):
 
         if self._tasks:
             self._handle_tasks()
+
+
+    def build_task_tree(self):
+        """
+        """
+        if not self._persistence_id:
+            self._persistence_id = str(uuid.uuid4())
+        marker = Marker(id=str(self._persistence_id),group_id=None)
+
+        marker.children = make_markers_for_tasks(self._tasks,group=marker)
+        return marker
 
 
 def _insert_tasks(tasks, queue, transactional=False):
