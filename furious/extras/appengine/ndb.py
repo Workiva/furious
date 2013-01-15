@@ -27,7 +27,8 @@ class MarkerPersist(ndb.Model):
             return True
         elif self.children:
             children_markers = ndb.get_multi(self.children)
-            done_markers = [marker for marker in children_markers if marker.done]
+            done_markers = [marker for marker in children_markers
+                            if marker.done]
             if len(done_markers) == len(self.children):
                 return True
 
@@ -111,7 +112,8 @@ def _persist(marker):
     mp = MarkerPersist(
         id=marker.key,
         group_id=marker.group_id,
-        group = (ndb.Key('MarkerPersist',marker.group_id) if marker.group_id else None),
+        group = (ndb.Key('MarkerPersist',marker.group_id)
+                  if marker.group_id else None),
         callback=marker.callback)
     put_futures = []
     for child in marker.children:
