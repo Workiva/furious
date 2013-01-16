@@ -266,6 +266,7 @@ def state_machine_success():
 
     logging.info('Done working, stop now.')
 
+from . import grep
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
@@ -275,5 +276,6 @@ app = webapp2.WSGIApplication([
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
+    ('/grep', grep.GrepHandler),
 ])
 
