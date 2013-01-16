@@ -16,7 +16,8 @@ class GrepHandler(webapp2.RequestHandler):
 
 def build_and_start(query, directory):
         async_task = Async(
-            target=grep, args=[query, directory], callbacks={'success': all_done}
+            target=grep, args=[query, directory],
+            callbacks={'success': log_results}
         )
         async_task.start()
 
@@ -36,7 +37,7 @@ def grep(query, directory):
                 results.extend(grep_file(query, path))
     return results
 
-def all_done():
+def log_results():
     from furious.context import get_current_async
 
     async = get_current_async()
