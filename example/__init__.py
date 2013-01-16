@@ -25,6 +25,7 @@ import logging
 
 import webapp2
 
+from . import grep
 from furious.async import defaults
 
 
@@ -265,8 +266,6 @@ def state_machine_success():
         return Async(target=complex_state_generator_bravo, args=[result])
 
     logging.info('Done working, stop now.')
-
-from . import grep
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
