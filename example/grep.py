@@ -1,6 +1,7 @@
 import logging
 import os
 import os.path
+import re
 
 import webapp2
 
@@ -20,7 +21,8 @@ def build_and_start(query, directory):
         async_task.start()
 
 def grep_file(query, item):
-    return ['%s: %s' % (item, line) for line in open(item) if query in line]
+    return ['%s: %s' % (item, line) for line in open(item)
+            if re.search(query, line)]
 
 def grep(query, directory):
     dir_contents = os.listdir(directory)
