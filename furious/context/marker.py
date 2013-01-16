@@ -26,12 +26,14 @@ class Marker(object):
                 'async':(self.async.to_dict() if self.async else None)}
 
     @classmethod
-    def from_dict(cls,marker_dict):
+    def from_dict(cls, marker_dict):
         return cls(id=marker_dict['key'],
             group_id=marker_dict['group_id'],
             callback=marker_dict['callback'],
-            children=[cls.from_dict(child_dict) for child_dict in marker_dict['children']],
-            async=(marker_dict['async'].from_dict() if marker_dict['async'] else None))
+            children=[cls.from_dict(child_dict) for
+                      child_dict in marker_dict['children']],
+            async=(marker_dict['async'].from_dict()
+                   if marker_dict['async'] else None))
 
 
 
@@ -39,7 +41,7 @@ class Marker(object):
         return persist(self)
 
 
-def make_markers_for_tasks(tasks,group=None):
+def make_markers_for_tasks(tasks, group=None):
     markers = []
     if group is None:
     #        bootstrap the top level context marker
@@ -69,7 +71,7 @@ def make_markers_for_tasks(tasks,group=None):
         try:
             markers = []
             for (index, task) in enumerate(tasks):
-                id = ",".join([str(group_id),str(index)])
+                id = ",".join([str(group_id), str(index)])
                 task._persistence_id = id
                 markers.append(Marker(
                     id=id,
@@ -82,10 +84,10 @@ def make_markers_for_tasks(tasks,group=None):
         return markers
 
 def print_marker_tree(marker):
-    print_markers([marker],prefix="")
+    print_markers([marker], prefix="")
 
-def print_markers(markers,prefix=""):
+def print_markers(markers, prefix=""):
     for marker in markers:
         print prefix,marker.key, prefix, marker.group_id
-        if isinstance(marker,Marker):
+        if isinstance(marker, Marker):
             print_markers(marker.children,prefix=prefix+"    ")

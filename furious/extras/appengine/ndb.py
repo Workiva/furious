@@ -108,6 +108,9 @@ class MarkerPersist(ndb.Model):
 def _persist(marker):
     """
     ndb Marker persist strategy
+    _persist is recursive, persisting all child markers
+    asynchronously. It collects the put futures as it goes.
+    persist waits for the put futures to finish.
     """
     mp = MarkerPersist(
         id=marker.key,
@@ -121,6 +124,7 @@ def _persist(marker):
         put_futures.extend(child_futures)
         mp.children.append(child_mp.key)
 
+    #does the async need to be stored?
     if marker.async:
         mp.async = marker.async.to_dict()
     put_future = mp.put_async()

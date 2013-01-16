@@ -83,9 +83,9 @@ class Context(object):
                 "This Context has already had its tasks inserted.")
 
         logging.info("start and make async tree")
-        marker = self.build_task_tree()
+        marker = self._build_task_tree()
 
-        #persist strategy be implemented in an asynchronous way
+        #persist strategy may be implemented in an asynchronous way
         #so while it's working, tasks can be inserted
         #then when complete, make sure it is waited for.
         asynchronous_wait_function = marker.persist()
@@ -139,7 +139,7 @@ class Context(object):
             self._handle_tasks()
 
 
-    def build_task_tree(self):
+    def _build_task_tree(self):
         """
         """
         if not self._persistence_id:
