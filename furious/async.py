@@ -271,8 +271,9 @@ class Async(object):
     @classmethod
     def from_dict(cls, async):
         """Return an async job from a dict output by Async.to_dict."""
+        import copy
 
-        async_options = async.copy()
+        async_options = copy.deepcopy(async)
 
         # JSON don't like datetimes.
         eta = async_options.get('task_args', {}).get('eta')
