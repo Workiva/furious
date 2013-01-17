@@ -63,6 +63,18 @@ class TestContext(unittest.TestCase):
         with Context():
             pass
 
+    def test_context_gets_id(self):
+        """Ensure a new Context gets an id generated."""
+        from furious.context import Context
+
+        self.assertTrue(Context().id)
+
+    def test_context_gets_assigned_id(self):
+        """Ensure a new Context keeps its assigned id."""
+        from furious.context import Context
+
+        self.assertEqual('test_id_weee', Context(id='test_id_weee').id)
+
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_add_job_to_context_works(self, queue_add_mock):
         """Ensure adding a job works."""
