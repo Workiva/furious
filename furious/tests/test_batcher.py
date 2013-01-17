@@ -167,8 +167,6 @@ class MessageTestCase(unittest.TestCase):
         testbed = testbed.Testbed()
         testbed.activate()
 
-        # This just drops the microseconds.  It is a total mess, but is needed
-        # to handle all the rounding crap.
         options = {'task_args': {}}
 
         task = Message.from_dict(options).to_task()
