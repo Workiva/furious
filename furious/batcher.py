@@ -269,19 +269,3 @@ def bump_batch(work_group):
     """
     key = "%s-%s" % (MESSAGE_BATCH_NAME, work_group)
     return memcache.incr(key)
-
-
-def get_messages(tag, queue_name, size, duration=60):
-    """Yield out the paylod from the task pulled from the pull queue by its
-    tag.
-
-    :param tag: :class: `str` Pull queue tag to query against
-    :param queue_name: :class: `str`
-    :param size: :class: `int` The number of items to pull at once
-    :param duration: :class: `int`
-
-    :return: iterator of json deserialized payloads
-    """
-    iterator = MessageIterator(tag, queue_name, size, duration)
-    for message in iterator:
-        yield message
