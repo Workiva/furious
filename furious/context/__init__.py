@@ -80,3 +80,14 @@ def get_current_async():
 
     raise NotInContextError('Not in an _ExecutionContext.')
 
+
+def get_current_context():
+    """Return a reference to the current Context object.
+    """
+    local_context = _local.get_local_context()
+
+    if local_context.registry:
+        return local_context.registry[-1]
+
+    raise NotInContextError('Not in a Context.')
+
