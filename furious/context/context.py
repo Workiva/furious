@@ -55,11 +55,12 @@ class Context(object):
     NOTE: Use the module's new function to get a context, do not manually
     instantiate.
     """
-    def __init__(self, insert_tasks=None):
+    def __init__(self, **options):
         self._tasks = []
 
-        self.insert_tasks = insert_tasks or _insert_tasks
 
+        insert_tasks = options.get('insert_tasks')
+        self._insert_tasks = insert_tasks or _insert_tasks
         self._tasks_inserted = False
 
     def __enter__(self):
@@ -79,7 +80,7 @@ class Context(object):
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
-            self.insert_tasks(tasks, queue=queue)
+            self._insert_tasks(tasks, queue=queue)
 
         self._tasks_inserted = True
 
