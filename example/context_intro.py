@@ -59,5 +59,3 @@ def example_function(*args, **kwargs):
                  args, kwargs)
 
     return args
-
-
