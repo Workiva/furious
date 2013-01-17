@@ -353,3 +353,19 @@ class MessageProcessorTestCase(unittest.TestCase):
 
         cache.get.assert_called_once_with('agg-batch-processor')
         cache.add.assert_called_once_with('agg-batch-processor', 1)
+
+
+class BumpBatchTestCase(unittest.TestCase):
+
+    @patch('furious.batcher.memcache')
+    def test_cache_incremented_by_key(self, cache):
+        """Ensure that the cache object is incremented by the key passed in."""
+        from furious.batcher import bump_batch
+
+        cache.incr.return_value = 2
+
+        val = bump_batch('group')
+
+        self.assertEqual(val, 2)
+
+        cache.incr.assert_called_once_with('agg-batch-group')

@@ -7,6 +7,7 @@ from .async import Async
 
 MESSAGE_DEFAULT_QUEUE = 'default_pull'
 MESSAGE_PROCESSOR_NAME = 'processor'
+MESSAGE_BATCH_NAME = 'agg-batch'
 METHOD_TYPE = 'PULL'
 
 
@@ -121,7 +122,7 @@ class MessageProcessor(Async):
     @property
     def group_key(self):
         """Return the :class: `str` group key based off of the tag."""
-        return 'agg-batch-%s' % (self.tag)
+        return "%s-%s" % (MESSAGE_BATCH_NAME, self.tag)
 
     @property
     def current_batch(self):
@@ -148,9 +149,11 @@ class MessageProcessor(Async):
         return int(time.time() / max(1, self.frequency))
 
 
-def fetch_messages():
-    pass
+def bump_batch(work_group):
+    """Return the incremented batch id for the work group
+    :param work_group: :class: `str`
 
-
-def bump_batch():
-    pass
+    :return: :class: `int` current batch id.
+    """
+    key = "%s-%s" % (MESSAGE_BATCH_NAME, work_group)
+    return memcache.incr(key)
