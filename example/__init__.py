@@ -25,7 +25,7 @@ import logging
 
 import webapp2
 
-from . import grep
+from .grep import GrepHandler
 from furious.async import defaults
 
 
