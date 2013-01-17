@@ -1,6 +1,6 @@
 import json
 
-MESSAGE_DEFAULT_QUEUE = 'default'
+MESSAGE_DEFAULT_QUEUE = 'default_pull'
 METHOD_TYPE = 'PULL'
 
 
