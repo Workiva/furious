@@ -148,40 +148,6 @@ class MessageProcessor(Async):
         return int(time.time() / max(1, self.frequency))
 
 
-def insert_messsage_processor(job, args, kwargs, queue_name, freq=30, tag=None,
-                              countdown=None, name=None):
-    """Return the :class: `MessageProcessor` created and started. Will set the
-    countdown and name as task_args if they aren't None.
-
-    :param job: Python function to run within the Async task
-    :param args: :class: `tuple` of arguments to pass to the job when it runs.
-    :param kwargs: :class: `dict` of optional arguments to pass to the job
-                   when it runs.
-    :param queue_name: :class: `str` Queue that the async task will run within.
-    :param freq: :class: `int` The frequency throttle for how many proccessing
-                 jobs can be inserted at one time.
-    :param tag: :class: `str` Pull queue tag used for fetching the work items.
-    :param countdown: :class: `int` Delay before running the job.
-    :param name: :class: `str` Part of the unique name of the task.
-
-    :return: :class: `MessageProcessor` created and started.
-    """
-    task_args = {}
-
-    if countdown:
-        task_args['countdown'] = countdown
-
-    if name:
-        task_args['name'] = name
-
-    processor = MessageProcessor(job, args, kwargs, queue=queue_name,
-                                 freq=freq, tag=tag, task_args=task_args)
-
-    processor.start()
-
-    return processor
-
-
 def fetch_messages():
     pass
 
