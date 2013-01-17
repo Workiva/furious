@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from mock import Mock, patch
+from mock import patch
 
 
 class MessageTestCase(unittest.TestCase):
@@ -353,78 +353,3 @@ class MessageProcessorTestCase(unittest.TestCase):
 
         cache.get.assert_called_once_with('agg-batch-processor')
         cache.add.assert_called_once_with('agg-batch-processor', 1)
-
-
-class InsertMessageProcessorTestCase(unittest.TestCase):
-
-    def test_no_countdown_or_name(self):
-        """Ensure that if no countdown or name are set that they aren't passed
-        in as task_args to the MessageProcessor.
-        """
-        from furious.batcher import insert_messsage_processor
-        from furious.batcher import MessageProcessor
-
-        with patch.object(MessageProcessor, 'start') as start:
-            processor = insert_messsage_processor(
-                'job', None, None, 'queue-name')
-
-            options = {
-                'queue': 'queue-name',
-                'job': ('job', None, None),
-                'task_args': {}
-            }
-            self.assertEqual(processor.get_options(), options)
-            self.assertEqual(processor.tag, 'processor')
-            self.assertEqual(processor.frequency, 30)
-
-        start.assert_called_once_with()
-
-    def test_countdown_passed_in(self):
-        """Ensure that if countdown is set that it's passed as a task_arg to
-        the MessageProcessor.
-        """
-        from furious.batcher import insert_messsage_processor
-        from furious.batcher import MessageProcessor
-
-        with patch.object(MessageProcessor, 'start') as start:
-            processor = insert_messsage_processor(
-                'job', None, None, 'queue-name', countdown=100)
-
-            task_args = {
-                'countdown': 100
-            }
-            self.assertEqual(processor.get_task_args(), task_args)
-
-        start.assert_called_once_with()
-
-    def test_name_passed_in(self):
-        """Ensure that if name is set that it's passed as a task_arg to the
-        MessageProcessor.
-        """
-        from furious.batcher import insert_messsage_processor
-        from furious.batcher import MessageProcessor
-
-        with patch.object(MessageProcessor, 'start') as start:
-            processor = insert_messsage_processor(
-                'job', None, None, 'queue-name', name='name')
-
-            task_args = {
-                'name': 'name'
-            }
-            self.assertEqual(processor.get_task_args(), task_args)
-
-        start.assert_called_once_with()
-
-    def test_tag_passed_in(self):
-        """Ensure that if tag is set that it's set on the MessageProcessor."""
-
-        from furious.batcher import insert_messsage_processor
-        from furious.batcher import MessageProcessor
-
-        with patch.object(MessageProcessor, 'start') as start:
-            processor = insert_messsage_processor(
-                'job', None, None, 'queue-name', tag='tag')
-
-            self.assertEqual(processor.tag, 'tag')
-
-        start.assert_called_once_with()
