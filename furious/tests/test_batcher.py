@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from mock import patch
+from mock import Mock, patch
 
 
 class MessageTestCase(unittest.TestCase):
@@ -369,3 +369,108 @@ class BumpBatchTestCase(unittest.TestCase):
         self.assertEqual(val, 2)
 
         cache.incr.assert_called_once_with('agg-batch-group')
+
+
+class MessageIteratorTestCase(unittest.TestCase):
+
+    def test_raise_stopiteration_if_no_messages(self):
+        """Ensure MessageIterator raises StopIteration if no messages."""
+        from furious.batcher import MessageIterator
+
+        iterator = MessageIterator('tag', 'qn', 1)
+        with patch.object(iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = []
+
+        self.assertRaises(StopIteration, iterator.next)
+
+    def test_iterates(self):
+        """Ensure MessageIterator instances iterate in loop."""
+        from furious.batcher import MessageIterator
+
+        payload = '["test"]'
+        task = Mock(payload=payload, tag='tag')
+        task1 = Mock(payload=payload, tag='tag')
+        task2 = Mock(payload=payload, tag='tag')
+
+        iterator = MessageIterator('tag', 'qn', 1)
+
+        with patch.object(iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = [task, task1, task2]
+
+            results = [payload for payload in iterator]
+
+        self.assertEqual(results, [payload, payload, payload])
+
+    def test_calls_lease_exactly_once(self):
+        """Ensure MessageIterator calls lease only once."""
+        from furious.batcher import MessageIterator
+
+        payload = '["test"]'
+        task = Mock(payload=payload, tag='tag')
+
+        message_iterator = MessageIterator('tag', 'qn', 1)
+
+        with patch.object(message_iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = [task]
+
+            iterator = iter(message_iterator)
+            iterator.next()
+
+            self.assertRaises(StopIteration, iterator.next)
+            self.assertRaises(StopIteration, iterator.next)
+
+        queue.lease_tasks_by_tag.assert_called_once_with(
+            60, 1, tag='tag')
+
+    def test_rerun_after_depletion_calls_once(self):
+        """Ensure MessageIterator works when used manually."""
+        from furious.batcher import MessageIterator
+
+        payload = '["test"]'
+        task = Mock(payload=payload, tag='tag')
+
+        iterator = MessageIterator('tag', 'qn', 1)
+
+        with patch.object(iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = [task]
+
+            results = [payload for payload in iterator]
+            self.assertEqual(results, [payload])
+
+            results = [payload for payload in iterator]
+
+        queue.lease_tasks_by_tag.assert_called_once_with(
+            60, 1, tag='tag')
+
+    def test_rerun_after_depletion_doesnt_delete_too_much(self):
+        """Ensure MessageIterator works when used manually."""
+        from furious.batcher import MessageIterator
+
+        payload = '["test"]'
+        task = Mock(payload=payload, tag='tag')
+
+        iterator = MessageIterator('tag', 'qn', 1, auto_delete=False)
+
+        with patch.object(iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = [task]
+
+            results = [payload for payload in iterator]
+            self.assertEqual(results, [payload])
+
+            # This new work should never be leased, but simulates new pending
+            # work.
+            task_1 = Mock(payload='["task_1"]', tag='tag')
+            queue.lease_tasks_by_tag.return_value = [task_1]
+
+            # Iterating again should return the "originally leased" work, not
+            # new work.
+            results = [payload for payload in iterator]
+            self.assertEqual(results, [payload])
+
+            # Lease should only have been called a single time.
+            queue.lease_tasks_by_tag.assert_called_once_with(
+                60, 1, tag='tag')
+
+            # The delete call should delete only the original work.
+            iterator.delete_messages()
+            queue.delete_tasks.assert_called_once_with([task])
