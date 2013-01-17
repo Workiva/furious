@@ -42,6 +42,7 @@ Usage:
 
 """
 
+import uuid
 
 class ContextAlreadyStartedError(Exception):
     """Attempt to set context on an Async that is already executing in a
@@ -58,10 +59,19 @@ class Context(object):
     def __init__(self, **options):
         self._tasks = []
 
+        id = options.get('id')
+        if not id:
+            id = uuid.uuid4().hex
+        self._tasks_inserted = False
+        self._id = id
 
         insert_tasks = options.get('insert_tasks')
         self._insert_tasks = insert_tasks or _insert_tasks
-        self._tasks_inserted = False
+
+
+    @property
+    def id(self):
+        return self._id
 
     def __enter__(self):
         return self
