@@ -11,7 +11,7 @@ def args():
                         default="/usr/local/google_appengine",
                         help='path to the GAE SDK')
 
-    parser.add_argument('--url', metavar='U', dest="url", default="",
+    parser.add_argument('url', metavar='U', default="", nargs=1,
                         help="the endpoint to run")
 
     return parser.parse_args()
@@ -34,8 +34,12 @@ def run(options):
         'localhost:8080', lambda: ('test@example.com', 'password'), user_agent,
         source, secure=False)
 
+    url = "/"
+    if options.url:
+        url += options.url[0]
+
     server._DevAppServerAuthenticate()
-    server.Send(options.url, content_type="text/html; charset=utf-8",
+    server.Send(url, content_type="text/html; charset=utf-8",
                 payload=None)
 
 
