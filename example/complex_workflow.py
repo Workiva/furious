@@ -14,11 +14,9 @@
 # limitations under the License.
 #
 
-"""Contained within this module are several working examples showing basic
-usage and complex context-based chaining.
+"""A complex workflow example.
 
-The examples demonstrate basic task execution, and also the basics of creating
-more complicated processing pipelines.
+This example uses a couple different functions to chain together in a worklow.
 """
 
 import logging
@@ -58,6 +56,23 @@ def complex_state_generator_alpha(last_state=''):
     return state
 
 
+@defaults(
+    callbacks={'success': "example.complex_workflow.state_machine_success"})
+def complex_state_generator_bravo(last_state=''):
+    """Pick a state."""
+    from random import choice
+
+    states = ['ALPHA', 'BRAVO', 'BRAVO', 'DONE']
+    if last_state:
+        states.remove(last_state)  # Slightly lower chances of previous state.
+
+    state = choice(states)
+
+    logging.info('Generating a state... %s', state)
+
+    return state
+
+
 def state_machine_success():
     """A positive result!  Iterate!"""
     from furious.async import Async
@@ -74,20 +89,3 @@ def state_machine_success():
         return Async(target=complex_state_generator_bravo, args=[result])
 
     logging.info('Done working, stop now.')
-
-
-@defaults(
-    callbacks={'success': "example.complex_workflow.state_machine_success"})
-def complex_state_generator_bravo(last_state=''):
-    """Pick a state."""
-    from random import choice
-
-    states = ['ALPHA', 'BRAVO', 'BRAVO', 'DONE']
-    if last_state:
-        states.remove(last_state)  # Slightly lower chances of previous state.
-
-    state = choice(states)
-
-    logging.info('Generating a state... %s', state)
-
-    return state
