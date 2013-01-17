@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 
 from google.appengine.api import memcache
@@ -149,6 +150,117 @@ class MessageProcessor(Async):
         return int(time.time() / max(1, self.frequency))
 
 
+class MessageIterator(object):
+    """This iterator will return a batch of messages for a given group.
+
+    This iterator should be directly used when trying to avoid the lease
+    operation inside a transaction, or when other flows are needed.
+    """
+
+    def __init__(self, tag, queue_name, size, duration=60, auto_delete=True):
+        """The generator will yield json deserialized payloads from tasks with
+        the corresponding tag.
+
+        :param tag: :class: `str` Pull queue tag to query against
+        :param queue_name: :class: `str` Name of PULL queue holding tasks to
+                           lease.
+        :param size: :class: `int` The number of items to pull at once
+        :param duration: :class: `int` After this time, the tasks may be leased
+                         again. Tracked in seconds
+        :param auto_delete: :class: `bool` Delete tasks when iteration is
+                            complete.
+
+        :return: :class: `iterator` of json deserialized payloads
+        """
+        from google.appengine.api.taskqueue import Queue
+
+        self.queue_name = queue_name
+        self.queue = Queue(name=self.queue_name)
+
+        self.tag = tag
+        self.size = size
+        self.duration = duration
+        self.auto_delete = auto_delete
+
+        self._messages = []
+        self._processed_messages = []
+        self._fetched = False
+
+    def fetch_messages(self):
+        """Fetch messages from the specified pull-queue.
+
+        This should only be called a single time by a given MessageIterator
+        object.  If the MessageIterator is iterated over again, it should
+        return the originally leased messages.
+        """
+        if self._fetched:
+            return
+
+        loaded_messages = self.queue.lease_tasks_by_tag(
+            self.duration, self.size, tag=self.tag)
+
+        self._messages.extend(loaded_messages)
+
+        self._fetched = True
+
+        logging.debug("Calling fetch messages with %s:%s:%s:%s:%s:%s" % (
+            len(self._messages), len(loaded_messages),
+            len(self._processed_messages), self.duration, self.size, self.tag))
+
+    def __iter__(self):
+        """Initialize this MessageIterator for iteration.
+
+        If messages have not been fetched, fetch them.  If messages have been
+        fetched, reset self._messages and self._processed_messages for
+        re-iteration.  The reset is done to prevent deleting messages that were
+        never applied.
+        """
+        if self._processed_messages:
+            # If the iterator is used within a transaction, and there is a
+            # retry we need to re-process the original messages, not new
+            # messages.
+            self._messages = list(
+                set(self._messages) | set(self._processed_messages))
+            self._processed_messages = []
+
+        if not self._messages:
+            self.fetch_messages()
+
+        return self
+
+    def next(self):
+        """Get the next batch of messages from the previously fetched messages.
+
+        If there's no more messages, check if we should auto-delete the
+        messages and raise StopIteration.
+        """
+        if not self._messages:
+            if self.auto_delete:
+                self.delete_messages()
+            raise StopIteration
+
+        message = self._messages.pop(0)
+        self._processed_messages.append(message)
+        return json.loads(message.payload)
+
+    def delete_messages(self, only_processed=True):
+        """Delete the messages previously leased.
+
+        Unless otherwise directed, only the messages iterated over will be
+        deleted.
+        """
+        messages = self._processed_messages
+        if not only_processed:
+            messages += self._messages
+
+        if messages:
+            try:
+                self.queue.delete_tasks(messages)
+            except Exception:
+                logging.exception("Error deleting messages")
+                raise
+
+
 def bump_batch(work_group):
     """Return the incremented batch id for the work group
     :param work_group: :class: `str`
@@ -157,3 +269,19 @@ def bump_batch(work_group):
     """
     key = "%s-%s" % (MESSAGE_BATCH_NAME, work_group)
     return memcache.incr(key)
+
+
+def get_messages(tag, queue_name, size, duration=60):
+    """Yield out the paylod from the task pulled from the pull queue by its
+    tag.
+
+    :param tag: :class: `str` Pull queue tag to query against
+    :param queue_name: :class: `str`
+    :param size: :class: `int` The number of items to pull at once
+    :param duration: :class: `int`
+
+    :return: iterator of json deserialized payloads
+    """
+    iterator = MessageIterator(tag, queue_name, size, duration)
+    for message in iterator:
+        yield message
