@@ -69,7 +69,7 @@ class MessageTestCase(unittest.TestCase):
 
         message = Message()
 
-        self.assertEqual('default', message.get_queue())
+        self.assertEqual('default_pull', message.get_queue())
 
     def test_get_task_args(self):
         """Ensure get_task_args returns the message task_args."""
