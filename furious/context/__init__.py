@@ -86,7 +86,7 @@ def get_current_context():
     """
     local_context = _local.get_local_context()
 
-    if local_context._executing_async:
+    if local_context:
         return local_context.registry[-1]
 
     raise NotInContextError('Not in an _ExecutionContext.')
