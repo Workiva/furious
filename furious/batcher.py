@@ -1,6 +1,12 @@
 import json
+import time
+
+from google.appengine.api import memcache
+
+from .async import Async
 
 MESSAGE_DEFAULT_QUEUE = 'default_pull'
+MESSAGE_PROCESSOR_NAME = 'processor'
 METHOD_TYPE = 'PULL'
 
 
@@ -64,8 +70,6 @@ class Message(object):
         # JSON don't like datetimes.
         eta = options.get('task_args', {}).get('eta')
         if eta:
-            import time
-
             options['task_args']['eta'] = time.mktime(eta.timetuple())
 
         return options
@@ -86,8 +90,62 @@ class Message(object):
         return Message(**message_options)
 
 
-def insert_messsage_processor():
-    pass
+class MessageProcessor(Async):
+    """Async message processor for processing messages in the pull queue."""
+
+    def __init__(self, target, args=None, kwargs=None, tag=None, freq=30,
+                 **options):
+        super(MessageProcessor, self).__init__(target, args, kwargs, **options)
+
+        self.frequency = freq
+        self.tag = tag if tag else MESSAGE_PROCESSOR_NAME
+
+    def to_task(self):
+        """Return a task object representing this MessageProcessor job."""
+        task_args = self.get_task_args()
+
+        # check for name in task args
+        name = task_args.get('name', MESSAGE_PROCESSOR_NAME)
+
+        # if the countdown isn't in the task_args set it to the frequency
+        if not 'countdown' in task_args:
+            task_args['countdown'] = self.frequency
+
+        task_args['name'] = "%s-%s-%s-%s" % (
+            name, self.tag, self.current_batch, self.time_throttle)
+
+        self.update_options(task_args=task_args)
+
+        return super(MessageProcessor, self).to_task()
+
+    @property
+    def group_key(self):
+        """Return the :class: `str` group key based off of the tag."""
+        return 'agg-batch-%s' % (self.tag)
+
+    @property
+    def current_batch(self):
+        """Return the batch id for the tag.
+
+        :return: :class: `int` current batch id
+        """
+        current_batch = memcache.get(self.group_key)
+
+        if not current_batch:
+            memcache.add(self.group_key, 1)
+            current_batch = 1
+
+        return current_batch
+
+    @property
+    def time_throttle(self):
+        """Return an :class: `int` of the currrent time divided by the
+        processor frequency. Frequency cannot be less than one and will default
+        to one if it is.
+
+        :return: :class: `int`
+        """
+        return int(time.time() / max(1, self.frequency))
 
 
 def fetch_messages():
