@@ -143,10 +143,12 @@ class Context(object):
         """
         """
         if not self._persistence_id:
-            self._persistence_id = str(uuid.uuid4())
-        marker = Marker(id=str(self._persistence_id),group_id=None)
+            self._persistence_id = uuid.uuid4().hex
+        marker = Marker(id=str(self._persistence_id), group_id=None,
+            batch_id=self._persistence_id)
 
-        marker.children = make_markers_for_tasks(self._tasks,group=marker)
+        marker.children = make_markers_for_tasks(self._tasks, group=marker,
+            batch_id=self._persistence_id)
         return marker
 
 
