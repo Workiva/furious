@@ -151,25 +151,28 @@ def _persist(marker):
 
     return mp, put_futures
 
-def persist(marker):
+def persist(marker,save_tree=False):
     """
     ndb marker persist strategy
     this is called by a root marker
     """
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
+    if save_tree:
+        defer_marker_tree_save(marker)
+    return
+
+def defer_marker_tree_save(marker):
     #save whole marker tree for diagnostics and possible error recovery
-#    from furious.async import Async
+    from furious.async import Async
 
     # Instantiate an Async object.
-#    async_task = Async(
-#        target=save_marker_tree, args=[marker.to_dict()])
+    async_task = Async(
+        target=save_marker_tree, args=[marker.to_dict()])
 
     # Insert the task to run the Async object, note that it may begin
     # executing immediately or with some delay.
-#    async_task.start()
-
-    return
+    async_task.start()
 
 def save_marker_tree(marker_tree):
     key = marker_tree.get('key')
