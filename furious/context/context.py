@@ -139,6 +139,13 @@ class Context(object):
         if self._tasks:
             self._handle_tasks()
 
+    def persist(self):
+        """Store the context."""
+        if not self._persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to persist this context.')
+
+        return self._persistence_engine.store_context(self.id, self.to_dict())
 
     def to_dict(self):
         """Return this Context as a dict suitable for json encoding."""

@@ -18,6 +18,7 @@ import unittest
 
 from google.appengine.ext import testbed
 
+from mock import Mock
 from mock import patch
 
 
@@ -297,6 +298,29 @@ class TestContext(unittest.TestCase):
         context = Context.from_dict(options)
 
         self.assertEqual(options, context.to_dict())
+
+    def test_persist_with_no_engine(self):
+        """Calling persist with no engine should blow up."""
+        from furious.context import Context
+
+        context = Context()
+        self.assertRaises(RuntimeError, context.persist)
+
+    def test_persist_persists(self):
+        """Calling persist with an engine persists the Context."""
+        from furious.context import Context
+
+        persistence_engine = Mock()
+        persistence_engine.func_name = 'persistence_engine'
+        persistence_engine.im_class.__name__ = 'engine'
+
+        context = Context(persistence_engine=persistence_engine)
+
+        context.persist()
+
+        persistence_engine.store_context.assert_called_once_with(
+            context.id, context.to_dict())
+
 
 class TestInsertTasks(unittest.TestCase):
     """Test that _insert_tasks behaves as expected."""
