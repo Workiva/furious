@@ -533,7 +533,7 @@ class TestAsync(unittest.TestCase):
 
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_task_already_exists_error_error(self, queue_mock):
-        """Ensure the task retries if a task already exists error is hit."""
+        """Ensure the task returns if a task already exists error is hit."""
         from google.appengine.api.taskqueue import TaskAlreadyExistsError
         from furious.async import Async
 
@@ -547,7 +547,7 @@ class TestAsync(unittest.TestCase):
 
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_tombstoned_task_error_error(self, queue_mock):
-        """Ensure the task retries if a tombstoned task error is hit."""
+        """Ensure the task returns if a tombstoned task error is hit."""
         from google.appengine.api.taskqueue import TombstonedTaskError
         from furious.async import Async
 
