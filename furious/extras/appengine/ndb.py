@@ -159,15 +159,15 @@ def persist(marker):
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
     #save whole marker tree for diagnostics and possible error recovery
-    from furious.async import Async
+#    from furious.async import Async
 
     # Instantiate an Async object.
-    async_task = Async(
-        target=save_marker_tree, args=[marker.to_dict()])
+#    async_task = Async(
+#        target=save_marker_tree, args=[marker.to_dict()])
 
     # Insert the task to run the Async object, note that it may begin
     # executing immediately or with some delay.
-    async_task.start()
+#    async_task.start()
 
     return
 
