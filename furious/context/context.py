@@ -65,8 +65,10 @@ class Context(object):
         self._tasks_inserted = False
         self._id = id
 
-        insert_tasks = options.get('insert_tasks')
-        self._insert_tasks = insert_tasks or _insert_tasks
+
+        self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
+        if not callable(self._insert_tasks):
+            raise TypeError('You must provide a valid insert_tasks function.')
 
 
     @property

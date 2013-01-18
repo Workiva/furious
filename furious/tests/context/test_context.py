@@ -63,6 +63,12 @@ class TestContext(unittest.TestCase):
         with Context():
             pass
 
+    def test_context_requires_insert_tasks(self):
+        """Ensure Contexts require a callable insert_tasks function."""
+        from furious.context import Context
+
+        self.assertRaises(TypeError, Context, insert_tasks='nope')
+
     def test_context_gets_id(self):
         """Ensure a new Context gets an id generated."""
         from furious.context import Context
