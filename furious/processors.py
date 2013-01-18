@@ -24,7 +24,6 @@ import logging
 from .async import Async
 from .context import Context
 from .context import get_current_async
-from furious.extras.appengine.ndb import handle_done
 from .job_utils import function_path_to_reference
 
 
@@ -85,6 +84,7 @@ def encode_exception(exception):
 
 def _process_results():
     """Process the results from an Async job."""
+    from furious.extras.appengine.ndb import handle_done
     async = get_current_async()
     callbacks = async.get_callbacks()
 

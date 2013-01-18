@@ -1,5 +1,9 @@
 import uuid
-from furious.extras.appengine.ndb import persist
+
+class MarkerMustBeRoot(Exception):
+    """Marker must be a root marker, ie, have no group_id
+    such as how it is created by a context._build_task_tree()
+    """
 
 class AsyncNeedsPersistenceID(Exception):
     """This Async needs to have a _persistence_id to create a Marker."""
@@ -28,7 +32,7 @@ class Marker(object):
                 'batch_id':self.batch_id,
                 'callback':self.callback,
                 'children':[child.to_dict() for child in self.children],
-                'async':(self.async.to_dict() if self.async else None)}
+                'async':self.async}
 
     @classmethod
     def from_dict(cls, marker_dict):
@@ -38,8 +42,7 @@ class Marker(object):
             callback=marker_dict['callback'],
             children=[cls.from_dict(child_dict) for
                       child_dict in marker_dict['children']],
-            async=(marker_dict['async'].from_dict()
-                   if marker_dict['async'] else None))
+            async=marker_dict['async'])
 
     @classmethod
     def from_async_dict(cls, async_dict):
@@ -49,8 +52,7 @@ class Marker(object):
                 'please assign a _persistence_id to the async'
                 'before creating a marker'
             )
-        id_parts = persistence_id.split(',')
-        group_id = id_parts[0]
+        group_id = leaf_persistence_id_to_group_id(persistence_id)
         return cls(id=persistence_id,
             group_id=group_id,
             batch_id=async_dict.get('_batch_id'),
@@ -60,23 +62,12 @@ class Marker(object):
     @classmethod
     def from_async(cls, async):
         return cls.from_async_dict(async.to_dict())
-#        persistence_id = async._persistence_id
-#        if persistence_id is None:
-#            raise AsyncNeedsPersistenceID(
-#                'please assign a _persistence_id to the async'
-#                'before creating a marker'
-#            )
-#        id_parts = persistence_id.split(',')
-#        group_id = id_parts[0]
-#        return cls(id=persistence_id,
-#            group_id=group_id,
-#            batch_id=async._batch_id,
-#            callback=async.callback,
-#            async=async.to_dict())
-
-
 
     def persist(self):
+        from furious.extras.appengine.ndb import persist
+        if self.group_id:
+            raise MarkerMustBeRoot(
+                "You may only persist root markers")
         return persist(self)
 
 def leaf_persistence_id_from_group_id(group_id,index):
@@ -132,11 +123,3 @@ def make_markers_for_tasks(tasks, group=None, batch_id=None):
             raise
         return markers
 
-def print_marker_tree(marker):
-    print_markers([marker], prefix="")
-
-def print_markers(markers, prefix=""):
-    for marker in markers:
-        print prefix,marker.key, prefix, marker.group_id
-        if isinstance(marker, Marker):
-            print_markers(marker.children,prefix=prefix+"    ")

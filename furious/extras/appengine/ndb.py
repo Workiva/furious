@@ -14,13 +14,15 @@ class MarkerTree(ndb.Model):
 class MarkerPersist(ndb.Model):
     """
     """
-    group_id = ndb.StringProperty()
-    group = ndb.KeyProperty()
-    callback = ndb.StringProperty()
-    children = ndb.KeyProperty(repeated=True)
-    done = ndb.BooleanProperty(default=False)
+    group_id = ndb.StringProperty(indexed=False)
+    batch_id = ndb.StringProperty()
+    group = ndb.KeyProperty(indexed=False)
+    callback = ndb.StringProperty(indexed=False)
+    children = ndb.KeyProperty(repeated=True,indexed=False)
+    done = ndb.BooleanProperty(default=False,indexed=False)
     async = ndb.JsonProperty()
     result = ndb.JsonProperty()
+
 
     def is_done(self):
         if self.done:
@@ -104,6 +106,17 @@ class MarkerPersist(ndb.Model):
             # no need to bubble up, it would have been done already
             return True
 
+    @classmethod
+    def from_marker(cls,marker):
+        return cls(
+            id=marker.key,
+            group_id=marker.group_id,
+            batch_id=marker.batch_id,
+            group = (ndb.Key('MarkerPersist',marker.group_id)
+                     if marker.group_id else None),
+            callback=marker.callback,
+            async = marker.async)
+
 
 def _persist(marker):
     """
@@ -112,21 +125,23 @@ def _persist(marker):
     asynchronously. It collects the put futures as it goes.
     persist waits for the put futures to finish.
     """
-    mp = MarkerPersist(
-        id=marker.key,
-        group_id=marker.group_id,
-        group = (ndb.Key('MarkerPersist',marker.group_id)
-                  if marker.group_id else None),
-        callback=marker.callback)
+    #don't persist leaf markers
+    #they will be written when the task is processed
+    if not marker.children:
+        logging.info("no initial save because "
+        "it is a leaf %s"%marker.key)
+#        return None, None
+    else:
+        logging.info("save because "
+                     "it is an internal vertex %s"%marker.key)
+    mp = MarkerPersist.from_marker(marker)
     put_futures = []
     for child in marker.children:
         child_mp, child_futures = _persist(child)
-        put_futures.extend(child_futures)
-        mp.children.append(child_mp.key)
+        if child_mp and child_futures:
+            put_futures.extend(child_futures)
+            mp.children.append(child_mp.key)
 
-    #does the async need to be stored?
-    if marker.async:
-        mp.async = marker.async.to_dict()
     put_future = mp.put_async()
     put_futures.append(put_future)
     return mp, put_futures
@@ -134,6 +149,7 @@ def _persist(marker):
 def persist(marker):
     """
     ndb marker persist strategy
+    this is called by a root marker
     """
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
@@ -150,8 +166,13 @@ def handle_done(async):
     if async._persistence_id:
         logging.info("update mp: %s"%async._persistence_id)
         mp = MarkerPersist.get_by_id(async._persistence_id)
-        if mp:
-            mp.done = True
-            mp.result = async.result
-            mp.put()
-            mp.update_done()
+        if not mp:
+            #create from async
+            logging.info("MarkerPersist didn't exist, creating one from task")
+            from furious.context.marker import Marker
+            mp = MarkerPersist.from_marker(Marker.from_async(async))
+
+        mp.done = True
+        mp.result = async.result
+        mp.put()
+        mp.update_done()
