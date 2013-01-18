@@ -15,10 +15,61 @@
 #
 
 import uuid
+import math
+
+BATCH_SIZE = 10
+
+def round_up(n):
+    return int(math.ceil(n / float(BATCH_SIZE))) * BATCH_SIZE
+
+def round_down(n):
+    return int(n/BATCH_SIZE)*BATCH_SIZE
+
+def tree_graph_growth(n):
+    """
+    function for the size of the tree graph based on the
+    number of tasks
+    >>> [tree_graph_growth(n) for n in range(0,100,10)]
+    [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
+    """
+    return max((((round_down(n)+round_up(n%BATCH_SIZE))/BATCH_SIZE)*2-1)+n,1)
+
+def initial_save_growth(n):
+    """
+    This is the growth function of the number internal vertexes and root.
+    It splits up the tasks into groups of 10 or less
+    linking them together in a tree graph with the context at the root.
+    as long as the root and internal vertexes are saved before the batch
+    starts executing, as the tasks are processed, they can save their
+    marker as a done and bubble up the done event which loads
+    the marker of their group_id and runs it's own update_done
+    process
+    Before(save initial markers for all the vertexes):
+    >>> [tree_graph_growth(n) for n in range(0,100,10)]
+    [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
+
+    After(save only root and internal vertexes):
+    >>> [initial_save_growth(n) for n in range(0,100,10)]
+    [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
+    """
+    return max(((round_down(n)+round_up(n%BATCH_SIZE))/BATCH_SIZE)*2-1,1)
+
+def count_nodes(marker):
+    count = 1
+    for child in marker.children:
+        count += count_nodes(child)
+
+    return count
 
 class MarkerMustBeRoot(Exception):
     """Marker must be a root marker, ie, have no group_id
     such as how it is created by a context._build_task_tree()
+    """
+
+class MustNotBeInternalVertex(Exception):
+    """Marker must be a root marker or be a leaf marker
+    to persist. leaf, because more asyncs could be added
+    to an existing one
     """
 
 class AsyncNeedsPersistenceID(Exception):
@@ -83,10 +134,14 @@ class Marker(object):
 
     def persist(self):
         from furious.extras.appengine.ndb import persist
-        if self.group_id:
-            raise MarkerMustBeRoot(
-                "You may only persist root markers")
         return persist(self)
+
+    def count_nodes(self):
+        count = 1
+        for child in self.children:
+            count += child.count_nodes()
+
+        return count
 
 def leaf_persistence_id_from_group_id(group_id,index):
     return ",".join([str(group_id), str(index)])
@@ -106,12 +161,12 @@ def make_markers_for_tasks(tasks, group=None, batch_id=None):
         group_id = group.key
 
 
-    if len(tasks) > 10:
+    if len(tasks) > BATCH_SIZE:
         #make two internal vertex markers
         #recurse the first one with ten tasks
         #and recurse the second with the rest
-        first_tasks = tasks[:10]
-        second_tasks = tasks[10:]
+        first_tasks = tasks[:BATCH_SIZE]
+        second_tasks = tasks[BATCH_SIZE:]
 
         first_group = Marker(
             id=uuid.uuid4().hex, group_id=group_id, batch_id=batch_id,)

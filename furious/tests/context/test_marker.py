@@ -16,11 +16,15 @@
 
 import unittest
 import uuid
+from furious.async import Async
+from furious.context.marker import Marker
+from furious.context.marker import initial_save_growth
+from furious.context.marker import make_markers_for_tasks
+from furious.context.marker import tree_graph_growth
 
 from google.appengine.ext import testbed
 
 from mock import patch
-from furious.context.marker import leaf_persistence_id_from_group_id, leaf_persistence_id_to_group_id
 
 class TestFunctions(unittest.TestCase):
 
@@ -28,6 +32,8 @@ class TestFunctions(unittest.TestCase):
         """
         Ensure the group id can be retrieved from the id given to an async
         """
+        from furious.context.marker import leaf_persistence_id_from_group_id
+        from furious.context.marker import leaf_persistence_id_to_group_id
         group_id = uuid.uuid4().hex
         index = 2
         leaf_key = leaf_persistence_id_from_group_id(group_id,index)
@@ -35,3 +41,96 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(len(leaf_key.split(',')),2)
         reconstituted_group_id = leaf_persistence_id_to_group_id(leaf_key)
         self.assertEquals(reconstituted_group_id,group_id)
+
+    def test_tree_graph_growth(self):
+        sizes = [tree_graph_growth(n) for n in range(0,100,10)]
+        expected = [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
+        self.assertEquals(sizes,expected)
+
+    def test_initial_save_growth(self):
+        sizes = [initial_save_growth(n) for n in range(0,100,10)]
+        expected = [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
+        self.assertEquals(sizes,expected)
+
+def example_function(*args, **kwargs):
+    return args
+
+
+
+class TestMarkerTreeBuilding(unittest.TestCase):
+    def setUp(self):
+        import os
+        import uuid
+
+        harness = testbed.Testbed()
+        harness.activate()
+        harness.init_taskqueue_stub()
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def test_marker_tree_from_async_tasks(self):
+        _tasks = [
+            Async(target=example_function,
+                    args=[arg]) for arg in range(0,23)
+        ]
+        _persistence_id = uuid.uuid4().hex
+
+        marker = Marker(id=str(_persistence_id), group_id=None,
+            batch_id=_persistence_id)
+
+        marker.children = make_markers_for_tasks(_tasks, group=marker,
+            batch_id=_persistence_id)
+
+        task_count = len(_tasks)
+        node_count = marker.count_nodes()
+        self.assertGreater(node_count,task_count)
+        self.assertEquals(node_count, tree_graph_growth(task_count))
+
+    def test_build_tree_with_one_task(self):
+        _tasks = [
+        Async(target=example_function,
+            args=[12])
+        ]
+        _persistence_id = uuid.uuid4().hex
+
+        marker = Marker(id=str(_persistence_id), group_id=None,
+            batch_id=_persistence_id)
+
+        marker.children = make_markers_for_tasks(_tasks, group=marker,
+            batch_id=_persistence_id)
+
+        task_count = len(_tasks)
+        node_count = marker.count_nodes()
+        self.assertGreater(node_count,task_count)
+        self.assertEquals(node_count, tree_graph_growth(task_count))
+
+class TestBuiltTree(unittest.TestCase):
+    def setUp(self):
+        import uuid
+
+        harness = testbed.Testbed()
+        harness.activate()
+        harness.init_taskqueue_stub()
+
+        _tasks = [
+        Async(target=example_function,
+            args=[arg]) for arg in range(0,23)
+        ]
+        _persistence_id = uuid.uuid4().hex
+
+        marker = Marker(id=str(_persistence_id), group_id=None,
+            batch_id=_persistence_id)
+
+        marker.children = make_markers_for_tasks(_tasks, group=marker,
+            batch_id=_persistence_id)
+
+        self.marker = marker
+
+    def test_leaf_nodes_have_group_id(self):
+        group_marker = self.marker.children[0]
+        leaf_marker = group_marker.children[3]
+        self.assertEquals(group_marker.key,leaf_marker.group_id)
+
+
+
