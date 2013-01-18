@@ -43,7 +43,8 @@ Usage:
 """
 import logging
 import uuid
-from furious.context.marker import Marker, make_markers_for_tasks
+from furious.context.marker import Marker
+from furious.context.marker import make_markers_for_tasks
 
 
 class ContextAlreadyStartedError(Exception):
@@ -58,14 +59,20 @@ class Context(object):
     NOTE: Use the module's new function to get a context, do not manually
     instantiate.
     """
-    def __init__(self, insert_tasks=None):
+    def __init__(self, insert_tasks=None, id=None):
         self._tasks = []
+
+        if not id:
+            id = uuid.uuid4().hex
+        self._id = id
 
         self.insert_tasks = insert_tasks or _insert_tasks
 
         self._tasks_inserted = False
 
-        self._persistence_id = None
+    @property
+    def id(self):
+        return self._id
 
     def __enter__(self):
         return self
@@ -77,20 +84,19 @@ class Context(object):
         return False
 
     def _handle_tasks(self):
-        """Convert all Async's into tasks, then insert them into queues."""
+        """Build a task tree that will allow
+        aggregation of the context's tasks' results.
+        Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         logging.info("start and make async tree")
+
         marker = self._build_task_tree()
+        marker.persist()
 
-        #persist strategy may be implemented in an asynchronous way
-        #so while it's working, tasks can be inserted
-        #then when complete, make sure it is waited for.
-        asynchronous_wait_function = marker.persist()
-
-        logging.info("self._persistence_id = %s"%self._persistence_id)
+        logging.info("self._persistence_id = %s"%self.id)
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
@@ -98,9 +104,6 @@ class Context(object):
 
         self._tasks_inserted = True
 
-        if asynchronous_wait_function and \
-                callable(asynchronous_wait_function):
-            asynchronous_wait_function()
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
@@ -142,13 +145,11 @@ class Context(object):
     def _build_task_tree(self):
         """
         """
-        if not self._persistence_id:
-            self._persistence_id = uuid.uuid4().hex
-        marker = Marker(id=str(self._persistence_id), group_id=None,
-            batch_id=self._persistence_id)
+        marker = Marker(id=str(self.id), group_id=None,
+            batch_id=self.id)
 
         marker.children = make_markers_for_tasks(self._tasks, group=marker,
-            batch_id=self._persistence_id)
+            batch_id=self.id)
         return marker
 
 

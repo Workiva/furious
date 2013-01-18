@@ -26,6 +26,10 @@ class MarkerTree(ndb.Model):
     tree = ndb.JsonProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
 
+class ContextPersist(ndb.Model):
+    data = ndb.JsonProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
 
 class MarkerPersist(ndb.Model):
     """
@@ -214,3 +218,16 @@ def handle_done(async):
         mp.result = async.result
         mp.put()
         mp.update_done()
+
+class NDBContextPersistenceEngine(object):
+    """
+    This conforms to the persistence api
+    storing just the context data
+    """
+    def store_context(self, id, context_dict):
+        cp = ContextPersist(id=id, data=context_dict)
+        cp.put()
+
+    def load_context(self, id):
+        cp = ContextPersist.get_by_id(id)
+        return cp.data

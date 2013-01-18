@@ -195,4 +195,3 @@ def make_markers_for_tasks(tasks, group=None, batch_id=None):
         except TypeError, e:
             raise
         return markers
-
