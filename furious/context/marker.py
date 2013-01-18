@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-import uuid
 import math
+import uuid
 
 BATCH_SIZE = 10
 

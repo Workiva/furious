@@ -14,17 +14,15 @@
 # limitations under the License.
 #
 
-import unittest
-import uuid
 from furious.async import Async
 from furious.context.marker import Marker
 from furious.context.marker import initial_save_growth
 from furious.context.marker import make_markers_for_tasks
 from furious.context.marker import tree_graph_growth
-
 from google.appengine.ext import testbed
-
 from mock import patch
+import unittest
+import uuid
 
 class TestFunctions(unittest.TestCase):
 

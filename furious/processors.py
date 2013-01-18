@@ -19,7 +19,6 @@ functions.
 """
 
 from collections import namedtuple
-import logging
 
 from .async import Async
 from .context import Context
