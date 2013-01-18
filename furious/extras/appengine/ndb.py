@@ -1,3 +1,19 @@
+#
+# Copyright 2013 WebFilings, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import logging
 from google.appengine.ext.ndb import Future
 from google.appengine.ext import ndb
@@ -158,6 +174,7 @@ def persist(marker,save_tree=False):
     """
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
+    logging.info("all root and internal vertex markers saved")
     if save_tree:
         defer_marker_tree_save(marker)
     return
