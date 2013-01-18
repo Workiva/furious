@@ -223,10 +223,17 @@ class Async(object):
 
     def start(self):
         """Insert the task into the requested queue, 'default' if non given."""
-        from google.appengine.api.taskqueue import Queue
+        from google.appengine.api import taskqueue
 
         task = self.to_task()
-        Queue(name=self.get_queue()).add(task)
+
+        try:
+            taskqueue.Queue(name=self.get_queue()).add(task)
+        except (taskqueue.TransientError,
+                taskqueue.TaskAlreadyExistsError,
+                taskqueue.TombstonedTaskError):
+            return
+
         # TODO: Return a "result" object.
 
     def to_dict(self):
