@@ -30,7 +30,15 @@ from .callback import AsyncErrorCallbackHandler
 from .callback import AsyncAsyncCallbackHandler
 from .simple_workflow import SimpleWorkflowHandler
 from .complex_workflow import ComplexWorkflowHandler
+from .batcher import BatcherViewHandler
+from .batcher import BatcherHandler
+from .batcher import BatcherStatsHandler
 
+config = {
+    'webapp2_extras.jinja2': {
+        'template_path': 'example/templates'
+    }
+}
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
@@ -40,4 +48,7 @@ app = webapp2.WSGIApplication([
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
-])
+    ('/batcher', BatcherViewHandler),
+    ('/batcher/run', BatcherHandler),
+    ('/batcher/stats', BatcherStatsHandler),
+], config=config)

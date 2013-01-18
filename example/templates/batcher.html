@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Async Batcher Example</title>
+  </head>
+  <body>
+    <h2>Async Batcher Example</h2>
+
+    <div>
+      <label>Select a color:</label>
+      <select id="color">
+        <option>Red</option>
+        <option>Blue</option>
+        <option>Yellow</option>
+        <option>Green</option>
+        <option>Black</option>
+      </select>
+    </div>
+    <div>
+      <label>Enter a value:</label>
+      <input id="value" type="number" min="0" max="1000000", step="1"
+        value="1" />
+    </div>
+    <div>
+      <label>Enter a number of tasks to insert:</label>
+      <input id="count" type="number" min="1" max="100", step="1"
+        value="1" />
+    </div>
+    <button id="submit">Submit</button>
+    <label id="status"></label>
+    <h3 style="margin-top: 20px; margin-bottom: 3px">Color Stats</h3>
+    <button id="refresh-stats">Refresh Stats</button>
+    <div id="stats">
+      <table cellpadding="2">
+        <tbody id="stats-table"></tbody>
+      </table>
+    </div>
+    <script>
+      (function(){
+        var root = this;
+
+        var Batcher = root.Batcher = {};
+
+        Batcher.DONE_STATE = 4
+
+        // Return the XMLHttpRequest for making ajax requests.
+        var getXmlHttpRequest = Batcher.getXmlHttpRequest = function() {
+          if (window.XMLHttpRequest) {
+            return new XMLHttpRequest();
+          } else if (window.ActiveXObject) {
+            try {
+              return new ActiveXObject('Msxml2.XMLHTTP');
+            } catch(e) {
+              return new ActiveXObject('Microsoft.XMLHTTP');
+            }
+          }
+
+          return null;
+        }; 
+
+        // Make an ajax request to /batcher/run with the color, value and count
+        // as url paramters. That endpoint will insert a task to run in the
+        // background.
+        var insertTask = Batcher.insertTask = function(color, value, count) {
+          var params = "color=" + color + "&value=" + value + "&count=" + count;
+          var req = Batcher.getXmlHttpRequest();
+          req.onreadystatechange = Batcher.insertTaskComplete;
+          req.open("GET", "/batcher/run?" + params, true);
+          req.setRequestHeader(
+            'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+          req.send();
+
+          return req;
+        };
+
+        // Callback method for insertTask. Checks the result status and
+        // displays a message on the page.
+        var insertTaskComplete = Batcher.insertTaskComplete = function() {
+          if (this.readyState == Batcher.DONE_STATE) {
+            var status_label = document.getElementById("status");
+            var result = JSON.parse(this.responseText);
+            if (result.success == true) {
+              status_label.style.color = "Green";
+              status_label.innerHTML = "Task inserted successfully!"
+            } else {
+              status_label.style.color = "Red";
+              status_label.innerHTML = result.message;
+            }
+          }
+        };
+
+        // Make an ajax request to get the current aggregated stats.
+        var getStats = Batcher.getStats = function() {
+          var req = Batcher.getXmlHttpRequest();
+          req.onreadystatechange = Batcher.showStats;
+          req.open("GET", "/batcher/stats", true);
+          req.setRequestHeader(
+            'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+          req.send();
+        };
+
+        // Callback for getStats that displays the stats returned in the
+        // payload as a table on the page.
+        var showStats = Batcher.showStats = function() {
+          if (this.readyState == Batcher.DONE_STATE) {
+            var stats_table = document.getElementById("stats-table");
+            stats_table.innerHTML = "";
+            var headers = [
+              "", "Average", "Max", "Min", "Total Count"];
+
+            var tr = document.createElement("tr");
+            for (i=0; i < headers.length; i++) {
+              var th = document.createElement("th");
+              th.innerHTML = headers[i];
+              th.width = "90px";
+              th.align = "right";
+              tr.appendChild(th);
+            }
+            stats_table.appendChild(tr);
+
+            var stats = JSON.parse(this.responseText);
+            stats_table.appendChild(
+              Batcher.displayStats("Red", stats.colors.red));
+            stats_table.appendChild(
+              Batcher.displayStats("Black", stats.colors.black));
+            stats_table.appendChild(
+              Batcher.displayStats("Blue", stats.colors.blue));
+            stats_table.appendChild(
+              Batcher.displayStats("Green", stats.colors.green));
+            stats_table.appendChild(
+              Batcher.displayStats("Yellow", stats.colors.yellow));
+            stats_table.appendChild(
+              Batcher.displayStats("Totals", stats.totals));
+          }
+        };
+
+        // Returns a table cell with the value passed in.
+        var displayCell = Batcher.displayCell = function(value) {
+          var td = document.createElement("td");
+          td.innerHTML = value;
+          td.align = "right";
+          return td;
+        };
+
+        // Returns a table row of the stats passed in.
+        var displayStats = Batcher.displayStats = function(name, stats) {
+          var tr = document.createElement("tr");
+          type = Batcher.displayCell(name);
+          type.style.fontWeight = "bold";
+          tr.appendChild(type);
+          tr.appendChild(Batcher.displayCell(stats.average));
+          tr.appendChild(Batcher.displayCell(stats.max));
+          tr.appendChild(Batcher.displayCell(stats.min));
+          tr.appendChild(Batcher.displayCell(stats.total_count));
+          return tr;
+        };
+
+        // Runs the batcher process. Gets the data from the elements on the
+        // page and passes it to insertTask.
+        var run = Batcher.run = function() {
+          var color_select = document.getElementById("color");
+          var color = color_select.options[color_select.selectedIndex].value;
+
+          var value = document.getElementById("value").value;
+          var count = document.getElementById("count").value;
+
+          Batcher.insertTask(color, value, count);
+
+          return this;
+        };
+
+        // Setups the batcher job on the page. Binds onclick events to the
+        // submit and refresh_stats buttons.
+        var setup = Batcher.setup = function() {
+          var submit = document.getElementById("submit");
+          submit.onclick = Batcher.run;
+
+          var refresh_stats = document.getElementById("refresh-stats");
+          refresh_stats.onclick = Batcher.getStats;
+
+          return this;
+        };
+
+        setup();
+        getStats();
+
+      }).call(this);
+
+      </script>
+  </body>
+</html>
