@@ -147,6 +147,15 @@ class Context(object):
 
         return self._persistence_engine.store_context(self.id, self.to_dict())
 
+    @classmethod
+    def load(cls, context_id, persistence_engine):
+        """Load and instantiate a Context from the persistence_engine."""
+        if not persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to load the context.')
+
+        return cls.from_dict(persistence_engine.load_context(context_id))
+
     def to_dict(self):
         """Return this Context as a dict suitable for json encoding."""
         import copy

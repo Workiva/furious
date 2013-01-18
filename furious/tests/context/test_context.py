@@ -321,6 +321,20 @@ class TestContext(unittest.TestCase):
         persistence_engine.store_context.assert_called_once_with(
             context.id, context.to_dict())
 
+    def test_load_context(self):
+        """Calling load with an engine attempts to load the Context."""
+        from furious.context import Context
+
+        persistence_engine = Mock()
+        persistence_engine.func_name = 'persistence_engine'
+        persistence_engine.im_class.__name__ = 'engine'
+        persistence_engine.load_context.return_value = {'id': 'ABC123'}
+
+        context = Context.load('ABC123', persistence_engine)
+
+        persistence_engine.load_context.assert_called_once_with('ABC123')
+        self.assertEqual('ABC123', context.id)
+
 
 class TestInsertTasks(unittest.TestCase):
     """Test that _insert_tasks behaves as expected."""
