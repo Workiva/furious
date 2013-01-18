@@ -1,4 +1,14 @@
 #!/usr/bin/python
+"""
+This script will aid in running the examples and "integration" tests included
+with furious.
+
+To run:
+
+    python example/runner.py workflow
+
+This will hit the /workflow url, causing the "workflow" example to run.
+"""
 
 import argparse
 import sys
