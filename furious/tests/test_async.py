@@ -343,9 +343,6 @@ class TestAsync(unittest.TestCase):
         """Ensure to_dict correctly encodes callbacks."""
         from furious.async import Async
 
-        def success_function():
-            pass
-
         options = {'callbacks': {
             'success': self.__class__.test_to_dict_with_callbacks,
             'failure': "failure_function",

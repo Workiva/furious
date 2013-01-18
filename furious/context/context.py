@@ -44,6 +44,10 @@ Usage:
 
 import uuid
 
+from ..job_utils import encode_callbacks
+from ..job_utils import get_function_path_and_options
+
+
 class ContextAlreadyStartedError(Exception):
     """Attempt to set context on an Async that is already executing in a
     context.
@@ -65,11 +69,13 @@ class Context(object):
         self._tasks_inserted = False
         self._id = id
 
+        self._options = options
 
         self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
         if not callable(self._insert_tasks):
             raise TypeError('You must provide a valid insert_tasks function.')
 
+        self._persistence_engine = options.pop('persistence_engine', None)
 
     @property
     def id(self):
@@ -131,6 +137,31 @@ class Context(object):
         if self._tasks:
             self._handle_tasks()
 
+
+    def to_dict(self):
+        """Return this Context as a dict suitable for json encoding."""
+        import copy
+
+        options = copy.deepcopy(self._options)
+
+        if self._insert_tasks:
+            options['insert_tasks'], _ = get_function_path_and_options(
+                self._insert_tasks)
+
+        if self._persistence_engine:
+            options['persistence_engine'], _ = get_function_path_and_options(
+                self._persistence_engine)
+
+        options.update({
+            '_tasks_inserted': self._tasks_inserted,
+            '_task_ids': [async.id for async in self._tasks]
+        })
+
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            options['callbacks'] = encode_callbacks(callbacks)
+
+        return options
 
 def _insert_tasks(tasks, queue, transactional=False):
     """Insert a batch of tasks into the specified queue. If an error occurs

@@ -175,6 +175,62 @@ class TestContext(unittest.TestCase):
         self.assertEqual(1, len(queue_registry['B']._calls[0][0][0]))
         self.assertEqual(1, len(queue_registry['C']._calls[0][0][0]))
 
+    def test_to_dict(self):
+        """Ensure to_dict returns a dictionary representation of the Context.
+        """
+        import copy
+
+        from furious.context import Context
+
+        options = {
+            'persistence_engine': 'persistence_engine',
+            'unkown': True,
+        }
+
+        context = Context(**copy.deepcopy(options))
+
+        # This stuff gets dumped out by to_dict().
+        options.update({
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            '_tasks_inserted': False,
+            '_task_ids': [],
+        })
+
+        self.assertEqual(options, context.to_dict())
+
+    def test_to_dict_with_callbacks(self):
+        """Ensure to_dict correctly encodes callbacks."""
+        import copy
+
+        from furious.async import Async
+        from furious.context import Context
+
+        options = {
+            'persistence_engine': 'persistence_engine',
+            'callbacks': {
+                'success': self.__class__.test_to_dict_with_callbacks,
+                'failure': "failure_function",
+                'exec': Async(target=dir)
+            }
+        }
+
+        context = Context(**copy.deepcopy(options))
+
+        # This stuff gets dumped out by to_dict().
+        options.update({
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            'persistence_engine': 'persistence_engine',
+            '_tasks_inserted': False,
+            '_task_ids': [],
+            'callbacks': {
+                'success': ("furious.tests.context.test_context."
+                            "TestContext.test_to_dict_with_callbacks"),
+                'failure': "failure_function",
+                'exec': {'job': ('dir', None, None)}
+            }
+        })
+
+        self.assertEqual(options, context.to_dict())
 
 class TestInsertTasks(unittest.TestCase):
     """Test that _insert_tasks behaves as expected."""
