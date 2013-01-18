@@ -222,15 +222,24 @@ class Async(object):
         return Task(**kwargs)
 
     def start(self):
-        """Insert the task into the requested queue, 'default' if non given."""
+        """Insert the task into the requested queue, 'default' if non given.
+
+        If a TransientError is hit the task will re-insert the task.
+
+        If a TaskAlreadyExistsError or TombstonedTaskError is hit the task will
+        silently fail.
+        """
         from google.appengine.api import taskqueue
 
         task = self.to_task()
 
         try:
             taskqueue.Queue(name=self.get_queue()).add(task)
-        except (taskqueue.TransientError,
-                taskqueue.TaskAlreadyExistsError,
+
+        except taskqueue.TransientError:
+            taskqueue.Queue(name=self.get_queue()).add(task)
+
+        except (taskqueue.TaskAlreadyExistsError,
                 taskqueue.TombstonedTaskError):
             return
 
