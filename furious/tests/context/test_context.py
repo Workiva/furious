@@ -232,6 +232,72 @@ class TestContext(unittest.TestCase):
 
         self.assertEqual(options, context.to_dict())
 
+    def test_from_dict(self):
+        """Ensure from_dict returns the correct Context object."""
+        from furious.context import Context
+
+        from furious.context.context import _insert_tasks
+
+        # TODO: persistence_engine needs set to a real persistence module.
+
+        options = {
+            'id': 123456,
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            'random_option': 'avalue',
+            '_tasks_inserted': True,
+            '_task_ids': [1, 2, 3, 4],
+            'persistence_engine': 'furious.context.Context'
+        }
+
+        context = Context.from_dict(options)
+
+        self.assertEqual(123456, context.id)
+        self.assertEqual([1, 2, 3, 4], context._task_ids)
+        self.assertEqual(True, context._tasks_inserted)
+        self.assertEqual('avalue', context._options.get('random_option'))
+        self.assertEqual(_insert_tasks, context._insert_tasks)
+        self.assertEqual(Context, context._persistence_engine)
+
+    def test_from_dict_with_callbacks(self):
+        """Ensure from_dict reconstructs the Context callbacks correctly."""
+        from furious.context import Context
+
+        callbacks = {
+            'success': ("furious.tests.context.test_context."
+                        "TestContext.test_to_dict_with_callbacks"),
+            'failure': "dir",
+            'exec': {'job': ('id', None, None)}
+        }
+
+        context = Context.from_dict({'callbacks': callbacks})
+
+        check_callbacks = {
+            'success': TestContext.test_to_dict_with_callbacks,
+            'failure': dir
+        }
+
+        callbacks = context._options.get('callbacks')
+        exec_callback = callbacks.pop('exec')
+
+        self.assertEqual(check_callbacks, callbacks)
+        self.assertEqual({'job': ('id', None, None)}, exec_callback.to_dict())
+
+    def test_reconstitution(self):
+        """Ensure to_dict(job.from_dict()) returns the same thing."""
+        from furious.context import Context
+
+        options = {
+            'id': 123098,
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            'persistence_engine': 'furious.job_utils.get_function_path_and_options',
+            '_tasks_inserted': True,
+            '_task_ids': []
+        }
+
+        context = Context.from_dict(options)
+
+        self.assertEqual(options, context.to_dict())
+
 class TestInsertTasks(unittest.TestCase):
     """Test that _insert_tasks behaves as expected."""
     def setUp(self):

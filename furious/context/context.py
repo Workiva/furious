@@ -44,7 +44,9 @@ Usage:
 
 import uuid
 
+from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
+from ..job_utils import function_path_to_reference
 from ..job_utils import get_function_path_and_options
 
 
@@ -162,6 +164,39 @@ class Context(object):
             options['callbacks'] = encode_callbacks(callbacks)
 
         return options
+
+    @classmethod
+    def from_dict(cls, context):
+        """Return a context job from a dict output by Context.to_dict."""
+        import copy
+
+        context_options = copy.deepcopy(context)
+
+        tasks_inserted = context_options.pop('_tasks_inserted', False)
+        task_ids = context_options.pop('_task_ids', [])
+
+        insert_tasks = context_options.pop('insert_tasks', None)
+        if insert_tasks:
+            context_options['insert_tasks'] = function_path_to_reference(
+                insert_tasks)
+
+        persistence_engine = context_options.pop('persistence_engine', None)
+        if persistence_engine:
+            context_options['persistence_engine'] = function_path_to_reference(
+                persistence_engine)
+
+        # If there are callbacks, reconstitute them.
+        callbacks = context_options.pop('callbacks', None)
+        if callbacks:
+            context_options['callbacks'] = decode_callbacks(callbacks)
+
+        context = cls(**context_options)
+
+        context._tasks_inserted = tasks_inserted
+        context._task_ids = task_ids
+
+        return context
+
 
 def _insert_tasks(tasks, queue, transactional=False):
     """Insert a batch of tasks into the specified queue. If an error occurs
