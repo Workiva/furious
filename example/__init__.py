@@ -70,7 +70,7 @@ class ContextIntroHandler(webapp2.RequestHandler):
         # When the Context is exited, the tasks are inserted (if there are no
         # errors).
 
-        persistence_id = ctx._persistence_id
+        persistence_id = ctx.id
 
         logging.info('Async jobs for context batch inserted.')
 
