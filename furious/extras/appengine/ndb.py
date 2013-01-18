@@ -83,7 +83,7 @@ class MarkerPersist(ndb.Model):
 
             children_markers = ndb.get_multi(self.children)
             done_markers = [marker for marker in children_markers
-                            if marker.done]
+                            if marker and marker.done]
             if len(done_markers) == len(self.children):
                 self.done = True
                 #simply set result to list of child results
@@ -125,25 +125,30 @@ def _persist(marker):
     asynchronously. It collects the put futures as it goes.
     persist waits for the put futures to finish.
     """
-    #don't persist leaf markers
-    #they will be written when the task is processed
-    if not marker.children:
-        logging.info("no initial save because "
-        "it is a leaf %s"%marker.key)
-#        return None, None
-    else:
-        logging.info("save because "
-                     "it is an internal vertex %s"%marker.key)
+
     mp = MarkerPersist.from_marker(marker)
     put_futures = []
+
     for child in marker.children:
         child_mp, child_futures = _persist(child)
-        if child_mp and child_futures:
-            put_futures.extend(child_futures)
+        if child_mp:
             mp.children.append(child_mp.key)
+        if child_futures:
+            put_futures.extend(child_futures)
 
-    put_future = mp.put_async()
-    put_futures.append(put_future)
+    if mp.children:
+        #only add own marker there are children
+        #it is a root or internal vertex marker
+        put_future = mp.put_async()
+        put_futures.append(put_future)
+        logging.info("save because "
+                     "it is an internal vertex %s"%marker.key)
+    else:
+        #don't persist leaf markers
+        #they will be written when the task is processed
+        logging.info("no initial save because "
+                     "it is a leaf %s"%marker.key)
+
     return mp, put_futures
 
 def persist(marker):
@@ -153,14 +158,27 @@ def persist(marker):
     """
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
-
     #save whole marker tree for diagnostics and possible error recovery
-    markerTree = MarkerTree(
-        id=mp.key.id(),
-        tree=marker.to_dict())
-    tree_future = markerTree.put_async()
-    return tree_future.wait
+    from furious.async import Async
 
+    # Instantiate an Async object.
+    async_task = Async(
+        target=save_marker_tree, args=[marker.to_dict()])
+
+    # Insert the task to run the Async object, note that it may begin
+    # executing immediately or with some delay.
+    async_task.start()
+
+    return
+
+def save_marker_tree(marker_tree):
+    key = marker_tree.get('key')
+    if key:
+        markerTree = MarkerTree(
+            id=marker_tree['key'],
+            tree=marker_tree)
+        tree_future = markerTree.put_async()
+        tree_future.wait()
 
 def handle_done(async):
     if async._persistence_id:
