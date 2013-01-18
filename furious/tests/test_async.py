@@ -343,9 +343,6 @@ class TestAsync(unittest.TestCase):
         """Ensure to_dict correctly encodes callbacks."""
         from furious.async import Async
 
-        def success_function():
-            pass
-
         options = {'callbacks': {
             'success': self.__class__.test_to_dict_with_callbacks,
             'failure': "failure_function",
@@ -459,6 +456,9 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(eta_posix, task.eta_posix)
         self.assertEqual(expected_url, task.url)
         self.assertEqual(full_headers, task.headers)
+
+        options['task_args']['eta'] = datetime.datetime.fromtimestamp(
+            eta_posix)
 
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())

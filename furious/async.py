@@ -72,6 +72,8 @@ from functools import wraps
 
 import json
 
+from .job_utils import decode_callbacks
+from .job_utils import encode_callbacks
 from .job_utils import get_function_path_and_options
 
 
@@ -247,7 +249,7 @@ class Async(object):
 
         callbacks = self._options.get('callbacks')
         if callbacks:
-            options['callbacks'] = _encode_callbacks(callbacks)
+            options['callbacks'] = encode_callbacks(callbacks)
 
         options['_persistence_id']=self._persistence_id
         options['_batch_id']=self._batch_id
@@ -257,8 +259,9 @@ class Async(object):
     @classmethod
     def from_dict(cls, async):
         """Return an async job from a dict output by Async.to_dict."""
+        import copy
 
-        async_options = async.copy()
+        async_options = copy.deepcopy(async)
 
         # JSON don't like datetimes.
         eta = async_options.get('task_args', {}).get('eta')
@@ -272,9 +275,9 @@ class Async(object):
         # If there are callbacks, reconstitute them.
         callbacks = async_options.get('callbacks', {})
         if callbacks:
-            async_options['callbacks'] = _decode_callbacks(callbacks)
+            async_options['callbacks'] = decode_callbacks(callbacks)
 
-        return Async(target, args, kwargs, **async_options)
+        return cls(target, args, kwargs, **async_options)
 
 
 def defaults(**options):
@@ -302,38 +305,4 @@ def _check_options(options):
 
     assert 'job' not in options
     #assert 'callbacks' not in options
-
-
-def _encode_callbacks(callbacks):
-    """Encode callbacks to as a dict suitable for JSON encoding."""
-    if not callbacks:
-        return
-
-    encoded_callbacks = {}
-    for event, callback in callbacks.iteritems():
-        if callable(callback):
-            callback, _ = get_function_path_and_options(callback)
-
-        elif isinstance(callback, Async):
-            callback = callback.to_dict()
-
-        encoded_callbacks[event] = callback
-
-    return encoded_callbacks
-
-
-def _decode_callbacks(encoded_callbacks):
-    """Decode the callbacks to an executable form."""
-    from furious.job_utils import function_path_to_reference
-
-    callbacks = {}
-    for event, callback in encoded_callbacks.iteritems():
-        if isinstance(callback, dict):
-            callback = Async.from_dict(callback)
-        else:
-            callback = function_path_to_reference(callback)
-
-        callbacks[event] = callback
-
-    return callbacks
 
