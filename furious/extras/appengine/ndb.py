@@ -37,7 +37,7 @@ class MarkerPersist(ndb.Model):
     group_id = ndb.StringProperty(indexed=False)
     batch_id = ndb.StringProperty()
     group = ndb.KeyProperty(indexed=False)
-    callback = ndb.StringProperty(indexed=False)
+    callbacks = ndb.JsonProperty()
     children = ndb.KeyProperty(repeated=True,indexed=False)
     done = ndb.BooleanProperty(default=False,indexed=False)
     async = ndb.JsonProperty()
@@ -128,13 +128,14 @@ class MarkerPersist(ndb.Model):
 
     @classmethod
     def from_marker(cls,marker):
+        marker_dict = marker.to_dict()
         return cls(
             id=marker.key,
             group_id=marker.group_id,
             batch_id=marker.batch_id,
             group = (ndb.Key('MarkerPersist',marker.group_id)
                      if marker.group_id else None),
-            callback=marker.callback,
+            callbacks=marker_dict.get('callbacks'),
             async = marker.async)
 
 
@@ -231,3 +232,6 @@ class NDBContextPersistenceEngine(object):
     def load_context(self, id):
         cp = ContextPersist.get_by_id(id)
         return cp.data
+
+    def store_context_marker(self,marker):
+        persist(marker)

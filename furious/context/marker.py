@@ -16,6 +16,10 @@
 
 import math
 import uuid
+from furious.job_utils import decode_callbacks
+from furious.job_utils import encode_callbacks
+from furious.job_utils import function_path_to_reference
+from furious.job_utils import get_function_path_and_options
 
 BATCH_SIZE = 10
 
@@ -76,16 +80,22 @@ class AsyncNeedsPersistenceID(Exception):
     """This Async needs to have a _persistence_id to create a Marker."""
 
 class Marker(object):
-    def __init__(self, id=None, group_id=None, batch_id=None,
-                 callback=None, children=None, async=None):
+    def __init__(self, **options):#, id=None, group_id=None, batch_id=None,
+#                 callback=None, children=None, async=None,
+#                 persistence_engine=None):
         """
         """
-        self.key = id
-        self.group_id = group_id
-        self.batch_id = batch_id
-        self.callback = callback
-        self.children = children or []
-        self.async = async
+        self.key = options.get('id')
+        assert self.key
+        self.group_id = options.get('group_id')
+        self.batch_id = options.get('batch_id')
+        self.callbacks = options.get('callbacks')
+        self.children = options.get('children') or []
+        self.async = options.get('async')
+
+        self._options = options
+
+        self._persistence_engine = options.pop('persistence_engine', None)
 
     @property
     def key(self):
@@ -96,22 +106,44 @@ class Marker(object):
         self._key = key
 
     def to_dict(self):
-        return {'key':self.key,
-                'group_id':self.group_id,
-                'batch_id':self.batch_id,
-                'callback':self.callback,
-                'children':[child.to_dict() for child in self.children],
-                'async':self.async}
+        import copy
+
+        options = copy.deepcopy(self._options)
+
+        if self._persistence_engine:
+            options['persistence_engine'], _ = get_function_path_and_options(
+                self._persistence_engine)
+
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            options['callbacks'] = encode_callbacks(callbacks)
+
+        options['children'] = [child.to_dict() for child in self.children]
+
+        return options
 
     @classmethod
     def from_dict(cls, marker_dict):
-        return cls(id=marker_dict['key'],
-            group_id=marker_dict['group_id'],
-            batch_id=marker_dict['batch_id'],
-            callback=marker_dict['callback'],
-            children=[cls.from_dict(child_dict) for
-                      child_dict in marker_dict['children']],
-            async=marker_dict['async'])
+        import copy
+
+        marker_options = copy.deepcopy(marker_dict)
+
+        persistence_engine = marker_options.pop('persistence_engine', None)
+        if persistence_engine:
+            marker_options['persistence_engine'] = function_path_to_reference(
+                persistence_engine)
+
+        # If there is are callbacks, reconstitute them.
+        callbacks = marker_options.pop('callbacks', None)
+        if callbacks:
+            marker_options['callbacks'] = decode_callbacks(callbacks)
+
+        marker_options['children'] = [
+            cls.from_dict(child_dict) for
+            child_dict in marker_dict['children']
+        ]
+
+        return cls(**marker_options)
 
     @classmethod
     def from_async_dict(cls, async_dict):
@@ -125,7 +157,7 @@ class Marker(object):
         return cls(id=persistence_id,
             group_id=group_id,
             batch_id=async_dict.get('_batch_id'),
-            callback=async_dict.get('callback'),
+            callbacks=async_dict.get('callbacks'),
             async=async_dict)
 
     @classmethod
@@ -133,8 +165,15 @@ class Marker(object):
         return cls.from_async_dict(async.to_dict())
 
     def persist(self):
-        from furious.extras.appengine.ndb import persist
-        return persist(self)
+        if self._persistence_engine and\
+               self._persistence_engine.store_context_marker and\
+               callable(self._persistence_engine.store_context_marker):
+            return self._persistence_engine.store_context_marker(self)
+        else:
+            from furious.extras.appengine.ndb import persist
+            return persist(self)
+
+
 
     def count_nodes(self):
         count = 1

@@ -107,8 +107,8 @@ class Async(object):
         # Make sure nothing is snuck in.
         _check_options(options)
 
-        self._persistence_id = options.get('_persistence_id')
-        self._batch_id = options.get('_batch_id')
+        self._persistence_id = options.pop('_persistence_id',None)
+        self._batch_id = options.pop('_batch_id',None)
 
         self._update_job(target, args, kwargs)
 
