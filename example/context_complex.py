@@ -44,6 +44,8 @@ class ContextComplexHandler(webapp2.RequestHandler):
             ctx.add(async_task)
             logging.info('Added manual job to context.')
 
+            # instantiate and add an Async who's function creates another Context.
+            # enabling extra fan-out of a job
             async_task = Async(
                 target=make_a_new_context_example, kwargs={'first': 'async'})
             ctx.add(async_task)
@@ -54,7 +56,9 @@ class ContextComplexHandler(webapp2.RequestHandler):
                 ctx.add(target=example_function, args=[i])
                 logging.info('Added job %d to context.', i)
 
-            # "Manually" instantiate and add an Async object to the Context.
+
+            # Instantiate and add an Async who's function creates another Async
+            # enabling portions of the job to be serial
             async_task = Async(
                 target=make_a_new_async_example, kwargs={'first': 'async'})
             ctx.add(async_task)
