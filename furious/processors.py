@@ -94,6 +94,11 @@ def _process_results():
 
         return _execute_callback(async, error_callback)
 
+    #an async must be able to not mark itself as done
+    #if it wants to callback with another async
+    #giving that async it's persistence id
+    #then when that async is done, it can initiate the
+    #bubble up done process resulting in the batch completion
     handle_done(async)
     
     success_callback = callbacks.get('success')

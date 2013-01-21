@@ -49,7 +49,6 @@ class MarkerPersist(ndb.Model):
     callbacks = ndb.JsonProperty()
     children = ndb.KeyProperty(repeated=True,indexed=False)
     done = ndb.BooleanProperty(default=False,indexed=False)
-    siblings_done = ndb.BooleanProperty(default=False,indexed=False)
     async = ndb.JsonProperty()
     result = ndb.JsonProperty()
     all_children_leaves = ndb.BooleanProperty(indexed=False)
@@ -76,12 +75,24 @@ class MarkerPersist(ndb.Model):
         else:
             #it is the top level
             logging.info("top level reached!")
-            result = Result(
-                id=self.key.id(),
-                result=self.result)
-            result.put()
-            memcache.set("Furious:{0}".format(self.key.id()), "done")
+
             #context callback
+            success = None
+            if self.callbacks:
+                callbacks = decode_callbacks(self.callbacks)
+                success = callbacks.get('success')
+
+            if success:
+                self.result = success(self.key.id(),self.result)
+
+            else:
+                #sensible default
+                result = Result(
+                    id=self.key.id(),
+                    result=self.result)
+                result.put()
+                memcache.set("Furious:{0}".format(self.key.id()),
+                    "done by default")
             #cleanup
             self.delete_leaves()
             return True
@@ -134,8 +145,6 @@ class MarkerPersist(ndb.Model):
         if not self.children and self.done:
             if self.bubble_up_done():
                 pass
-#                self.siblings_done = True
-#                self.put()
             return True
         elif self.children and not self.done:
             #early false might be able to be detected here using a bitmap
@@ -183,11 +192,7 @@ class MarkerPersist(ndb.Model):
                 self.put()
                 #bubble up: tell group marker to update done
                 if self.bubble_up_done():
-                    #not sure if siblings_done is a useful flag
-                    #because an internal vertex will not
-                    #bubble up if it's already marked as none
-                    self.siblings_done = True
-                    self.put()
+                    pass
 
                 return True
         elif self.done:
@@ -248,7 +253,6 @@ def persist(marker,save_tree=False):
     ndb marker persist strategy
     this is called by a root marker
     """
-#    import gaepdb;gaepdb.set_trace()
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
     logging.info("all root and internal vertex markers saved")

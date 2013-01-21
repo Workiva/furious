@@ -22,14 +22,23 @@ It then adds 5 Async jobs through the shorthand style.
 
 
 import logging
+from google.appengine.api import memcache
 
 import webapp2
+from furious.extras.appengine.ndb import Result
 
 def l_combiner(results):
     return reduce(lambda x, y: x+y,results,0)
 
 def iv_combiner(results):
     return results
+
+def example_callback_success(id,result):
+    result = Result(
+        id=id,
+        result=result)
+    result.put()
+    memcache.set("Furious:{0}".format(id), "done by callback")
 
 class ContextIntroHandler(webapp2.RequestHandler):
     """Demonstrate using a Context to batch insert a
@@ -40,7 +49,8 @@ class ContextIntroHandler(webapp2.RequestHandler):
 
         # Create a new furious Context.
         with context.new(callbacks={'internal_vertex_combiner':l_combiner,
-                                    'leaf_combiner':l_combiner}) as ctx:
+                                    'leaf_combiner':l_combiner,
+                                    'success':example_callback_success}) as ctx:
             # "Manually" instantiate and add an Async object to the Context.
             async_task = Async(
                 target=example_function, kwargs={'first': 'async'})
@@ -57,7 +67,8 @@ class ContextIntroHandler(webapp2.RequestHandler):
 
         logging.info('Async jobs for context batch inserted.')
 
-        self.response.out.write('Successfully inserted a group of Async jobs.')
+        self.response.out.write('Successfully inserted a '
+        'group of Async jobs with Furious:{0}'.format(ctx.id))
 
 
 def example_function(*args, **kwargs):

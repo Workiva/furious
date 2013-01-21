@@ -77,7 +77,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         marker = Marker(id=str(_persistence_id), group_id=None,
             batch_id=_persistence_id)
 
-        marker.children = make_markers_for_tasks(_tasks, group=marker,
+        marker.children, _ = make_markers_for_tasks(_tasks, group=marker,
             batch_id=_persistence_id)
 
         task_count = len(_tasks)
@@ -95,7 +95,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         marker = Marker(id=str(_persistence_id), group_id=None,
             batch_id=_persistence_id)
 
-        marker.children = make_markers_for_tasks(_tasks, group=marker,
+        marker.children, _ = make_markers_for_tasks(_tasks, group=marker,
             batch_id=_persistence_id)
 
         task_count = len(_tasks)
@@ -115,13 +115,13 @@ class TestBuiltTree(unittest.TestCase):
         Async(target=example_function,
             args=[arg]) for arg in range(0,23)
         ]
-        _persistence_id = uuid.uuid4().hex
+        id = uuid.uuid4().hex
 
-        marker = Marker(id=str(_persistence_id), group_id=None,
-            batch_id=_persistence_id)
+        marker = Marker(id=id, group_id=None,
+            batch_id=id)
 
-        marker.children = make_markers_for_tasks(_tasks, group=marker,
-            batch_id=_persistence_id)
+        marker.children, _ = make_markers_for_tasks(_tasks, group=marker,
+            batch_id=id)
 
         self.marker = marker
 
