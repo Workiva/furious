@@ -22,6 +22,8 @@ from furious.job_utils import function_path_to_reference
 from furious.job_utils import get_function_path_and_options
 
 BATCH_SIZE = 10
+CHILDREN_ARE_LEAVES = True
+CHILDREN_ARE_INTERNAL_VERTEXES = False
 
 def round_up(n):
     return int(math.ceil(n / float(BATCH_SIZE))) * BATCH_SIZE
@@ -92,6 +94,9 @@ class Marker(object):
         self.callbacks = options.get('callbacks')
         self.children = options.get('children') or []
         self.async = options.get('async')
+
+        self.internal_vertex = options.get('internal_vertex')
+        self.all_children_leaves = options.get('all_children_leaves')
 
         self._options = options
 
@@ -188,7 +193,8 @@ def leaf_persistence_id_from_group_id(group_id,index):
 def leaf_persistence_id_to_group_id(persistence_id):
     return persistence_id.split(',')[0]
 
-def make_markers_for_tasks(tasks, group=None, batch_id=None):
+def make_markers_for_tasks(tasks, group=None, batch_id=None,
+                           context_callbacks=None):
     """
     batch_id is the id of the root
     """
@@ -207,20 +213,24 @@ def make_markers_for_tasks(tasks, group=None, batch_id=None):
         first_tasks = tasks[:BATCH_SIZE]
         second_tasks = tasks[BATCH_SIZE:]
 
-        first_group = Marker(
-            id=uuid.uuid4().hex, group_id=group_id, batch_id=batch_id,)
-        first_group.children = make_markers_for_tasks(
-            first_tasks, first_group, batch_id)
+        first_group = Marker(internal_vertex=True,
+            id=uuid.uuid4().hex, group_id=group_id, batch_id=batch_id,
+            callbacks=context_callbacks)
+        first_group.children, first_group.all_children_leaves = \
+                make_markers_for_tasks(first_tasks, first_group, batch_id,
+                    context_callbacks)
 
-        second_group = Marker(
-            id=uuid.uuid4().hex, group_id=group_id, batch_id=batch_id)
-        second_group.children = make_markers_for_tasks(
-            second_tasks, second_group, batch_id)
+        second_group = Marker(internal_vertex=True,
+            id=uuid.uuid4().hex, group_id=group_id, batch_id=batch_id,
+            callbacks=context_callbacks)
+        second_group.children, second_group.all_children_leaves = \
+                make_markers_for_tasks(second_tasks, second_group, batch_id,
+                    context_callbacks)
 
         #these two will be the children of the caller
         markers.append(first_group)
         markers.append(second_group)
-        return markers
+        return markers, CHILDREN_ARE_INTERNAL_VERTEXES
     else:
         #make leaf markers for the tasks
         try:
@@ -233,4 +243,4 @@ def make_markers_for_tasks(tasks, group=None, batch_id=None):
 
         except TypeError, e:
             raise
-        return markers
+        return markers, CHILDREN_ARE_LEAVES

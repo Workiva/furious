@@ -155,11 +155,19 @@ class Context(object):
     def _build_task_tree(self):
         """
         """
+        encoded_callbacks = None
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            encoded_callbacks = encode_callbacks(callbacks)
+#        import gaepdb;gaepdb.set_trace()
         marker = Marker(id=str(self.id), group_id=None,
-            batch_id=self.id)
+            internal_vertex=True,
+            batch_id=self.id,
+            callbacks=encoded_callbacks)
 
-        marker.children = make_markers_for_tasks(self._tasks, group=marker,
-            batch_id=self.id)
+        marker.children, marker.all_children_leaves = make_markers_for_tasks(
+            self._tasks, group=marker,
+            batch_id=self.id,context_callbacks=encoded_callbacks)
         return marker
 
     def persist(self):

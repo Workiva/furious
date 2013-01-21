@@ -15,14 +15,23 @@
 #
 
 import logging
+from google.appengine.api import memcache
 from google.appengine.ext.ndb import Future
 from google.appengine.ext import ndb
+from furious.job_utils import decode_callbacks
+
+SIBLING_MARKERS_COMPLETE = True
+SIBLING_MARKERS_INCOMPLETE = False
 
 class Result(ndb.Model):
     result = ndb.JsonProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
 
 class MarkerTree(ndb.Model):
+    tree = ndb.JsonProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
+class InternalVertexTree(ndb.Model):
     tree = ndb.JsonProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
 
@@ -35,13 +44,16 @@ class MarkerPersist(ndb.Model):
     """
     """
     group_id = ndb.StringProperty(indexed=False)
-    batch_id = ndb.StringProperty()
+    batch_id = ndb.StringProperty(indexed=False)
     group = ndb.KeyProperty(indexed=False)
     callbacks = ndb.JsonProperty()
     children = ndb.KeyProperty(repeated=True,indexed=False)
     done = ndb.BooleanProperty(default=False,indexed=False)
+    siblings_done = ndb.BooleanProperty(default=False,indexed=False)
     async = ndb.JsonProperty()
     result = ndb.JsonProperty()
+    all_children_leaves = ndb.BooleanProperty(indexed=False)
+    internal_vertex = ndb.BooleanProperty(indexed=False)
 
 
     def is_done(self):
@@ -60,7 +72,7 @@ class MarkerPersist(ndb.Model):
             logging.info("bubble up")
             group_marker = self.group.get()
             if group_marker:
-                group_marker.update_done()
+                return group_marker.update_done()
         else:
             #it is the top level
             logging.info("top level reached!")
@@ -68,9 +80,11 @@ class MarkerPersist(ndb.Model):
                 id=self.key.id(),
                 result=self.result)
             result.put()
+            memcache.set("Furious:{0}".format(self.key.id()), "done")
             #context callback
             #cleanup
-            self.delete_children()
+            self.delete_leaves()
+            return True
 
     def _list_children_keys(self):
         """
@@ -84,6 +98,31 @@ class MarkerPersist(ndb.Model):
         keys.append(self.key)
         return keys
 
+    def _list_of_leaf_keys(self):
+        leaf_keys = []
+        if self.children and self.all_children_leaves:
+            leaf_keys = self.children
+        elif self.children:
+            children_markers = ndb.get_multi(self.children)
+            for child in children_markers:
+                leaf_keys.extend(child._list_of_leaf_keys())
+        else:
+            leaf_keys.append(self.key)
+
+        return leaf_keys
+
+    def delete_leaves(self):
+        """
+        this will delete all the leaf nodes of the graph
+        the nodes that represent each task
+        leaving only the structure needed to reach every
+        node for the ability to reach a marker that may have
+        executed more than once after the whole thing
+        is done.
+        """
+        logging.info("delete leaves %s"%self.key)
+        keys_to_delete = self._list_of_leaf_keys()
+        ndb.delete_multi(keys_to_delete)
 
     def delete_children(self):
         logging.info("delete %s"%self.key)
@@ -93,7 +132,10 @@ class MarkerPersist(ndb.Model):
     def update_done(self):
         logging.info("update done")
         if not self.children and self.done:
-            self.bubble_up_done()
+            if self.bubble_up_done():
+                pass
+#                self.siblings_done = True
+#                self.put()
             return True
         elif self.children and not self.done:
             #early false might be able to be detected here using a bitmap
@@ -111,15 +153,41 @@ class MarkerPersist(ndb.Model):
                 #context callback
                 #flatten results
                 result = []
-                for marker in done_markers:
-                    if isinstance(marker.result,list):
-                        result.extend(marker.result)
-                    else:
-                        result.append(marker.result)
-                self.result = result
+                #if this is not an internal vertex
+                #use the callbacks leaf_combiner function
+                #to reduce the results
+                #if it is an internal vertex
+                #use the internal_vertex_combiner function
+                #to  reduce the results
+                combiner = None
+                if self.callbacks:
+                    callbacks = decode_callbacks(self.callbacks)
+                    if self.internal_vertex and self.all_children_leaves:
+                        logging.info('leaf_combiner')
+                        combiner = callbacks.get('leaf_combiner')
+                    elif self.internal_vertex:
+                        logging.info('internal_vertex_combiner')
+                        combiner = callbacks.get('internal_vertex_combiner')
+
+                if combiner:
+                    logging.info('combiner used')
+                    self.result = combiner([marker.result for marker in
+                                            done_markers if marker])
+                else:
+                    for marker in done_markers:
+                        if isinstance(marker.result,list):
+                            result.extend(marker.result)
+                        else:
+                            result.append(marker.result)
+                    self.result = result
                 self.put()
                 #bubble up: tell group marker to update done
-                self.bubble_up_done()
+                if self.bubble_up_done():
+                    #not sure if siblings_done is a useful flag
+                    #because an internal vertex will not
+                    #bubble up if it's already marked as none
+                    self.siblings_done = True
+                    self.put()
 
                 return True
         elif self.done:
@@ -133,10 +201,13 @@ class MarkerPersist(ndb.Model):
             id=marker.key,
             group_id=marker.group_id,
             batch_id=marker.batch_id,
+            internal_vertex=marker.internal_vertex,
+            all_children_leaves=marker.all_children_leaves,
             group = (ndb.Key('MarkerPersist',marker.group_id)
                      if marker.group_id else None),
             callbacks=marker_dict.get('callbacks'),
-            async = marker.async)
+#            async = marker.async
+        )
 
 
 def _persist(marker):
@@ -177,6 +248,7 @@ def persist(marker,save_tree=False):
     ndb marker persist strategy
     this is called by a root marker
     """
+#    import gaepdb;gaepdb.set_trace()
     mp, put_futures = _persist(marker)
     Future.wait_all(put_futures)
     logging.info("all root and internal vertex markers saved")
