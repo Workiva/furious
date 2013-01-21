@@ -159,7 +159,6 @@ class Context(object):
         callbacks = self._options.get('callbacks')
         if callbacks:
             encoded_callbacks = encode_callbacks(callbacks)
-#        import gaepdb;gaepdb.set_trace()
         marker = Marker(id=str(self.id), group_id=None,
             internal_vertex=True,
             batch_id=self.id,
