@@ -34,10 +34,11 @@ class AsyncError(Exception):
     """The base class other Async errors can subclass."""
 
 
-def run_job():
+def run_job(async=None):
     """Takes an async object and executes its job."""
     from furious.extras.appengine.ndb import handle_done
-    async = get_current_async()
+    if async is None:
+        async = get_current_async()
     async_options = async.get_options()
 
     job = async_options.get('job')
@@ -65,7 +66,7 @@ def run_job():
     if not results_processor:
         results_processor = _process_results
 
-    processor_result = results_processor()
+    processor_result = results_processor(async)
     if isinstance(processor_result, (Async, Context)):
         if isinstance(processor_result, (Async)):
             #clone _persistence_id so the context's
@@ -108,10 +109,10 @@ def encode_exception(exception):
                           exception)
 
 
-def _process_results():
+def _process_results(async=None):
     """Process the results from an Async job."""
-
-    async = get_current_async()
+    if async is None:
+        async = get_current_async()
     callbacks = async.get_callbacks()
 
     if isinstance(async.result, AsyncException):

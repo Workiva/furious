@@ -22,13 +22,14 @@ NOTE: This should not typically be used directly by developers.
 
 Usage:
 
-    # Grab a refernce to the local context object.
+    # Grab a reference to the local context object.
     local_context = local.get_local_context()
 
     # Do something with the local context.
     local_context.registry.append(context.new())
 
 """
+import logging
 
 import os
 import threading
@@ -58,6 +59,7 @@ def _init():
     # return, otherwise reinitialize the _local_context.
     if (hasattr(_local_context, '_initialized') and
             _local_context._initialized == os.environ['REQUEST_ID_HASH']):
+        logging.info("the context has already been initialized")
         return
 
     _local_context = threading.local()
