@@ -82,9 +82,7 @@ class AsyncNeedsPersistenceID(Exception):
     """This Async needs to have a _persistence_id to create a Marker."""
 
 class Marker(object):
-    def __init__(self, **options):#, id=None, group_id=None, batch_id=None,
-#                 callback=None, children=None, async=None,
-#                 persistence_engine=None):
+    def __init__(self, **options):
         """
         """
         self.key = options.get('id')
