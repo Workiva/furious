@@ -15,7 +15,7 @@
 #
 
 from furious.async import Async
-from furious.context.marker import Marker
+from furious.context.marker import Marker, InvalidLeafId
 from furious.context.marker import initial_save_growth
 from furious.context.marker import make_markers_for_tasks
 from furious.context.marker import tree_graph_growth
@@ -39,6 +39,29 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(len(leaf_key.split(',')),2)
         reconstituted_group_id = leaf_persistence_id_to_group_id(leaf_key)
         self.assertEquals(reconstituted_group_id,group_id)
+
+        group_id = "{0},2,4".format(uuid.uuid4().hex)
+        index = 2
+        leaf_key = leaf_persistence_id_from_group_id(group_id,index)
+        self.assertIsNotNone(leaf_key)
+        self.assertGreaterEqual(len(leaf_key.split(',')),2)
+        reconstituted_group_id = leaf_persistence_id_to_group_id(leaf_key)
+        self.assertEquals(reconstituted_group_id,group_id)
+
+        def wrapper():
+            return leaf_persistence_id_to_group_id("2")
+
+        self.assertRaises(InvalidLeafId,wrapper)
+
+        def non_string_wrapper():
+            return leaf_persistence_id_to_group_id(2)
+
+        self.assertRaises(InvalidLeafId,non_string_wrapper)
+
+        group_id = leaf_persistence_id_to_group_id(u"234,4")
+        self.assertEquals(u"234",group_id)
+
+
 
     def test_tree_graph_growth(self):
         sizes = [tree_graph_growth(n) for n in range(0,100,10)]

@@ -22,35 +22,18 @@ It then adds 5 Async jobs through the shorthand style.
 
 
 import logging
-from google.appengine.api import memcache
 
 import webapp2
-from furious.extras.appengine.ndb import Result
 
-def l_combiner(results):
-    return reduce(lambda x, y: x+y,results,0)
-
-def iv_combiner(results):
-    return results
-
-def example_callback_success(id,result):
-    result = Result(
-        id=id,
-        result=result)
-    result.put()
-    memcache.set("Furious:{0}".format(id), "done by callback")
 
 class ContextIntroHandler(webapp2.RequestHandler):
-    """Demonstrate using a Context to batch insert a
-    group of furious tasks."""
+    """Demonstrate using a Context to batch insert a group of furious tasks."""
     def get(self):
         from furious.async import Async
         from furious import context
 
         # Create a new furious Context.
-        with context.new(callbacks={'internal_vertex_combiner':l_combiner,
-                                    'leaf_combiner':l_combiner,
-                                    'success':example_callback_success}) as ctx:
+        with context.new() as ctx:
             # "Manually" instantiate and add an Async object to the Context.
             async_task = Async(
                 target=example_function, kwargs={'first': 'async'})
@@ -58,7 +41,7 @@ class ContextIntroHandler(webapp2.RequestHandler):
             logging.info('Added manual job to context.')
 
             # Use the shorthand style, note that add returns the Async object.
-            for i in xrange(15):
+            for i in xrange(5):
                 ctx.add(target=example_function, args=[i])
                 logging.info('Added job %d to context.', i)
 
@@ -67,12 +50,12 @@ class ContextIntroHandler(webapp2.RequestHandler):
 
         logging.info('Async jobs for context batch inserted.')
 
-        self.response.out.write('Successfully inserted a '
-        'group of Async jobs with Furious:{0}'.format(ctx.id))
+        self.response.out.write('Successfully inserted a group of Async jobs.')
 
 
 def example_function(*args, **kwargs):
     """This function is called by furious tasks to demonstrate usage."""
     logging.info('example_function executed with args: %r, kwargs: %r',
-                 args, kwargs)
-    return l_combiner(args)
+        args, kwargs)
+
+    return args

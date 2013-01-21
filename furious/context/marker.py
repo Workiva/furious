@@ -78,6 +78,12 @@ class MustNotBeInternalVertex(Exception):
     to an existing one
     """
 
+class InvalidLeafId(Exception):
+    """
+    This leaf id is invalid, it must be prefixed by a group id, comma
+    separated
+    """
+
 class AsyncNeedsPersistenceID(Exception):
     """This Async needs to have a _persistence_id to create a Marker."""
 
@@ -189,7 +195,16 @@ def leaf_persistence_id_from_group_id(group_id,index):
     return ",".join([str(group_id), str(index)])
 
 def leaf_persistence_id_to_group_id(persistence_id):
-    return persistence_id.split(',')[0]
+    try:
+        parts = persistence_id.split(',')
+        parts.pop()
+        if not parts:
+            raise InvalidLeafId("Id must be prefixed by a group id"
+                "separated by a comma")
+        group_id = ",".join(parts)
+        return group_id
+    except AttributeError:
+        raise InvalidLeafId("Id must be a basestring")
 
 def make_markers_for_tasks(tasks, group=None, batch_id=None,
                            context_callbacks=None):

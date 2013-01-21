@@ -66,15 +66,36 @@ class MarkerPersist(ndb.Model):
                 return True
 
     def bubble_up_done(self):
+        #get possible group key from id
+        from furious.context.marker import leaf_persistence_id_to_group_id
+        from furious.context.marker import InvalidLeafId
+        group_key = None
+        try:
+            #is the batch_id a valid leaf id?
+            group_id = leaf_persistence_id_to_group_id(self.key.id())
+            if group_id:
+                group_key = ndb.Key(MarkerPersist,group_id)
+        except InvalidLeafId:
+            pass
 
         if self.group:
+            #it is in internal vertex
+            group_key = self.group
+
+        if group_key:
             logging.info("bubble up")
-            group_marker = self.group.get()
+            group_marker = group_key.get()
             if group_marker:
+                if not self.group:
+                    #this is the top level of a sub context
+                    #so the group marker does not in fact
+                    #have all children as leaves
+                    group_marker.all_children_leaves = False
+                    group_marker.put()
                 return group_marker.update_done()
         else:
             #it is the top level
-            logging.info("top level reached!")
+            logging.info("top level reached! {0}".format(self.key.id()))
 
             #context callback
             success = None
@@ -82,17 +103,28 @@ class MarkerPersist(ndb.Model):
                 callbacks = decode_callbacks(self.callbacks)
                 success = callbacks.get('success')
 
-            if success:
-                self.result = success(self.key.id(),self.result)
+            batch_id = self.key.id()
 
+            if success:
+                self.result = success(batch_id,self.result)
             else:
                 #sensible default
                 result = Result(
-                    id=self.key.id(),
+                    id=batch_id,
                     result=self.result)
                 result.put()
-                memcache.set("Furious:{0}".format(self.key.id()),
+                memcache.set("Furious:{0}".format(batch_id),
                     "done by default")
+
+            #fire async with the batch id, this will
+            #if this context was spawned from a task
+            #as a part of a parent context, this will
+            #trigger the done event to bubble up
+            #do we store the result of the context and
+            #have the trigger async be a function that
+            #loads the saved result as it's own
+            #or just try instantiating an async and update_done it
+
             #cleanup
             self.delete_leaves()
             return True
