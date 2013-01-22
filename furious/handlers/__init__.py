@@ -20,7 +20,6 @@ import logging
 
 from ..async import Async
 from .. import context
-from furious.context import NotInContextError
 from ..processors import run_job
 
 
@@ -31,11 +30,8 @@ def process_async_task(headers, request_body):
 
     logging.info(async._function_path)
 
-    try:
-        with context.execution_context_from_async(async):
-            run_job()
-    except NotInContextError:
-        run_job(async)
+    with context.execution_context_from_async(async):
+        run_job()
 
     return 200, async._function_path
 

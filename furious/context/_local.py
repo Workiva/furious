@@ -59,7 +59,6 @@ def _init():
     # return, otherwise reinitialize the _local_context.
     if (hasattr(_local_context, '_initialized') and
             _local_context._initialized == os.environ['REQUEST_ID_HASH']):
-        logging.info("the context has already been initialized")
         return
 
     _local_context = threading.local()
