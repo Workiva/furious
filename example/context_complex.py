@@ -47,7 +47,7 @@ class ContextComplexHandler(webapp2.RequestHandler):
             # instantiate and add an Async who's function creates another Context.
             # enabling extra fan-out of a job
             async_task = Async(
-                target=make_a_new_context_example, kwargs={'first': 'async'})
+                target=make_a_new_context_example, kwargs={'extra': 'async'})
             ctx.add(async_task)
             logging.info('Added sub context')
 
@@ -60,7 +60,7 @@ class ContextComplexHandler(webapp2.RequestHandler):
             # Instantiate and add an Async who's function creates another Async
             # enabling portions of the job to be serial
             async_task = Async(
-                target=make_a_new_async_example, kwargs={'first': 'async'})
+                target=make_a_new_async_example, kwargs={'second': 'async'})
             ctx.add(async_task)
             logging.info('Added added async that returns an async')
 

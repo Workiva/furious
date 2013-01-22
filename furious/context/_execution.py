@@ -30,6 +30,7 @@ Usage:
 """
 
 from . import _local
+import logging
 
 
 __all__ = ["ContextExistsError",
@@ -83,15 +84,34 @@ class _ExecutionContext(object):
 
     def __enter__(self):
         """Enter the context, add this async to the executing context stack."""
+        logging.info("async added: {0}".format(self._async))
         _local.get_local_context()._executing_async.append(self._async)
+        local_context = _local.get_local_context()
+        if hasattr(local_context,'_executing_async'):
+            logging.info("just added async to"
+            "_executing_async: {0}".format(local_context._executing_async))
+        logging.info("entering complete")
+        if hasattr(local_context,'_initialized'):
+            logging.info("entering exec _initialized: {0}".format(
+                local_context._initialized))
+        else:
+            logging.info("exec context not initialized")
+
         return self
 
     def __exit__(self, *exc_info):
         """Exit the context, pop this async from the executing context stack.
         """
         local_context = _local.get_local_context()
+        if hasattr(local_context,'_initialized'):
+            logging.info("exiting exec _initialized: {0}".format(
+                local_context._initialized))
         try:
+            logging.info("exiting the exec context")
             last = local_context._executing_async.pop()
+            logging.info("popped _executing_async: {0}".format(
+                last
+            ))
             if last is not self._async:
                 local_context._executing_async.append(last)
                 raise CorruptContextError(*exc_info)

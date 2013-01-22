@@ -37,6 +37,7 @@ class AsyncError(Exception):
 def run_job():
     """Takes an async object and executes its job."""
     from furious.extras.appengine.ndb import handle_done
+    logging.info('run_job')
     async = get_current_async()
     async_options = async.get_options()
 
@@ -110,7 +111,7 @@ def encode_exception(exception):
 
 def _process_results():
     """Process the results from an Async job."""
-
+    logging.info("_process_results")
     async = get_current_async()
     callbacks = async.get_callbacks()
 
