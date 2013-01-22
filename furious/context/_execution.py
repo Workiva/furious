@@ -90,10 +90,13 @@ class _ExecutionContext(object):
         """Exit the context, pop this async from the executing context stack.
         """
         local_context = _local.get_local_context()
-        last = local_context._executing_async.pop()
-        if last is not self._async:
-            local_context._executing_async.append(last)
-            raise CorruptContextError(*exc_info)
+        try:
+            last = local_context._executing_async.pop()
+            if last is not self._async:
+                local_context._executing_async.append(last)
+                raise CorruptContextError(*exc_info)
+        except IndexError:
+            pass
 
         return False
 

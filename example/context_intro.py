@@ -56,6 +56,6 @@ class ContextIntroHandler(webapp2.RequestHandler):
 def example_function(*args, **kwargs):
     """This function is called by furious tasks to demonstrate usage."""
     logging.info('example_function executed with args: %r, kwargs: %r',
-                 args, kwargs)
+        args, kwargs)
 
     return args
