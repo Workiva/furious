@@ -29,6 +29,8 @@ from .context_complex import ContextComplexHandler
 from .callback import AsyncCallbackHandler
 from .callback import AsyncErrorCallbackHandler
 from .callback import AsyncAsyncCallbackHandler
+from .grep import GrepHandler
+from .context_grep import ContextGrepHandler
 from .simple_workflow import SimpleWorkflowHandler
 from .complex_workflow import ComplexWorkflowHandler
 
@@ -37,9 +39,11 @@ app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
     ('/context', ContextIntroHandler),
     ('/context/complex', ContextComplexHandler),
+    ('/context/grep', ContextGrepHandler),
     ('/callback', AsyncCallbackHandler),
     ('/callback/error', AsyncErrorCallbackHandler),
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
+    ('/grep', GrepHandler),
 ])
