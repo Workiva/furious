@@ -1,29 +1,36 @@
+#TODO: add copyright notice
+
 import logging
 import os
-import os.path
 import re
 
 import webapp2
 
+from furious import context
+from furious import defaults
 from furious.async import Async
+
 
 class GrepHandler(webapp2.RequestHandler):
     def get(self):
         query = self.request.get('query')
         curdir = os.getcwd()
-        build_and_start(query, curdir)
+
+        with context.new():
+            build_and_start(query, curdir)
         self.response.out.write('starting grep for query: %s' % query)
 
+
+@defaults(callbacks={'success': log_results})
 def build_and_start(query, directory):
-        async_task = Async(
-            target=grep, args=[query, directory],
-            callbacks={'success': log_results}
-        )
+        async_task = Async(target=grep, args=[query, directory])
         async_task.start()
+
 
 def grep_file(query, item):
     return ['%s: %s' % (item, line) for line in open(item)
             if re.search(query, line)]
+
 
 def grep(query, directory):
     dir_contents = os.listdir(directory)
@@ -37,6 +44,7 @@ def grep(query, directory):
                 results.extend(grep_file(query, path))
     return results
 
+
 def log_results():
     from furious.context import get_current_async
 
@@ -44,4 +52,3 @@ def log_results():
 
     for result in async.result:
         logging.info(result)
-
