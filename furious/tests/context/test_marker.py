@@ -38,7 +38,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIsNotNone(leaf_key)
         self.assertEqual(len(leaf_key.split(',')),2)
         reconstituted_group_id = leaf_persistence_id_to_group_id(leaf_key)
-        self.assertEquals(reconstituted_group_id,group_id)
+        self.assertEqual(reconstituted_group_id,group_id)
 
         group_id = "{0},2,4".format(uuid.uuid4().hex)
         index = 2
@@ -46,7 +46,7 @@ class TestFunctions(unittest.TestCase):
         self.assertIsNotNone(leaf_key)
         self.assertGreaterEqual(len(leaf_key.split(',')),2)
         reconstituted_group_id = leaf_persistence_id_to_group_id(leaf_key)
-        self.assertEquals(reconstituted_group_id,group_id)
+        self.assertEqual(reconstituted_group_id,group_id)
 
         def wrapper():
             return leaf_persistence_id_to_group_id("2")
@@ -59,19 +59,19 @@ class TestFunctions(unittest.TestCase):
         self.assertRaises(InvalidLeafId,non_string_wrapper)
 
         group_id = leaf_persistence_id_to_group_id(u"234,4")
-        self.assertEquals(u"234",group_id)
+        self.assertEqual(u"234",group_id)
 
 
 
     def test_tree_graph_growth(self):
         sizes = [tree_graph_growth(n) for n in range(0,100,10)]
         expected = [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
-        self.assertEquals(sizes,expected)
+        self.assertEqual(sizes,expected)
 
     def test_initial_save_growth(self):
         sizes = [initial_save_growth(n) for n in range(0,100,10)]
         expected = [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
-        self.assertEquals(sizes,expected)
+        self.assertEqual(sizes,expected)
 
 def example_function(*args, **kwargs):
     return args
@@ -106,7 +106,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         task_count = len(_tasks)
         node_count = marker.count_nodes()
         self.assertGreater(node_count,task_count)
-        self.assertEquals(node_count, tree_graph_growth(task_count))
+        self.assertEqual(node_count, tree_graph_growth(task_count))
 
     def test_build_tree_with_one_task(self):
         _tasks = [
@@ -124,7 +124,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         task_count = len(_tasks)
         node_count = marker.count_nodes()
         self.assertGreater(node_count,task_count)
-        self.assertEquals(node_count, tree_graph_growth(task_count))
+        self.assertEqual(node_count, tree_graph_growth(task_count))
 
 class TestBuiltTree(unittest.TestCase):
     def setUp(self):
@@ -151,7 +151,7 @@ class TestBuiltTree(unittest.TestCase):
     def test_leaf_nodes_have_group_id(self):
         group_marker = self.marker.children[0]
         leaf_marker = group_marker.children[3]
-        self.assertEquals(group_marker.key,leaf_marker.group_id)
+        self.assertEqual(group_marker.key,leaf_marker.group_id)
 
 
 
