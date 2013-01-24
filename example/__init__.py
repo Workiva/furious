@@ -24,26 +24,37 @@ more complicated processing pipelines.
 import webapp2
 
 from .async_intro import AsyncIntroHandler
-from .context_intro import ContextIntroHandler
-from .context_complex import ContextComplexHandler
+from .callback import AsyncAsyncCallbackHandler
 from .callback import AsyncCallbackHandler
 from .callback import AsyncErrorCallbackHandler
-from .callback import AsyncAsyncCallbackHandler
-from .grep import GrepHandler
-from .context_grep import ContextGrepHandler
-from .simple_workflow import SimpleWorkflowHandler
 from .complex_workflow import ComplexWorkflowHandler
+from .context_complex import ContextComplexHandler
+from .context_grep import ContextGrepHandler
+from .context_grep import DoneCheckHandler
+from .context_grep import GrepViewHandler
+from .context_grep import ResultRetriever
+from .context_intro import ContextIntroHandler
+from .grep import GrepHandler
+from .simple_workflow import SimpleWorkflowHandler
 
+config = {
+    'webapp2_extras.jinja2': {
+        'template_path': 'example/templates'
+    }
+}
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
+    ('/callback', AsyncCallbackHandler),
+    ('/callback/async', AsyncAsyncCallbackHandler),
+    ('/callback/error', AsyncErrorCallbackHandler),
     ('/context', ContextIntroHandler),
     ('/context/complex', ContextComplexHandler),
-    ('/context/grep', ContextGrepHandler),
-    ('/callback', AsyncCallbackHandler),
-    ('/callback/error', AsyncErrorCallbackHandler),
-    ('/callback/async', AsyncAsyncCallbackHandler),
+    ('/context/grep', GrepViewHandler),
+    ('/context/grep/check', DoneCheckHandler),
+    ('/context/grep/results', ResultRetriever),
+    ('/context/grep/run', ContextGrepHandler),
+    ('/grep', GrepHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
-    ('/grep', GrepHandler),
-])
+],config=config)

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Async Code Search Example</title>
+</head>
+<body>
+<h2>Async Code Search Example</h2>
+
+<div>
+    <label for="query">Query Codebase</label>
+    <input id="query" name="query" value="">
+</div>
+<button id="submit">Submit</button>
+<label id="status"></label>
+<label id="job_status"></label>
+<label>Job ID:</label>
+<div id="job_id"></div>
+<label>Job Time:</label>
+<div id="job_time"></div>
+<label>Results:</label>
+<div id="results">
+    <textarea id="results_textarea" cols="100" rows="40" style="width:100%"></textarea>
+</div>
+<script>
+    (function(){
+        var root = this;
+
+        var Requester = root.Requester = {};
+
+        Requester.DONE_STATE = 4
+
+        // Return the XMLHttpRequest for making ajax requests.
+        var getXmlHttpRequest = Requester.getXmlHttpRequest = function() {
+            if (window.XMLHttpRequest) {
+                return new XMLHttpRequest();
+            } else if (window.ActiveXObject) {
+                try {
+                    return new ActiveXObject('Msxml2.XMLHTTP');
+                } catch(e) {
+                    return new ActiveXObject('Microsoft.XMLHTTP');
+                }
+            }
+
+            return null;
+        };
+
+        // Make an ajax request to /context/grep/run with the query
+        // as url parameter. That endpoint will insert a task to run in the
+        // background.
+        var insertTask = Requester.insertTask = function(query) {
+            var params = "query=" + query;
+            var req = Requester.getXmlHttpRequest();
+            req.onreadystatechange = Requester.insertTaskComplete;
+            req.open("GET", "/context/grep/run?" + params, true);
+            req.setRequestHeader(
+                    'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+            req.send();
+
+            return req;
+        };
+
+        // Callback method for insertTask. Checks the result status and
+        // displays a message on the page.
+        var insertTaskComplete = Requester.insertTaskComplete = function() {
+            if (this.readyState == Requester.DONE_STATE) {
+                var status_label = document.getElementById("status");
+                var result = JSON.parse(this.responseText);
+                if (result.success == true) {
+                    status_label.style.color = "Green";
+                    status_label.innerHTML = "Task inserted successfully!"+
+                            " with job_id "+result.job_id;
+                    Requester.job_ids = Requester.job_ids || [];
+                    Requester.job_ids.push({
+                        'job_id':result.job_id,
+                        'done':false,
+                        'query':result.query});
+
+                    //start checking for done
+                    if(Requester.done_check_timer)
+                    {
+                        window.clearTimeout(Requester.done_check_timer);
+                    }
+                    Requester.done_check_timer = setTimeout(Requester.getJobStatus,1000);
+
+                } else {
+                    status_label.style.color = "Red";
+                    status_label.innerHTML = result.message;
+                }
+            }
+        };
+
+        // Make an ajax request to get the current job status.
+        var getJobStatus = Requester.getJobStatus = function() {
+            var job_id = Requester.job_ids.pop();
+            if(job_id && job_id.job_id)
+            {
+                Requester.job_ids.push(job_id);
+                var req = Requester.getXmlHttpRequest();
+                req.onreadystatechange = Requester.showJobStatus;
+                req.open("GET", "/context/grep/check?job_id="+job_id.job_id, true);
+                req.setRequestHeader(
+                        'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+                req.send();
+            }
+        };
+
+        // Callback for getStatus that displays the status returned in the
+        // payload as a table on the page.
+        var showJobStatus = Requester.showJobStatus = function() {
+            if (this.readyState == Requester.DONE_STATE) {
+                var job_status = document.getElementById("job_status");
+                var result = JSON.parse(this.responseText);
+                if(result)
+                {
+                    job_status.innerHTML = "Done, getting results...";
+                    getJobResults();
+                } else
+                {
+                    //schedule next check for done
+                    if(Requester.done_check_timer)
+                    {
+                        window.clearTimeout(Requester.done_check_timer);
+                    }
+                    Requester.done_check_timer = setTimeout(Requester.getJobStatus,1000);
+                }
+            }
+        };
+
+
+        var getJobResults = Requester.getJobResults = function() {
+            var req = Requester.getXmlHttpRequest();
+            var job_id = Requester.job_ids.pop();
+            if(job_id && job_id.job_id)
+            {
+                req.onreadystatechange = Requester.showJobResults;
+                req.open("GET", "/context/grep/results?job_id="+job_id.job_id, true);
+                req.setRequestHeader(
+                        'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+                req.send();
+            }
+        };
+
+        // Callback for getStatus that displays the status returned in the
+        // payload as a table on the page.
+        var showJobResults = Requester.showJobResults = function() {
+            if (this.readyState == Requester.DONE_STATE) {
+                var job_results = document.getElementById("results_textarea");
+                var job_timeEl = document.getElementById("job_time");
+                var job_idEl = document.getElementById("job_id");
+                var job_status = document.getElementById("job_status");
+                var result = JSON.parse(this.responseText);
+                if(result)
+                {
+                    job_status.innerHTML = "results are below";
+                    job_idEl.innerHTML = result.id;
+                    job_timeEl.innerHTML = result.job_time;
+                    job_results.value = result.result;
+                }
+            }
+        };
+
+        // Runs the search process. Gets the data from the elements on the
+        // page and passes it to insertTask.
+        var run = Requester.run = function() {
+            var query = document.getElementById("query").value;
+
+            Requester.insertTask(query);
+
+            return this;
+        };
+
+        // Setups the search job on the page. Binds onclick events to the
+        // submit and refresh_stats buttons.
+        var setup = Requester.setup = function() {
+            var submit = document.getElementById("submit");
+            submit.onclick = Requester.run;
+
+            return this;
+        };
+
+        setup();
+
+    }).call(this);
+
+</script>
+</body>
+</html>

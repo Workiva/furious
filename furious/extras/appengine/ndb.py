@@ -24,8 +24,16 @@ SIBLING_MARKERS_COMPLETE = True
 SIBLING_MARKERS_INCOMPLETE = False
 
 class Result(ndb.Model):
+    job_time = ndb.FloatProperty(indexed=False)
     result = ndb.JsonProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
+
+    def to_dict(self):
+        return {
+            'id':self.key.id(),
+            'job_time':self.job_time,
+            'result':self.result
+        }
 
 class MarkerTree(ndb.Model):
     tree = ndb.JsonProperty()
@@ -83,7 +91,7 @@ class MarkerPersist(ndb.Model):
             group_key = self.group
 
         if group_key:
-            logging.info("bubble up")
+            logging.info("bubble up to group: {0}".format(group_key.id()))
             group_marker = group_key.get()
             if group_marker:
                 if not self.group:
@@ -173,12 +181,14 @@ class MarkerPersist(ndb.Model):
         ndb.delete_multi(keys_to_delete)
 
     def update_done(self):
-        logging.info("update done")
+        logging.info("update done for : {0}".format(self.key.id()))
         if not self.children and self.done:
+            logging.info("no children, done")
             if self.bubble_up_done():
                 pass
             return True
         elif self.children and not self.done:
+            logging.info("children, done")
             #early false might be able to be detected here using a bitmap
             #though that may not really be too much of an optimization because
             # of
@@ -227,7 +237,17 @@ class MarkerPersist(ndb.Model):
                     pass
 
                 return True
+            else:
+                logging.info("not done yet, {0}/{1}".format(len(done_markers),
+                    len(self.children)))
+                done_keys = [marker.key for marker in done_markers]
+                logging.info("missing:")
+                for child_key in self.children:
+                    if child_key not in done_keys:
+                        logging.info("{0}".format(child_key.id()))
+
         elif self.done:
+            logging.info("done, don't bubble up")
             # no need to bubble up, it would have been done already
             return True
 
