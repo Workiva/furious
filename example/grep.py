@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+"""This is a Furious example that greps the source code of the application and
+logs a message with each line that satisifes the input regular expression."""
+
 import logging
 import os
 import re
@@ -26,6 +29,10 @@ from furious.async import Async
 
 
 class GrepHandler(webapp2.RequestHandler):
+    """This is the handler that starts off a grep run. It takes the query out
+    of the query string and starts a new Furious Context to run all of the
+    Asyncs in."""
+
     def get(self):
         query = self.request.get('query')
         curdir = os.getcwd()
@@ -37,16 +44,24 @@ class GrepHandler(webapp2.RequestHandler):
 
 @defaults(callbacks={'success': log_results})
 def build_and_start(query, directory):
-        async_task = Async(target=grep, args=[query, directory])
-        async_task.start()
+    """This function will create and then start a new Async task with the
+    default callbacks argument defined in the decorator."""
+
+    Async(target=grep, args=[query, directory]).start()
 
 
 def grep_file(query, item):
+    """This function performs the actual grep on a given file."""
     return ['%s: %s' % (item, line) for line in open(item)
             if re.search(query, line)]
 
 
 def grep(query, directory):
+    """This function will search through the directory structure of the
+    application and for each directory it finds it launches an Async task to
+    run itself. For each .py file it finds, it actually greps the file and then
+    returns the found output."""
+
     dir_contents = os.listdir(directory)
     results = []
     for item in dir_contents:
@@ -60,6 +75,8 @@ def grep(query, directory):
 
 
 def log_results():
+    """This is the callback that is run once the Async task is finished. It
+    takes the output from grep and logs it."""
     from furious.context import get_current_async
 
     async = get_current_async()
