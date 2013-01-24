@@ -249,7 +249,7 @@ background-color:#FFFFFF;
         // as url parameter. That endpoint will insert a task to run in the
         // background.
         var insertTask = Requester.insertTask = function(query) {
-            var params = "query=" + query;
+            var params = "query=" + encodeURIComponent(query);
             showProgressBar();
             var req = Requester.getXmlHttpRequest();
             req.onreadystatechange = Requester.insertTaskComplete;
