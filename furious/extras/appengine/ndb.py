@@ -346,6 +346,8 @@ def handle_done(async):
         mp.done = True
         mp.result = async.result
         mp.put()
+        # at this point another task's update_done can tell
+        # if this task is done
         mp.update_done()
 
 class NDBContextPersistenceEngine(object):

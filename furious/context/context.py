@@ -43,6 +43,8 @@ Usage:
 """
 import logging
 import uuid
+from google.appengine.api import memcache
+import time
 from furious.context.marker import Marker
 from furious.context.marker import make_markers_for_tasks
 
@@ -52,7 +54,6 @@ from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import function_path_to_reference
 from ..job_utils import get_function_path_and_options
-
 
 class ContextAlreadyStartedError(Exception):
     """Attempt to set context on an Async that is already executing in a
@@ -86,6 +87,9 @@ class Context(object):
     @property
     def id(self):
         return self._id
+
+    def check_done_url(self):
+        return "/_context_job/{0}/done".format(self.id)
 
     def __enter__(self):
         return self
@@ -149,8 +153,17 @@ class Context(object):
 
     def start(self):
         """Insert this Context's tasks executing."""
-        if self._tasks:
-            self._handle_tasks()
+        if not self._tasks:
+            #in order for callbacks to complete, at least one
+            # task needs to run, so this adds a task who's target
+            # function return None
+            self.add(target=no_task_task)
+
+        #set a start time to time this job
+        memcache.set("JOBTIMESTART:{0}".format(self.id),str(time.time()))
+
+        self._handle_tasks()
+
 
     def _build_task_tree(self):
         """
@@ -266,3 +279,5 @@ def _insert_tasks(tasks, queue, transactional=False):
         _insert_tasks(tasks[:count / 2], queue, transactional)
         _insert_tasks(tasks[count / 2:], queue, transactional)
 
+def no_task_task():
+    return None

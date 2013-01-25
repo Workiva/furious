@@ -271,9 +271,10 @@ background-color:#FFFFFF;
                     status_label.style.color = "Green";
                     status_label.innerHTML = "Task inserted successfully!"+
                             " with job_id "+result.job_id;
-                    Requester.job_ids = Requester.job_ids || [];
-                    Requester.job_ids.push({
+                    Requester.jobs = Requester.jobs || [];
+                    Requester.jobs.push({
                         'job_id':result.job_id,
+                        'check_done_url':result.check_done_url,
                         'done':false,
                         'query':result.query});
 
@@ -293,13 +294,13 @@ background-color:#FFFFFF;
 
         // Make an ajax request to get the current job status.
         var getJobStatus = Requester.getJobStatus = function() {
-            var job_id = Requester.job_ids.pop();
-            if(job_id && job_id.job_id)
+            var job = Requester.jobs.pop();
+            if(job && job.check_done_url)
             {
-                Requester.job_ids.push(job_id);
+                Requester.jobs.push(job);
                 var req = Requester.getXmlHttpRequest();
                 req.onreadystatechange = Requester.showJobStatus;
-                req.open("GET", "/context/grep/check?job_id="+job_id.job_id, true);
+                req.open("GET", job.check_done_url, true);
                 req.setRequestHeader(
                         'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
                 req.send();
@@ -311,11 +312,14 @@ background-color:#FFFFFF;
         var showJobStatus = Requester.showJobStatus = function() {
             if (this.readyState == Requester.DONE_STATE) {
                 var job_status = document.getElementById("job_status");
-                var result = JSON.parse(this.responseText);
-                if(result)
+                var result_retrieval_url = JSON.parse(this.responseText);
+                if(result_retrieval_url)
                 {
+                    // remove job from stack
+                    var job = Requester.jobs.pop();
+
                     job_status.innerHTML = "Done, getting results...";
-                    getJobResults();
+                    getJobResults(result_retrieval_url);
                 } else
                 {
                     //schedule next check for done
@@ -329,17 +333,13 @@ background-color:#FFFFFF;
         };
 
 
-        var getJobResults = Requester.getJobResults = function() {
+        var getJobResults = Requester.getJobResults = function(result_retrieval_url) {
             var req = Requester.getXmlHttpRequest();
-            var job_id = Requester.job_ids.pop();
-            if(job_id && job_id.job_id)
-            {
-                req.onreadystatechange = Requester.showJobResults;
-                req.open("GET", "/context/grep/results?job_id="+job_id.job_id, true);
-                req.setRequestHeader(
-                        'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
-                req.send();
-            }
+            req.onreadystatechange = Requester.showJobResults;
+            req.open("GET", result_retrieval_url, true);
+            req.setRequestHeader(
+                    'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+            req.send();
         };
 
         // Callback for getStatus that displays the status returned in the

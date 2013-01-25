@@ -1,5 +1,5 @@
 #
-# Copyright 2012 WebFilings, LLC
+# Copyright 2013 WebFilings, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import logging
 
 from ..async import Async
 from .. import context
+from furious.context import get_current_async
 from ..processors import run_job
 
 
@@ -31,6 +32,10 @@ def process_async_task(headers, request_body):
     logging.info(async._function_path)
 
     with context.execution_context_from_async(async):
+        logging.info("now in context")
+        #debug: is it there now?
+        inner_async = get_current_async()
+        #
         run_job()
 
     return 200, async._function_path
