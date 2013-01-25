@@ -1,5 +1,5 @@
 handlers:
 - url: /_ah/queue/async.*
-  script: furious.handlers.webapp.app
+  script: furious.handlers.django_helper.app
   login: admin
 
