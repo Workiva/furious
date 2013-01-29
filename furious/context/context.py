@@ -101,12 +101,13 @@ class Context(object):
         object as argumnets.  Returns the newly added Async object.
         """
         from ..async import Async
+        from ..batcher import Message
 
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
-        if not isinstance(target, Async):
+        if not isinstance(target, (Async, Message)):
             target = Async(target, args, kwargs, **options)
 
         self._tasks.append(target)
