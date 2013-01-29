@@ -37,8 +37,10 @@ class GrepHandler(webapp2.RequestHandler):
         query = self.request.get('query')
         curdir = os.getcwd()
 
+        # create the context and start the first Async
         with context.new():
             build_and_start(query, curdir)
+
         self.response.out.write('starting grep for query: %s' % query)
 
 
@@ -79,7 +81,10 @@ def log_results():
     takes the output from grep and logs it."""
     from furious.context import get_current_async
 
+    # Get the recently finished Async object.
     async = get_current_async()
 
+    # Pull out the result data and log it.
     for result in async.result:
         logging.info(result)
+
