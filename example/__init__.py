@@ -30,9 +30,9 @@ from .callback import AsyncErrorCallbackHandler
 from .callback import AsyncAsyncCallbackHandler
 from .simple_workflow import SimpleWorkflowHandler
 from .complex_workflow import ComplexWorkflowHandler
-from .batcher import BatcherViewHandler
 from .batcher import BatcherHandler
 from .batcher import BatcherStatsHandler
+from .batcher import BatcherViewHandler
 
 config = {
     'webapp2_extras.jinja2': {
