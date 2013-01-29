@@ -21,251 +21,25 @@ The examples demonstrate basic task execution, and also the basics of creating
 more complicated processing pipelines.
 """
 
-import logging
-
 import webapp2
 
+from .async_intro import AsyncIntroHandler
+from .batcher import BatcherHandler
+from .batcher import BatcherStatsHandler
+from .batcher import BatcherViewHandler
+from .callback import AsyncCallbackHandler
+from .callback import AsyncErrorCallbackHandler
+from .callback import AsyncAsyncCallbackHandler
+from .complex_workflow import ComplexWorkflowHandler
+from .context_intro import ContextIntroHandler
 from .grep import GrepHandler
-from furious.async import defaults
-
-
-class AsyncIntroHandler(webapp2.RequestHandler):
-    """Demonstrate the creation and insertion of a single furious task."""
-    def get(self):
-        from furious.async import Async
-
-        # Instantiate an Async object.
-        async_task = Async(
-            target=example_function, args=[1], kwargs={'some': 'value'})
-
-        # Insert the task to run the Async object, note that it may begin
-        # executing immediately or with some delay.
-        async_task.start()
-
-        logging.info('Async job kicked off.')
-
-        self.response.out.write('Successfully inserted Async job.')
-
-
-class ContextIntroHandler(webapp2.RequestHandler):
-    """Demonstrate using a Context to batch insert a group of furious tasks."""
-    def get(self):
-        from furious.async import Async
-        from furious import context
-
-        # Create a new furious Context.
-        with context.new() as ctx:
-            # "Manually" instantiate and add an Async object to the Context.
-            async_task = Async(
-                target=example_function, kwargs={'first': 'async'})
-            ctx.add(async_task)
-            logging.info('Added manual job to context.')
-
-            # Use the shorthand style, note that add returns the Async object.
-            for i in xrange(5):
-                ctx.add(target=example_function, args=[i])
-                logging.info('Added job %d to context.', i)
-
-        # When the Context is exited, the tasks are inserted (if there are no
-        # errors).
-
-        logging.info('Async jobs for context batch inserted.')
-
-        self.response.out.write('Successfully inserted a group of Async jobs.')
-
-
-class AsyncCallbackHandler(webapp2.RequestHandler):
-    """Demonstrate setting an Async callback."""
-    def get(self):
-        from furious.async import Async
-
-        # Instantiate an Async object, specifying a 'success' callback.
-        async_task = Async(
-            target=example_function, args=[1], kwargs={'some': 'value'},
-            callbacks={'success': all_done}
-        )
-
-        # Insert the task to run the Async object.  The success callback will
-        # be executed in the furious task after the job is executed.
-        async_task.start()
-
-        logging.info('Async job kicked off.')
-
-        self.response.out.write('Successfully inserted Async job.')
-
-
-class AsyncErrorCallbackHandler(webapp2.RequestHandler):
-    """Demonstrate handling an error using an Async callback."""
-    def get(self):
-        from furious.async import Async
-
-        # Instantiate an Async object, specifying a 'error' callback.
-        async_task = Async(
-            target=dir, args=[1, 2, 3],
-            callbacks={'error': handle_an_error}
-        )
-
-        # Insert the task to run the Async object.  The error callback will be
-        # executed in the furious task after the job has raised an exception.
-        async_task.start()
-
-        logging.info('Erroneous Async job kicked off.')
-
-        self.response.out.write('Successfully inserted Async job.')
-
-
-class AsyncAsyncCallbackHandler(webapp2.RequestHandler):
-    """Demonstrate using an Async as a callback for another Async."""
-    def get(self):
-        from furious.async import Async
-
-        # Instantiate an Async object to act as our success callback.
-        # NOTE: Your async.result is not directly available from the
-        # success_callback Async, you will need to persist the result
-        # and fetch it from the other Async if needed.
-        success_callback = Async(
-            target=example_function, kwargs={'it': 'worked'}
-        )
-
-        # Instantiate an Async object, setting the success_callback to the
-        # above Async object.
-        async_task = Async(
-            target=example_function, kwargs={'trigger': 'job'},
-            callbacks={'success': success_callback}
-        )
-
-        # Insert the task to run the Async object.
-        async_task.start()
-
-        logging.info('Async job kicked off.')
-
-        self.response.out.write('Successfully inserted Async job.')
-
-
-class SimpleWorkflowHandler(webapp2.RequestHandler):
-    """Demonstrate constructing a simple state machine."""
-    def get(self):
-        from furious.async import Async
-
-        # Instantiate an Async object to start the chain.
-        Async(target=simple_state_machine).start()
-
-        logging.info('Async chain kicked off.')
-
-        self.response.out.write('Successfully inserted Async chain starter.')
-
-
-class ComplexWorkflowHandler(webapp2.RequestHandler):
-    """Demonstrate constructing a more complex state machine."""
-    def get(self):
-        from furious.async import Async
-
-        # Instantiate an Async object to start the machine in state alpha.
-        Async(target=complex_state_generator_alpha).start()
-
-        logging.info('Async chain kicked off.')
-
-        self.response.out.write('Successfully inserted Async chain starter.')
-
-
-def example_function(*args, **kwargs):
-    """This function is called by furious tasks to demonstrate usage."""
-    logging.info('example_function executed with args: %r, kwargs: %r',
-                 args, kwargs)
-
-    return args
-
-
-def all_done():
-    """Will be run if the async task runs successfully."""
-    from furious.context import get_current_async
-
-    async = get_current_async()
-
-    logging.info('async task complete, value returned: %r', async.result)
-
-
-def handle_an_error():
-    """Will be run if the async task raises an unhandled exception."""
-    import os
-
-    from furious.context import get_current_async
-
-    exception_info = get_current_async().result
-
-    logging.info('async job blew up, exception info: %r', exception_info)
-
-    retries = int(os.environ['HTTP_X_APPENGINE_TASKRETRYCOUNT'])
-    if retries < 2:
-        raise exception_info.exception
-    else:
-        logging.info('Caught too many errors, giving up now.')
-
-
-def simple_state_machine():
-    """Pick a number, if it is more than some cuttoff continue the chain."""
-    from random import random
-
-    from furious.async import Async
-
-    number = random()
-    logging.info('Generating a number... %s', number)
-
-    if number > 0.25:
-        logging.info('Continuing to do stuff.')
-        return Async(target=simple_state_machine)
-
-    return number
-
-
-@defaults(callbacks={'success': "example.state_machine_success"})
-def complex_state_generator_alpha(last_state=''):
-    """Pick a state."""
-    from random import choice
-
-    states = ['ALPHA', 'ALPHA', 'ALPHA', 'BRAVO', 'BRAVO', 'DONE']
-    if last_state:
-        states.remove(last_state)  # Slightly lower chances of previous state.
-
-    state = choice(states)
-
-    logging.info('Generating a state... %s', state)
-
-    return state
-
-
-@defaults(callbacks={'success': "example.state_machine_success"})
-def complex_state_generator_bravo(last_state=''):
-    """Pick a state."""
-    from random import choice
-
-    states = ['ALPHA', 'BRAVO', 'BRAVO', 'DONE']
-    if last_state:
-        states.remove(last_state)  # Slightly lower chances of previous state.
-
-    state = choice(states)
-
-    logging.info('Generating a state... %s', state)
-
-    return state
-
-
-def state_machine_success():
-    """A positive result!  Iterate!"""
-    from furious.async import Async
-    from furious.context import get_current_async
-
-    result = get_current_async().result
-
-    if result == 'ALPHA':
-        logging.info('Inserting continuation for state %s.', result)
-        return Async(target=complex_state_generator_alpha, args=[result])
-
-    elif result == 'BRAVO':
-        logging.info('Inserting continuation for state %s.', result)
-        return Async(target=complex_state_generator_bravo, args=[result])
-
-    logging.info('Done working, stop now.')
+from .simple_workflow import SimpleWorkflowHandler
+
+config = {
+    'webapp2_extras.jinja2': {
+        'template_path': 'example/templates'
+    }
+}
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
@@ -275,6 +49,9 @@ app = webapp2.WSGIApplication([
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
-    ('/grep', grep.GrepHandler),
-])
+    ('/batcher', BatcherViewHandler),
+    ('/batcher/run', BatcherHandler),
+    ('/batcher/stats', BatcherStatsHandler),
+    ('/grep', GrepHandler),
+], config=config)
 

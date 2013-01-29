@@ -222,11 +222,27 @@ class Async(object):
         return Task(**kwargs)
 
     def start(self):
-        """Insert the task into the requested queue, 'default' if non given."""
-        from google.appengine.api.taskqueue import Queue
+        """Insert the task into the requested queue, 'default' if non given.
+
+        If a TransientError is hit the task will re-insert the task.
+
+        If a TaskAlreadyExistsError or TombstonedTaskError is hit the task will
+        silently fail.
+        """
+        from google.appengine.api import taskqueue
 
         task = self.to_task()
-        Queue(name=self.get_queue()).add(task)
+
+        try:
+            taskqueue.Queue(name=self.get_queue()).add(task)
+
+        except taskqueue.TransientError:
+            taskqueue.Queue(name=self.get_queue()).add(task)
+
+        except (taskqueue.TaskAlreadyExistsError,
+                taskqueue.TombstonedTaskError):
+            return
+
         # TODO: Return a "result" object.
 
     def to_dict(self):
@@ -331,4 +347,3 @@ def _decode_callbacks(encoded_callbacks):
         callbacks[event] = callback
 
     return callbacks
-
