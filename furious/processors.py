@@ -19,15 +19,14 @@ functions.
 """
 
 from collections import namedtuple
+import logging
 
 from .async import Async
 from .context import Context
 from .context import get_current_async
 from .job_utils import function_path_to_reference
 
-
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
-
 
 class AsyncError(Exception):
     """The base class other Async errors can subclass."""
@@ -35,6 +34,8 @@ class AsyncError(Exception):
 
 def run_job():
     """Takes an async object and executes its job."""
+    from .context.marker import handle_done
+    logging.info('run_job')
     async = get_current_async()
     async_options = async.get_options()
 
@@ -54,6 +55,7 @@ def run_job():
 
     try:
         async.executing = True
+        kwargs.pop('_persistence_id',None)
         async.result = function(*args, **kwargs)
     except Exception as e:
         async.result = encode_exception(e)
@@ -64,7 +66,32 @@ def run_job():
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
+        if isinstance(processor_result, (Async)):
+            #clone _persistence_id so the context's
+            #success callback gets hit when the this next async is done
+            processor_result._persistence_id = async._persistence_id
+            processor_result._batch_id = async._batch_id
+        elif isinstance(processor_result, (Context)):
+            #the new context success callback will need to
+            #trigger an async with this _persistence_id
+            #so as to bubble up the done state to the
+            #original context success callback
+            #should it finish by just starting an async
+            #with this _persistence_id?
+            #Should we provide it automatically when any Context
+            #completes by starting
+            #an async with the batch id as it's _persistence_id?
+            if hasattr(processor_result,'_id'):
+                logging.info("set sub context's id")
+                processor_result._id = async._persistence_id
         processor_result.start()
+    else:
+        #an async must be able to not mark itself as done
+        #if it wants to callback with another async
+        #giving that async it's persistence id
+        #then when that async is done, it can initiate the
+        #bubble up done process resulting in the batch completion
+        handle_done(async)
 
 
 def encode_exception(exception):
@@ -82,6 +109,7 @@ def encode_exception(exception):
 
 def _process_results():
     """Process the results from an Async job."""
+    logging.info("_process_results")
     async = get_current_async()
     callbacks = async.get_callbacks()
 

@@ -41,7 +41,19 @@ Usage:
             queue='workgroup')
 
 """
+import logging
+import uuid
+from google.appengine.api import memcache
+import time
+from furious.context.marker import Marker
+from furious.context.marker import make_markers_for_tasks
 
+import uuid
+
+from ..job_utils import decode_callbacks
+from ..job_utils import encode_callbacks
+from ..job_utils import function_path_to_reference
+from ..job_utils import get_function_path_and_options
 
 class ContextAlreadyStartedError(Exception):
     """Attempt to set context on an Async that is already executing in a
@@ -55,12 +67,29 @@ class Context(object):
     NOTE: Use the module's new function to get a context, do not manually
     instantiate.
     """
-    def __init__(self, insert_tasks=None):
+    def __init__(self, **options):
         self._tasks = []
 
-        self.insert_tasks = insert_tasks or _insert_tasks
-
+        id = options.get('id')
+        if not id:
+            id = uuid.uuid4().hex
         self._tasks_inserted = False
+        self._id = id
+
+        self._options = options
+
+        self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
+        if not callable(self._insert_tasks):
+            raise TypeError('You must provide a valid insert_tasks function.')
+
+        self._persistence_engine = options.pop('persistence_engine', None)
+
+    @property
+    def id(self):
+        return self._id
+
+    def check_done_url(self):
+        return "/_context_job/{0}/done".format(self.id)
 
     def __enter__(self):
         return self
@@ -72,14 +101,23 @@ class Context(object):
         return False
 
     def _handle_tasks(self):
-        """Convert all Async's into tasks, then insert them into queues."""
+        """Build a task tree that will allow
+        aggregation of the context's tasks' results.
+        Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
+        logging.info("start and make async tree")
+
+        marker = self._build_task_tree()
+        marker.persist()
+
+        logging.info("self._persistence_id = %s"%self.id)
+
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
-            self.insert_tasks(tasks, queue=queue)
+            self._insert_tasks(tasks, queue=queue)
 
         self._tasks_inserted = True
 
@@ -97,8 +135,8 @@ class Context(object):
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
 
-        Takes an Async object or the argumnets to construct an Async
-        object as argumnets.  Returns the newly added Async object.
+        Takes an Async object or the arguments to construct an Async
+        object as arguments.  Returns the newly added Async object.
         """
         from ..async import Async
         from ..batcher import Message
@@ -116,8 +154,108 @@ class Context(object):
 
     def start(self):
         """Insert this Context's tasks executing."""
-        if self._tasks:
-            self._handle_tasks()
+        if not self._tasks:
+            #in order for callbacks to complete, at least one
+            # task needs to run, so this adds a task who's target
+            # function return None
+            self.add(target=no_task_task)
+
+        #set a start time to time this job
+        memcache.set("JOBTIMESTART:{0}".format(self.id),str(time.time()))
+
+        self._handle_tasks()
+
+
+    def _build_task_tree(self):
+        """
+        """
+        encoded_callbacks = None
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            encoded_callbacks = encode_callbacks(callbacks)
+        marker = Marker(id=str(self.id), group_id=None,
+            internal_vertex=True,
+            batch_id=self.id,
+            callbacks=encoded_callbacks)
+
+        marker.children, marker.all_children_leaves = make_markers_for_tasks(
+            self._tasks, group=marker,
+            batch_id=self.id,context_callbacks=encoded_callbacks)
+        return marker
+
+    def persist(self):
+        """Store the context."""
+        if not self._persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to persist this context.')
+
+        return self._persistence_engine.store_context(self.id, self.to_dict())
+
+    @classmethod
+    def load(cls, context_id, persistence_engine):
+        """Load and instantiate a Context from the persistence_engine."""
+        if not persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to load the context.')
+
+        return cls.from_dict(persistence_engine.load_context(context_id))
+
+    def to_dict(self):
+        """Return this Context as a dict suitable for json encoding."""
+        import copy
+
+        options = copy.deepcopy(self._options)
+
+        if self._insert_tasks:
+            options['insert_tasks'], _ = get_function_path_and_options(
+                self._insert_tasks)
+
+        if self._persistence_engine:
+            options['persistence_engine'], _ = get_function_path_and_options(
+                self._persistence_engine)
+
+        options.update({
+            '_tasks_inserted': self._tasks_inserted,
+            '_task_ids': [async.id for async in self._tasks]
+        })
+
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            options['callbacks'] = encode_callbacks(callbacks)
+
+        return options
+
+    @classmethod
+    def from_dict(cls, context):
+        """Return a context job from a dict output by Context.to_dict."""
+        import copy
+
+        context_options = copy.deepcopy(context)
+
+        tasks_inserted = context_options.pop('_tasks_inserted', False)
+        task_ids = context_options.pop('_task_ids', [])
+
+        insert_tasks = context_options.pop('insert_tasks', None)
+        if insert_tasks:
+            context_options['insert_tasks'] = function_path_to_reference(
+                insert_tasks)
+
+        persistence_engine = context_options.pop('persistence_engine', None)
+        if persistence_engine:
+            context_options['persistence_engine'] = function_path_to_reference(
+                persistence_engine)
+
+        # If there are callbacks, reconstitute them.
+        callbacks = context_options.pop('callbacks', None)
+        if callbacks:
+            context_options['callbacks'] = decode_callbacks(callbacks)
+
+        context = cls(**context_options)
+
+        context._tasks_inserted = tasks_inserted
+        context._task_ids = task_ids
+
+        return context
 
 
 def _insert_tasks(tasks, queue, transactional=False):
@@ -142,3 +280,5 @@ def _insert_tasks(tasks, queue, transactional=False):
         _insert_tasks(tasks[:count / 2], queue, transactional)
         _insert_tasks(tasks[count / 2:], queue, transactional)
 
+def no_task_task():
+    return None

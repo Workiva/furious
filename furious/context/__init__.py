@@ -39,6 +39,7 @@ Usage:
 """
 
 from . import _local
+import logging
 from .context import Context
 
 from . import _execution
@@ -59,10 +60,10 @@ class NotInContextError(Exception):
     """Call that requires context made outside context."""
 
 
-def new():
+def new(**options):
     """Get a new furious context and add it to the registry."""
 
-    new_context = Context()
+    new_context = Context(**options)
 
     _local.get_local_context().registry.append(new_context)
 
@@ -74,10 +75,16 @@ def get_current_async():
     or None if not in an Async job.
     """
     local_context = _local.get_local_context()
+    if hasattr(local_context,'_initialized'):
+        logging.info("_initialized: {0}".format(local_context._initialized))
 
+    logging.info("about to get executing async")
     if local_context._executing_async:
+        logging.info("_executing_async: {0}".format(local_context._executing_async))
         return local_context._executing_async[-1]
+    logging.info("no executing async")
 
+    logging.info("dir(local_context): {0}".format(dir(local_context)))
     raise NotInContextError('Not in an _ExecutionContext.')
 
 

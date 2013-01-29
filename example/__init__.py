@@ -24,10 +24,15 @@ more complicated processing pipelines.
 import webapp2
 
 from .async_intro import AsyncIntroHandler
-from .context_intro import ContextIntroHandler
+from .callback import AsyncAsyncCallbackHandler
 from .callback import AsyncCallbackHandler
 from .callback import AsyncErrorCallbackHandler
-from .callback import AsyncAsyncCallbackHandler
+from .complex_workflow import ComplexWorkflowHandler
+from .context_complex import ContextComplexHandler
+from .context_grep import ContextGrepHandler
+from .context_grep import GrepViewHandler
+from .context_intro import ContextIntroHandler
+from .grep import GrepHandler
 from .simple_workflow import SimpleWorkflowHandler
 from .complex_workflow import ComplexWorkflowHandler
 from .batcher import BatcherHandler
@@ -42,10 +47,14 @@ config = {
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
-    ('/context', ContextIntroHandler),
     ('/callback', AsyncCallbackHandler),
-    ('/callback/error', AsyncErrorCallbackHandler),
     ('/callback/async', AsyncAsyncCallbackHandler),
+    ('/callback/error', AsyncErrorCallbackHandler),
+    ('/context', ContextIntroHandler),
+    ('/context/complex', ContextComplexHandler),
+    ('/context/grep', GrepViewHandler),
+    ('/context/grep/run', ContextGrepHandler),
+    ('/grep', GrepHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
     ('/batcher', BatcherViewHandler),

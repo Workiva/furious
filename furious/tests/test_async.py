@@ -331,7 +331,9 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'other': 'zzz', 'nested': 1}
         headers = {'some': 'thing', 'fun': 1}
-        options = {'headers': headers, 'task_args': task_args}
+        options = {'headers': headers, 'task_args': task_args,
+                   '_batch_id': None,
+                   '_persistence_id': None}
 
         job = Async('nonexistant', **options.copy())
 
@@ -343,10 +345,10 @@ class TestAsync(unittest.TestCase):
         """Ensure to_dict correctly encodes callbacks."""
         from furious.async import Async
 
-        def success_function():
-            pass
-
-        options = {'callbacks': {
+        options = {
+            '_batch_id': None,
+            '_persistence_id': None,
+            'callbacks': {
             'success': self.__class__.test_to_dict_with_callbacks,
             'failure': "failure_function",
             'exec': Async(target=dir)
@@ -359,7 +361,9 @@ class TestAsync(unittest.TestCase):
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "failure_function",
-            'exec': {'job': ('dir', None, None)}
+            'exec': {'job': ('dir', None, None),
+                     '_batch_id': None,
+                     '_persistence_id': None,}
         }
 
         self.assertEqual(options, job.to_dict())
@@ -405,7 +409,9 @@ class TestAsync(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         self.assertEqual(check_callbacks, callbacks)
-        self.assertEqual({'job': ('dir', None, None)}, exec_callback.to_dict())
+        self.assertEqual({'_batch_id': None, '_persistence_id': None,
+                          'job': ('dir', None, None)},
+            exec_callback.to_dict())
 
     def test_reconstitution(self):
         """Ensure to_dict(job.from_dict()) returns the same thing."""
@@ -414,7 +420,9 @@ class TestAsync(unittest.TestCase):
         headers = {'some': 'thing', 'fun': 1}
         job = ('test', None, None)
         task_args = {'other': 'zzz', 'nested': 1}
-        options = {'job': job, 'headers': headers, 'task_args': task_args}
+        options = {'job': job, 'headers': headers, 'task_args': task_args,
+                   '_batch_id': None,
+                   '_persistence_id': None}
 
         async_job = Async.from_dict(options)
 
@@ -459,6 +467,9 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(eta_posix, task.eta_posix)
         self.assertEqual(expected_url, task.url)
         self.assertEqual(full_headers, task.headers)
+
+        options['task_args']['eta'] = datetime.datetime.fromtimestamp(
+            eta_posix)
 
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
