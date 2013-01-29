@@ -522,14 +522,64 @@ class TestAsync(unittest.TestCase):
         self.assertTrue(job.executed)
 
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start(self, queue_mock):
+    def test_start_hits_transient_error(self, queue_mock):
+        """Ensure the task retries if a transient error is hit."""
+        from google.appengine.api.taskqueue import TransientError
+        from furious.async import Async
+
+        def add(task, *args, **kwargs):
+            def add_second(task, *args, **kwargs):
+                assert task
+
+            queue_mock.return_value.add.side_effect = add_second
+            raise TransientError()
+
+        queue_mock.return_value.add.side_effect = add
+
+        async_job = Async("something", queue='my_queue')
+        async_job.start()
+
+        queue_mock.assert_called_with(name='my_queue')
+        self.assertEqual(2, queue_mock.return_value.add.call_count)
+
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_task_already_exists_error_error(self, queue_mock):
+        """Ensure the task returns if a task already exists error is hit."""
+        from google.appengine.api.taskqueue import TaskAlreadyExistsError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TaskAlreadyExistsError()
+
+        async_job = Async("something", queue='my_queue')
+        async_job.start()
+
+        queue_mock.assert_called_with(name='my_queue')
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_tombstoned_task_error_error(self, queue_mock):
+        """Ensure the task returns if a tombstoned task error is hit."""
+        from google.appengine.api.taskqueue import TombstonedTaskError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TombstonedTaskError()
+
+        async_job = Async("something", queue='my_queue')
+        async_job.start()
+
+        queue_mock.assert_called_with(name='my_queue')
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_runs_successfully(self, queue_mock):
         """Ensure the Task is inserted into the specified queue."""
         from furious.async import Async
 
         async_job = Async("something", queue='my_queue')
-        # task = async_job.to_task()
         async_job.start()
+
+        queue_mock.assert_called_once_with(name='my_queue')
+        self.assertTrue(queue_mock.return_value.add.called)
 
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
-
