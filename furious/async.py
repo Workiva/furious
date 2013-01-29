@@ -347,4 +347,3 @@ def _decode_callbacks(encoded_callbacks):
         callbacks[event] = callback
 
     return callbacks
-
