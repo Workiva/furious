@@ -61,7 +61,7 @@ class BatcherHandler(webapp2.RequestHandler):
         assert value
         assert count
 
-        return color, value, count
+        return color.strip(), value.strip(), count
 
     def get(self):
         from furious import context
@@ -73,7 +73,7 @@ class BatcherHandler(webapp2.RequestHandler):
         except (KeyError, AssertionError):
             response = {
                 "success": False,
-                "message": "Invalid paramters."
+                "message": "Invalid parameters."
             }
             self.response.write(json.dumps(response))
             return
@@ -150,7 +150,8 @@ def process_messages(tag, retries=0):
     message_iterator = MessageIterator(tag, MESSAGE_DEFAULT_QUEUE, 500)
 
     # get the stats object from cache
-    stats = memcache.get(tag)
+    client = memcache.Client()
+    stats = client.get(tag)
 
     # json decode it if it exists otherwise get the default state.
     stats = json.loads(stats) if stats else get_default_stats()
@@ -171,7 +172,8 @@ def process_messages(tag, retries=0):
         set_stats(stats["colors"][color], value)
 
     # insert the stats back into cache
-    memcache.set(tag, json.dumps(stats))
+    if not client.cas(tag, json.dumps(stats)):
+        raise Exception("Transaction Collision.")
 
     # bump the process batch id
     bump_batch(tag)
@@ -201,6 +203,8 @@ def set_stats(stats, value):
     stats["value"] += value
     stats["average"] = stats["value"] / stats["total_count"]
 
+    # this is just a basic example and not the best way to track aggregation.
+    # for max and min old there are cases where this will not work correctly.
     if value > stats["max"]:
         stats["max"] = value
 
