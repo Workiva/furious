@@ -48,7 +48,8 @@ class ContextGrepHandler(webapp2.RequestHandler):
         self.response.out.write(json.dumps({
             'success':True,
             'job_id':ctx.id,
-            'check_done_url':ctx.check_done_url(),
+            'check_done_url':"/_context_job/{0}/done".format(ctx.id),
+            'result_url':"/_context_job/{0}/result".format(ctx.id),
             'query':query,
         }))
 

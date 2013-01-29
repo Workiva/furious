@@ -20,6 +20,8 @@ from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
 from furious.job_utils import function_path_to_reference
 from furious.job_utils import get_function_path_and_options
+from furious.config import get_configured_persistence_module
+persistence_module = get_configured_persistence_module()
 
 BATCH_SIZE = 10
 CHILDREN_ARE_LEAVES = True
@@ -86,6 +88,10 @@ class InvalidLeafId(Exception):
 
 class AsyncNeedsPersistenceID(Exception):
     """This Async needs to have a _persistence_id to create a Marker."""
+
+
+def handle_done(async):
+    return persistence_module.handle_done(async)
 
 class Marker(object):
     def __init__(self, **options):
@@ -179,8 +185,7 @@ class Marker(object):
                callable(self._persistence_engine.store_context_marker):
             return self._persistence_engine.store_context_marker(self)
         else:
-            from furious.extras.appengine.ndb import persist
-            return persist(self)
+            return persistence_module.persist(self)
 
 
 

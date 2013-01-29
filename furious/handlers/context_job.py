@@ -14,37 +14,57 @@
 # limitations under the License.
 #
 import json
-from google.appengine.api import memcache
-from google.appengine.ext import ndb
 
 import webapp2
 from webapp2 import Route
+from furious.config import get_configured_persistence_module
+persistence_module = get_configured_persistence_module()
+
+def get_status(id):
+    """Helper function that gets the status of a job
+    Args:
+        id: the id of a Context job
+    Returns:
+        a dictionary indicating the status of the job
+    """
+    status = {
+        'progress':0,
+        'aborted':False,
+        'complete':False,
+        'warnings':False,
+        'errors':False
+    }
+
+    stored_status = persistence_module.get_job_status(id)
+    status.update(stored_status)
+
+    return status
+
+def get_result(id,cursor=None):
+    return persistence_module.get_result(id,cursor)
+
 
 class DoneCheckHandler(webapp2.RequestHandler):
     def get(self, id):
         #subclass and add authorization
+        #TODO: use config to allow user to specify auth function
         self.process(id)
 
     def process(self, id):
         """
         returns a value if the job is done
         """
-        #TODO: add less ephemeral storage fallback
-        #how to handle if the done marker gets cleared from memcache
-        #without this being too slow? ndb entity with auto-caching?
-        status = memcache.get("Furious:{0}".format(id))
-        result_retrieval_url = None
-        if status:
-            result_retrieval_url = "/_context_job/{0}/result".format(id)
+        status = get_status(id)
 
         self.response.content_type = "text/json"
-        self.response.write(json.dumps(result_retrieval_url))
+        self.response.write(json.dumps(status))
 
 
 class ResultRetriever(webapp2.RequestHandler):
     def get(self, id):
         #subclass and add authorization
-        # TODO: use xsrf token for authorization
+        # TODO: use hmac signed id token for authorization
+        #TODO: use config to allow user to specify auth function
         self.process(id)
 
     def process(self, id):
@@ -52,18 +72,10 @@ class ResultRetriever(webapp2.RequestHandler):
         returns the result of the job
         """
 
-        #TODO: change out for persistence abstraction
-        result = ndb.Key('Result',id).get()
-        #TODO: actual results may be too large for one
-        # call, so the results may be an iterator or a
-        # list of keys to results pages of data that the client
-        # or secondary async process can get as needed
-        # TODO: so this needs to handle that result intelligently
-
+        result = get_result(id)
 
         self.response.content_type = "text/json"
-        self.response.write(json.dumps(result.to_dict()
-        if result else result))
+        self.response.write(json.dumps(result))
 
 app = webapp2.WSGIApplication([
     Route('/_context_job/<id:[^/]+>/done', handler=DoneCheckHandler),

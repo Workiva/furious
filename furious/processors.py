@@ -26,9 +26,7 @@ from .context import Context
 from .context import get_current_async
 from .job_utils import function_path_to_reference
 
-
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
-
 
 class AsyncError(Exception):
     """The base class other Async errors can subclass."""
@@ -36,7 +34,7 @@ class AsyncError(Exception):
 
 def run_job():
     """Takes an async object and executes its job."""
-    from furious.extras.appengine.ndb import handle_done
+    from .context.marker import handle_done
     logging.info('run_job')
     async = get_current_async()
     async_options = async.get_options()

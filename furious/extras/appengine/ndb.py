@@ -35,6 +35,23 @@ class Result(ndb.Model):
             'result':self.result
         }
 
+def get_job_status(id):
+    complete = memcache.get("Furious:{0}".format(id))
+    status   = {}
+    if complete:
+        status.update({'complete':True})
+    return status
+
+def get_result(id,cursor=None):
+    result = ndb.Key('Result',id).get()
+    #TODO: actual results may be too large for one
+    # call, so the results may be an iterator or a
+    # list of keys to results pages of data that the client
+    # or secondary async process can get as needed
+    # TODO: so this needs to handle that result intelligently
+    return result.to_dict() if result else result
+
+
 class MarkerTree(ndb.Model):
     tree = ndb.JsonProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
@@ -62,6 +79,11 @@ class MarkerPersist(ndb.Model):
     all_children_leaves = ndb.BooleanProperty(indexed=False)
     internal_vertex = ndb.BooleanProperty(indexed=False)
 
+    @staticmethod
+    def do_any_have_children(markers):
+        for marker in markers:
+            if marker.children:
+                return True
 
     def is_done(self):
         if self.done:
@@ -73,7 +95,8 @@ class MarkerPersist(ndb.Model):
             if len(done_markers) == len(self.children):
                 return True
 
-    def bubble_up_done(self):
+
+    def get_group_key(self):
         #get possible group key from id
         from furious.context.marker import leaf_persistence_id_to_group_id
         from furious.context.marker import InvalidLeafId
@@ -90,16 +113,16 @@ class MarkerPersist(ndb.Model):
             #it is in internal vertex
             group_key = self.group
 
+        return group_key
+
+
+    def bubble_up_done(self):
+        group_key = self.get_group_key()
+
         if group_key:
             logging.info("bubble up to group: {0}".format(group_key.id()))
             group_marker = group_key.get()
             if group_marker:
-                if not self.group:
-                    #this is the top level of a sub context
-                    #so the group marker does not in fact
-                    #have all children as leaves
-                    group_marker.all_children_leaves = False
-                    group_marker.put()
                 return group_marker.update_done()
         else:
             #it is the top level
@@ -134,7 +157,7 @@ class MarkerPersist(ndb.Model):
             #or just try instantiating an async and update_done it
 
             #cleanup
-            self.delete_leaves()
+            #leave cleanup for a manual cleanup
             return True
 
     def _list_children_keys(self):
@@ -211,6 +234,11 @@ class MarkerPersist(ndb.Model):
                 #use the internal_vertex_combiner function
                 #to  reduce the results
                 combiner = None
+                if not self.all_children_leaves:
+                    #a leaf child may have been replaced with a Context
+                    self.all_children_leaves = (not MarkerPersist.
+                        do_any_have_children(children_markers))
+
                 if self.callbacks:
                     callbacks = decode_callbacks(self.callbacks)
                     if self.internal_vertex and self.all_children_leaves:

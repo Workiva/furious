@@ -296,6 +296,7 @@ background-color:#FFFFFF;
                     push(Requester.jobs,{
                         'job_id':result.job_id,
                         'check_done_url':result.check_done_url,
+                        'result_url':result.result_url,
                         'done':false,
                         'query':result.query});
 
@@ -333,14 +334,14 @@ background-color:#FFFFFF;
         var showJobStatus = Requester.showJobStatus = function() {
             if (this.readyState == Requester.DONE_STATE) {
                 var job_status = document.getElementById("job_status");
-                var result_retrieval_url = JSON.parse(this.responseText);
-                if(result_retrieval_url)
+                var status = JSON.parse(this.responseText);
+                if(status && status.complete)
                 {
                     // remove job from stack
                     var job = Requester.jobs.pop();
 
                     job_status.innerHTML = "Done, getting results...";
-                    getJobResults(result_retrieval_url);
+                    getJobResults(job.result_url);
                 } else
                 {
                     //schedule next check for done
