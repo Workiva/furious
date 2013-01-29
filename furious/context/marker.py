@@ -187,7 +187,65 @@ class Marker(object):
         else:
             return persistence_module.persist(self)
 
+    def put(self):
+        """
+        A Marker must only be saved during the update_done stage
+        just after it has been found to be done because
+        more then one process may be checking the done status.
+        if a value is changed, it must be done in an idempotent way,
+        such that if a value is changed because of a child, other
+        simultaneous processes would make the same change
+        """
+        pass
 
+    def handle_done(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def bubble_up_done(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def is_done(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def _list_children_keys(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def _list_of_leaf_keys(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def delete_leaves(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def delete_children(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
 
     def count_nodes(self):
         count = 1
