@@ -20,12 +20,12 @@
     </div>
     <div>
       <label>Enter a value:</label>
-      <input id="value" type="number" min="0" max="1000000", step="1"
+      <input id="value" type="number" min="0" max="1000000" step="1"
         value="1" />
     </div>
     <div>
       <label>Enter a number of tasks to insert:</label>
-      <input id="count" type="number" min="1" max="100", step="1"
+      <input id="count" type="number" min="1" max="100" step="1"
         value="1" />
     </div>
     <button id="submit">Submit</button>
@@ -39,9 +39,7 @@
     </div>
     <script>
       (function(){
-        var root = this;
-
-        var Batcher = root.Batcher = {};
+        var Batcher = this..Batcher = {};
 
         Batcher.DONE_STATE = 4
 
