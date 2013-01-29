@@ -24,8 +24,8 @@ import re
 import webapp2
 
 from furious import context
-from furious import defaults
 from furious.async import Async
+from furious.async import defaults
 
 
 class GrepHandler(webapp2.RequestHandler):
@@ -42,6 +42,19 @@ class GrepHandler(webapp2.RequestHandler):
             build_and_start(query, curdir)
 
         self.response.out.write('starting grep for query: %s' % query)
+
+
+def log_results():
+    """This is the callback that is run once the Async task is finished. It
+    takes the output from grep and logs it."""
+    from furious.context import get_current_async
+
+    # Get the recently finished Async object.
+    async = get_current_async()
+
+    # Pull out the result data and log it.
+    for result in async.result:
+        logging.info(result)
 
 
 @defaults(callbacks={'success': log_results})
@@ -74,17 +87,4 @@ def grep(query, directory):
             if item.endswith('.py'):
                 results.extend(grep_file(query, path))
     return results
-
-
-def log_results():
-    """This is the callback that is run once the Async task is finished. It
-    takes the output from grep and logs it."""
-    from furious.context import get_current_async
-
-    # Get the recently finished Async object.
-    async = get_current_async()
-
-    # Pull out the result data and log it.
-    for result in async.result:
-        logging.info(result)
 
