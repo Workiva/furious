@@ -261,6 +261,27 @@ background-color:#FFFFFF;
             return req;
         };
 
+        var push = function(a) {
+            var i = 1, l = arguments.length;
+            var len = a.length >>> 0;
+            while (i < l) {
+                a[len] = arguments[i++];
+                len = len + 1 >>> 0;
+            }
+            return a.length;
+        };
+
+        var pop = function(a) {
+            var v, len = a.length >>> 0;
+            if (len) {
+                v = a[--len];
+                delete a[len];
+            }
+            a.length = len;
+            return v;
+        };
+
+
         // Callback method for insertTask. Checks the result status and
         // displays a message on the page.
         var insertTaskComplete = Requester.insertTaskComplete = function() {
@@ -272,7 +293,7 @@ background-color:#FFFFFF;
                     status_label.innerHTML = "Task inserted successfully!"+
                             " with job_id "+result.job_id;
                     Requester.jobs = Requester.jobs || [];
-                    Requester.jobs.push({
+                    push(Requester.jobs,{
                         'job_id':result.job_id,
                         'check_done_url':result.check_done_url,
                         'done':false,
@@ -294,10 +315,10 @@ background-color:#FFFFFF;
 
         // Make an ajax request to get the current job status.
         var getJobStatus = Requester.getJobStatus = function() {
-            var job = Requester.jobs.pop();
+            var job = pop(Requester.jobs);
             if(job && job.check_done_url)
             {
-                Requester.jobs.push(job);
+                push(Requester.jobs,job);
                 var req = Requester.getXmlHttpRequest();
                 req.onreadystatechange = Requester.showJobStatus;
                 req.open("GET", job.check_done_url, true);
