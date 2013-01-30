@@ -53,7 +53,7 @@ def module_import(name):
         raise BadModulePathError(
             'Unable to find module "%s".' % (name,))
 
-def get_persistence_module(name,valid_modules=PERSISTENCE_MODULES):
+def get_persistence_module(name, valid_modules=PERSISTENCE_MODULES):
     module_path = valid_modules.get(name)
     module = None
     if not module_path:
@@ -117,7 +117,8 @@ def _find_furious_yaml(start,checked):
     return None
 
 def default_config():
-    return {'secret_key': '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
+    return {'secret_key':
+            '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
             'task_system': 'appengine_taskqueue'}
 
