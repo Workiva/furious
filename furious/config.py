@@ -1,6 +1,22 @@
+#
+# Copyright 2013 WebFilings, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 import logging
 import os
 import yaml
+from StringIO import StringIO
 
 FURIOUS_YAML_NAMES = ['furious.yaml','furious.yml']
 
@@ -16,35 +32,46 @@ class InvalidPersistenceModuleName(Exception):
     There is no persistence strategy by that name
     """
 
-def module_import(name):
-    mod = __import__(name)
-    components = name.split('.')
-    for comp in components[1:]:
-        mod = getattr(mod,comp)
-    return mod
+class InvalidYamlFile(Exception):
+    """
+    The furious.yaml file is invalid yaml
+    """
 
-def get_persistence_module(name):
-    module_path = PERSISTENCE_MODULES.get(name)
+class EmptyYamlFile(Exception):
+    """
+    The furious.yaml file is empty
+    """
+
+def module_import(name):
+    try:
+        mod = __import__(name)
+        components = name.split('.')
+        for comp in components[1:]:
+            mod = getattr(mod,comp)
+        return mod
+    except ImportError:
+        raise BadModulePathError(
+            'Unable to find module "%s".' % (name,))
+
+def get_persistence_module(name,valid_modules=PERSISTENCE_MODULES):
+    module_path = valid_modules.get(name)
     module = None
     if not module_path:
         raise InvalidPersistenceModuleName(
             'no persistence strategy by the name %s'%(name,))
-    try:
-        module = module_import(name=module_path)
-    except ImportError:
-        raise BadModulePathError(
-            'Unable to find module "%s".' % (module_path,))
+
+    module = module_import(name=module_path)
     return module
 
-def get_configured_persistence_module():
-    return get_persistence_module(config['persistence'])
+def get_configured_persistence_module(valid_modules=PERSISTENCE_MODULES):
+    return get_persistence_module(config['persistence'],valid_modules)
 
 class MissingYamlFile(Exception):
     """
     furious.yaml cannot be found
     """
 
-def find_furious_yaml(status_file=__file__):
+def find_furious_yaml(config_file=__file__):
     """
     Traverse directory trees to find a furious.yaml file
 
@@ -52,13 +79,13 @@ def find_furious_yaml(status_file=__file__):
     working directory if not found
 
     Args:
-        status_file: location of this file, override for
+        config_file: location of this file, override for
         testing
     Returns:
         the path of furious.yaml or None if not found
     """
     checked = set()
-    yaml = _find_furious_yaml(os.path.dirname(status_file),checked)
+    yaml = _find_furious_yaml(os.path.dirname(config_file),checked)
     if not yaml:
         yaml = _find_furious_yaml(os.getcwd(), checked)
     return yaml
@@ -104,15 +131,23 @@ def get_config():
     """
     furious_yaml_path = find_furious_yaml()
     dataMap = default_config()
-    if not furious_yaml_path:
+    if furious_yaml_path is None:
 #        raise MissingYamlFile("furious.yaml is missing")
         logging.warning("furious.yaml is missing, using default config")
     else:
-        f = open(furious_yaml_path)
-#        TODO: validate the yaml contents
-        data = yaml.load(f)
-        dataMap.update(data)
-        f.close()
+        with open(furious_yaml_path) as f:
+    #        TODO: validate the yaml contents
+            #load file contents into a StringIO to enable use of a
+            #a mock file with yaml.load, preventing it from hanging
+            sf = StringIO(f.read())
+            data = yaml.load(sf)
+            if not isinstance(data,dict):
+                if data is None:
+                    raise EmptyYamlFile("The furious.yaml file is empty")
+                else:
+                    raise InvalidYamlFile("The furious.yaml file "
+                                          "is invalid yaml")
+            dataMap.update(data)
     return dataMap
 
 config = get_config()
