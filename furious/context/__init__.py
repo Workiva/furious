@@ -38,6 +38,8 @@ Usage:
 
 """
 
+import logging
+
 from . import _local
 from .context import Context
 
@@ -47,6 +49,8 @@ from . import _execution
 ContextExistsError = _execution.ContextExistsError
 CorruptContextError = _execution.CorruptContextError
 execution_context_from_async = _execution.execution_context_from_async
+
+DEFAULT_MAX_RESPAWNS = 1000
 
 
 class AlreadyInContextError(Exception):
@@ -91,3 +95,35 @@ def get_current_context():
 
     raise NotInContextError('Not in a Context.')
 
+
+def respawn(max_respawns=None):
+    """Respawn current Async with the same options.
+    Increment and keep track of respawns to avoid infinitely respawning.
+    If max_respawns is passed into this function, it is used and stored in
+    the respawned Async's options instead of the default value.
+    """
+    current_async = get_current_async()
+
+    if max_respawns is None:  # Check for None to allow 0 as a value.
+        max_respawns = current_async.get_options().get('max_respawns',
+                                                       DEFAULT_MAX_RESPAWNS)
+    respawns = current_async.get_options().get('respawns', 0)
+
+    # If spawned too many times, log and don't respawn.
+    if respawns + 1 > int(max_respawns):
+        logging.error('Not respawning Async(target=%s) because max respawns'
+                      'reached.  respawns/max_respawns: %s/%s' %
+                      (current_async.get_options().get('target', None),
+                       respawns, max_respawns))
+        return
+
+    # Setup and add() an Async with the current async's options.
+    options = current_async.get_options().copy()
+    options.update({'respawns': respawns + 1, 'max_respawns': max_respawns})
+
+    with get_current_context() as context:
+        context.add(**options)
+
+    logging.info('Respawning Async(target=%s), respawns/max_respawns %s/%s' %
+                 (current_async.get_options().get('target', None),
+                  respawns, max_respawns))

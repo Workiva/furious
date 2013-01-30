@@ -18,6 +18,7 @@ import unittest
 
 from google.appengine.ext import testbed
 
+from mock import Mock
 from mock import patch
 
 
@@ -216,3 +217,87 @@ class TestInsertTasks(unittest.TestCase):
         _insert_tasks(('A', 1, 'B'), 'AbCd')
         self.assertEqual(5, queue_add_mock.call_count)
 
+    @patch('furious.context.get_current_async', auto_spec=True)
+    @patch('furious.context.get_current_context', auto_spec=True)
+    @patch('furious.context.Context', auto_spec=True)
+    def test_respawn(self, Context, get_current_context, get_current_async):
+        """Ensure context.add() is called which the current task's options
+        and an incremented respawns count."""
+        from furious.context import DEFAULT_MAX_RESPAWNS
+        from furious.context import respawn
+
+        mock_async = Mock()
+        get_current_async.return_value = mock_async
+        options = {}
+        mock_async.get_options.return_value = options
+
+        mock_context = Context()
+        get_current_context.return_value = mock_context
+        mock_context.__enter__ = Mock(return_value=mock_context)
+
+        respawn()
+
+        expected_options = {'respawns': 1,
+                            'max_respawns': DEFAULT_MAX_RESPAWNS}
+
+        mock_context.add.assert_called_with(**expected_options)
+
+    @patch('furious.context.get_current_async', auto_spec=True)
+    @patch('furious.context.get_current_context', auto_spec=True)
+    @patch('furious.context.Context', auto_spec=True)
+    def test_respawn_max(self, Context, get_current_context,
+                         get_current_async):
+        """Ensure context.add() is not called once we've reached the maximum
+        number of respawns.
+        """
+        from furious.context import Context
+        from furious.context import respawn
+
+        mock_async = Mock()
+        get_current_async.return_value = mock_async
+        options = {'respawns': 500}
+        mock_async.get_options.return_value = options
+
+        mock_context = Context()
+        get_current_context.return_value = mock_context
+        mock_context.__enter__ = Mock(return_value=mock_context)
+
+        my_max_respawns = 500
+        respawn(max_respawns=my_max_respawns)
+
+        self.assertEqual(0, mock_context.add.called)
+
+    @patch('furious.context.get_current_async', auto_spec=True)
+    @patch('furious.context.get_current_context', auto_spec=True)
+    @patch('furious.context.Context', auto_spec=True)
+    def test_respawn_more_args(self, Context, get_current_context,
+                               get_current_async):
+        """Ensure context.add() is called with the current task's options
+        and an incremented respawn count.  Use options for a typical Async.
+        """
+        from furious.context import respawn
+
+        mock_async = Mock()
+        target = dir
+        args = ('args', 'for', 'function')
+        kwargs = {'keyword': 'arguments', 'to': 'target'}
+        options = {'respawns': 200,
+                   'task_args': {"appengine": 1, "task": "kwargs"},
+                   'queue': 'myqueue',
+                   'job': (target, args, kwargs)}
+        mock_async.get_options.return_value = options
+        get_current_async.return_value = mock_async
+
+        mock_context = Context()
+        get_current_context.return_value = mock_context
+        mock_context.__enter__ = Mock(return_value=mock_context)
+        my_max_respawns = 750
+        respawn(my_max_respawns)
+
+        expected_options = {'respawns': 201,
+                            'max_respawns': my_max_respawns,
+                            'task_args': {"appengine": 1, "task": "kwargs"},
+                            'queue': 'myqueue',
+                            'job': (target, args, kwargs)}
+
+        mock_context.add.assert_called_with(**expected_options)
