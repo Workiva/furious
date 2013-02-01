@@ -1,2 +1,6 @@
 .coverage
 .noseids
+\#*\#
+.idea
+gaepdb.py
+
