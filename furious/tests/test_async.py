@@ -447,7 +447,7 @@ class TestAsync(unittest.TestCase):
         expected_url = "%s/%s" % (ASYNC_ENDPOINT, 'test')
 
         task_args = {'eta': eta_posix}
-        options = {'job': job, 'headers': headers,
+        options = {'id':None, 'job': job, 'headers': headers,
                    'task_args': task_args}
 
         task = Async.from_dict(options).to_task()
