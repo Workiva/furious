@@ -263,7 +263,6 @@ class Async(object):
 
         callbacks = self._options.get('callbacks')
         if callbacks:
-            options['callbacks'] = _encode_callbacks(callbacks)
             options['callbacks'] = encode_callbacks(callbacks)
 
         options['_persistence_id']=self._persistence_id
