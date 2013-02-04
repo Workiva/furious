@@ -107,7 +107,7 @@ class Async(object):
         # Make sure nothing is snuck in.
         _check_options(options)
 
-        self._persistence_id = options.pop('_persistence_id',None)
+        self.id = options.pop('id',None)
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
@@ -265,7 +265,7 @@ class Async(object):
         if callbacks:
             options['callbacks'] = encode_callbacks(callbacks)
 
-        options['_persistence_id']=self._persistence_id
+        options['id']=self.id
 
         return options
 
