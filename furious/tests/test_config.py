@@ -44,17 +44,11 @@ class TestConfigurationLoading(unittest.TestCase):
             module_import,'furious.extras.not_here')
 
     def test_module_import(self):
-        from ..config import BadModulePathError
         from ..config import module_import
         from .. import config
 
         module = module_import('furious.config')
         self.assertEqual(module,config)
-
-    def test_find_yaml(self):
-        from ..config import find_furious_yaml
-        config_yaml_path = find_furious_yaml()
-        self.assertIsNotNone(config_yaml_path)
 
     def test_not_find_yaml(self):
         os.path.exists = Mock(return_value=False)
