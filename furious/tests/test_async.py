@@ -460,6 +460,9 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(expected_url, task.url)
         self.assertEqual(full_headers, task.headers)
 
+        options['task_args']['eta'] = datetime.datetime.fromtimestamp(
+            eta_posix)
+
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
 
