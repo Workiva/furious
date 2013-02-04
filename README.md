@@ -11,7 +11,7 @@ make building dynamic workflows easy.
 Installation
 ------------
 
-Include `furious` within your App Engine project's libary directory, often
+Include `furious` within your App Engine project's library directory, often
 `/lib`.  If that does not make sense to you, simply include the `furious`
 subdirectory within your application's root directory (where your `app.yaml`
 is located).
