@@ -13,12 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import math
-import uuid
-from furious.job_utils import decode_callbacks
-from furious.job_utils import encode_callbacks
-from furious.job_utils import function_path_to_reference
-from furious.job_utils import get_function_path_and_options
-from furious.config import get_configured_persistence_module
-persistence_module = get_configured_persistence_module()
 
