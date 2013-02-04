@@ -105,3 +105,39 @@ def function_path_to_reference(function_path):
         raise BadFunctionPathError(
             'Unable to find function "%s".' % (function_path,))
 
+
+def encode_callbacks(callbacks):
+    """Encode callbacks to as a dict suitable for JSON encoding."""
+    from .async import Async
+
+    if not callbacks:
+        return
+
+    encoded_callbacks = {}
+    for event, callback in callbacks.iteritems():
+        if callable(callback):
+            callback, _ = get_function_path_and_options(callback)
+
+        elif isinstance(callback, Async):
+            callback = callback.to_dict()
+
+        encoded_callbacks[event] = callback
+
+    return encoded_callbacks
+
+
+def decode_callbacks(encoded_callbacks):
+    """Decode the callbacks to an executable form."""
+    from .async import Async
+
+    callbacks = {}
+    for event, callback in encoded_callbacks.iteritems():
+        if isinstance(callback, dict):
+            callback = Async.from_dict(callback)
+        else:
+            callback = function_path_to_reference(callback)
+
+        callbacks[event] = callback
+
+    return callbacks
+
