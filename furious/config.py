@@ -21,7 +21,7 @@ from StringIO import StringIO
 FURIOUS_YAML_NAMES = ['furious.yaml','furious.yml']
 
 PERSISTENCE_MODULES = {
-    'ndb': 'furious.extras.appengine.ndb'
+    'ndb': 'furious.extras.appengine.ndb_persistence'
 }
 
 class BadModulePathError(Exception):
