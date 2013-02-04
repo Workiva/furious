@@ -311,9 +311,10 @@ class MessageProcessorTestCase(unittest.TestCase):
                     'countdown': 30,
                     'name': 'processor-processor-current-batch-3'
                 },
+                "id": None,
             }),
             'countdown': 30,
-            'name': 'processor-processor-current-batch-3'
+            'name': 'processor-processor-current-batch-3',
         }
 
         task.assert_called_once_with(**task_args)
