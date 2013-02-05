@@ -313,7 +313,7 @@ class Marker(object):
            callable(persistence_module.marker_get):
             return persistence_module.marker_get(id)
 
-    def get_children(self):
+    def get_persisted_children(self):
         if persistence_module.marker_get_children and\
                 callable(persistence_module.marker_get_children):
             return persistence_module.marker_get_children(self)
@@ -324,7 +324,7 @@ class Marker(object):
                 pass
             return True
         elif self.children and not self.done:
-            children_markers = self.get_children()
+            children_markers = self.get_persisted_children()
             done_markers = [marker for marker in children_markers
                             if marker and marker.done]
             if len(done_markers) == len(self.children):
