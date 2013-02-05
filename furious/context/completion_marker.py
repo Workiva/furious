@@ -173,7 +173,7 @@ class Marker(object):
         assert self.id
         self.group_id = options.get('group_id')
         self.callbacks = options.get('callbacks')
-        self.children = options.get('children') or []
+        self._children = options.get('children') or []
         self.async = options.get('async')
 
         self.internal_vertex = options.get('internal_vertex')
@@ -192,6 +192,15 @@ class Marker(object):
     @id.setter
     def id(self, value):
         self._id = value
+        self._options['id'] = value
+
+    @property
+    def children(self):
+        return self._children
+
+    @children.setter
+    def children(self,value):
+        self._children = value
 
     def to_dict(self):
         import copy
