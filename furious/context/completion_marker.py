@@ -202,16 +202,44 @@ class Marker(object):
     def children(self,value):
         self._children = value
 
+    def children_to_dict(self):
+        """
+        the children property may contain IDs of children
+        or Marker instances.
+        Marker instances will be there when the graph is
+        created and the IDs will be there when a marker
+        is restored from the persistence layer with Marker.get
+        """
+        return [child for child in self.children
+                if isinstance(child,basestring)] \
+                or\
+               [child.to_dict() for child in self.children
+                if isinstance(child,Marker)]
+
+    @classmethod
+    def children_from_dict(cls,children_dict):
+        """
+        the list of children of a marker_dict may be
+        IDs or they may be dicts representing child
+        markers
+        """
+        return [child for child in children_dict
+                 if isinstance(child,basestring)]\
+                 or\
+                [cls.from_dict(child_dict) for
+                 child_dict in children_dict
+                 if isinstance(child_dict,dict)]
+
     def to_dict(self):
         import copy
-
+#        logging.info("to dict %s"%self.id)
         options = copy.deepcopy(self._options)
 
         callbacks = self._options.get('callbacks')
         if callbacks:
             options['callbacks'] = encode_callbacks(callbacks)
 
-        options['children'] = [child.to_dict() for child in self.children]
+        options['children'] = self.children_to_dict()
 
         return options
 
@@ -226,10 +254,8 @@ class Marker(object):
         if callbacks:
             marker_options['callbacks'] = decode_callbacks(callbacks)
 
-        marker_options['children'] = [
-        cls.from_dict(child_dict) for
-        child_dict in marker_dict['children']
-        ]
+        marker_options['children'] = cls.children_from_dict(
+            marker_dict.get('children',[]))
 
         return cls(**marker_options)
 
@@ -238,7 +264,7 @@ class Marker(object):
         id = async_dict.get('id')
         if id is None:
             raise AsyncNeedsPersistenceID(
-                'please assign a _persistence_id to the async'
+                'please assign an id to the async '
                 'before creating a marker'
             )
         group_id = leaf_persistence_id_to_group_id(id)
@@ -281,10 +307,11 @@ class Marker(object):
                 callable(persistence_module.marker_persist):
             persistence_module.marker_persist(self, whole_graph)
 
-    def get(self):
+    @classmethod
+    def get(cls,id):
         if persistence_module.marker_get and\
            callable(persistence_module.marker_get):
-            return persistence_module.marker_get(self)
+            return persistence_module.marker_get(id)
 
     def get_children(self):
         if persistence_module.marker_get_children and\

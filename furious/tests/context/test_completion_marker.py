@@ -72,8 +72,8 @@ class TestFunctions(unittest.TestCase):
 
 class TestMarker(unittest.TestCase):
     def test_do_any_have_children(self):
-        from furious.context.completion_marker import Marker
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
         root_marker = Marker(id="fun")
         children = []
         for x in xrange(10):
@@ -89,3 +89,51 @@ class TestMarker(unittest.TestCase):
             first_child.id,x) for x in xrange(10)]
 
         self.assertTrue(Marker.do_any_have_children(children))
+
+    def test_individual_serialization(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        marker = Marker.from_dict({'id':'test'})
+        self.assertEqual(marker.id,'test')
+        marker2 = Marker.from_dict(marker.to_dict())
+        self.assertEqual(marker2.to_dict(),marker.to_dict())
+
+        root_marker = Marker(id="fun")
+        children = []
+        for x in xrange(10):
+            children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        root_marker.children = [marker.id for marker in children]
+
+        root_dict = root_marker.to_dict()
+        self.assertTrue('children' in root_dict.keys())
+        self.assertEqual(len(children),len(root_dict['children']))
+        for index, child_id  in enumerate(root_dict['children']):
+            self.assertEqual(children[index].id,child_id)
+
+        reconstituted_root = Marker.from_dict(root_dict)
+        self.assertEqual(len(reconstituted_root.children),
+            len(reconstituted_root.children_to_dict()))
+
+    def test_graph_serialization(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="jolly")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        root_dict = root_marker.to_dict()
+        self.assertTrue('children' in root_dict.keys())
+        self.assertEqual(len(root_marker.children),len(root_dict['children']))
+
+        reconstituted_root = Marker.from_dict(root_dict)
+
+        self.assertIsInstance(reconstituted_root,Marker)
+        self.assertEqual(len(reconstituted_root.children),
+        len(root_marker.children))
+        self.assertEqual(len(reconstituted_root.children),
+        len(reconstituted_root.children_to_dict()))
+        for child in reconstituted_root.children:
+            self.assertIsInstance(child,Marker)
