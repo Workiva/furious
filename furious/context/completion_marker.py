@@ -160,3 +160,156 @@ def leaf_persistence_id_to_group_id(persistence_id):
         return group_id
     except AttributeError:
         raise InvalidLeafId("Id must be a basestring")
+
+class AsyncNeedsPersistenceID(Exception):
+    """This Async needs to have a _persistence_id to create a Marker."""
+
+
+class Marker(object):
+    def __init__(self, **options):
+        """
+        """
+        self._id = options.get('id')
+        assert self.key
+        self.group_id = options.get('group_id')
+        self.callbacks = options.get('callbacks')
+        self.children = options.get('children') or []
+        self.async = options.get('async')
+
+        self.internal_vertex = options.get('internal_vertex')
+        self.all_children_leaves = options.get('all_children_leaves')
+
+        self.done = options.get('done',False)
+        self.result = options.get('result')
+
+        self._options = options
+
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
+
+    def to_dict(self):
+        import copy
+
+        options = copy.deepcopy(self._options)
+
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            options['callbacks'] = encode_callbacks(callbacks)
+
+        options['children'] = [child.to_dict() for child in self.children]
+
+        return options
+
+    @classmethod
+    def from_dict(cls, marker_dict):
+        import copy
+
+        marker_options = copy.deepcopy(marker_dict)
+
+        # If there is are callbacks, reconstitute them.
+        callbacks = marker_options.pop('callbacks', None)
+        if callbacks:
+            marker_options['callbacks'] = decode_callbacks(callbacks)
+
+        marker_options['children'] = [
+        cls.from_dict(child_dict) for
+        child_dict in marker_dict['children']
+        ]
+
+        return cls(**marker_options)
+
+    @classmethod
+    def from_async_dict(cls, async_dict):
+        persistence_id = async_dict.get('_persistence_id')
+        if persistence_id is None:
+            raise AsyncNeedsPersistenceID(
+                'please assign a _persistence_id to the async'
+                'before creating a marker'
+            )
+        group_id = leaf_persistence_id_to_group_id(persistence_id)
+        return cls(id=persistence_id,
+            group_id=group_id,
+            callbacks=async_dict.get('callbacks'),
+            async=async_dict)
+
+    @classmethod
+    def from_async(cls, async):
+        return cls.from_async_dict(async.to_dict())
+
+    def persist(self):
+        if persistence_module.store_context_marker and\
+                callable(persistence_module.store_context_marker):
+            return persistence_module.store_context_marker(self)
+
+    def put(self):
+        """
+        A Marker must only be saved during the update_done stage
+        just after it has been found to be done because
+        more then one process may be checking the done status.
+        if a value is changed, it must be done in an idempotent way,
+        such that if a value is changed because of a child, other
+        simultaneous processes would make the same change
+        """
+        pass
+
+    def handle_done(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        return persistence_module.handle_done(async)
+
+    def bubble_up_done(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def is_done(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def _list_children_keys(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def _list_of_leaf_keys(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def delete_leaves(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def delete_children(self):
+        """
+        TODO: move logic from ndb module to here,
+        keeping persistence layer dumb
+        """
+        pass
+
+    def count_nodes(self):
+        count = 1
+        for child in self.children:
+            count += child.count_nodes()
+
+        return count
