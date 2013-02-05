@@ -69,3 +69,23 @@ class TestFunctions(unittest.TestCase):
         sizes = [initial_save_growth(n) for n in range(0,100,10)]
         expected = [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
         self.assertEqual(sizes,expected)
+
+class TestMarker(unittest.TestCase):
+    def test_do_any_have_children(self):
+        from furious.context.completion_marker import Marker
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        root_marker = Marker(id="fun")
+        children = []
+        for x in xrange(10):
+            children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        root_marker.children = [marker.id for marker in children]
+
+        self.assertFalse(Marker.do_any_have_children(children))
+
+        first_child = children[0]
+        first_child.children=[leaf_persistence_id_from_group_id(
+            first_child.id,x) for x in xrange(10)]
+
+        self.assertTrue(Marker.do_any_have_children(children))

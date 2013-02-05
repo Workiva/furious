@@ -170,7 +170,7 @@ class Marker(object):
         """
         """
         self._id = options.get('id')
-        assert self.key
+        assert self.id
         self.group_id = options.get('group_id')
         self.callbacks = options.get('callbacks')
         self.children = options.get('children') or []
@@ -226,14 +226,14 @@ class Marker(object):
 
     @classmethod
     def from_async_dict(cls, async_dict):
-        persistence_id = async_dict.get('_persistence_id')
-        if persistence_id is None:
+        id = async_dict.get('id')
+        if id is None:
             raise AsyncNeedsPersistenceID(
                 'please assign a _persistence_id to the async'
                 'before creating a marker'
             )
-        group_id = leaf_persistence_id_to_group_id(persistence_id)
-        return cls(id=persistence_id,
+        group_id = leaf_persistence_id_to_group_id(id)
+        return cls(id=id,
             group_id=group_id,
             callbacks=async_dict.get('callbacks'),
             async=async_dict)
@@ -242,13 +242,25 @@ class Marker(object):
     def from_async(cls, async):
         return cls.from_async_dict(async.to_dict())
 
-    def persist(self):
-        if persistence_module.store_context_marker and\
-                callable(persistence_module.store_context_marker):
-            return persistence_module.store_context_marker(self)
-
-    def put(self):
+    @staticmethod
+    def do_any_have_children(markers):
         """
+        Args:
+            markers: a list of Marker instances
+        Returns:
+            Boolean: True if any marker in the list
+            has any ids in it's children property
+        """
+        for marker in markers:
+            if marker.children:
+                return True
+
+    def persist(self, whole_graph=False):
+        """
+        Args:
+            whole_graph: boolean, if True, persist will be recursively
+            called on all children markers
+
         A Marker must only be saved during the update_done stage
         just after it has been found to be done because
         more then one process may be checking the done status.
@@ -256,14 +268,39 @@ class Marker(object):
         such that if a value is changed because of a child, other
         simultaneous processes would make the same change
         """
-        pass
+        if persistence_module.marker_graph_persist and\
+                callable(persistence_module.marker_persist):
+            persistence_module.marker_persist(self, whole_graph)
 
-    def handle_done(self):
-        """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
-        """
-        return persistence_module.handle_done(async)
+    def get(self):
+        if persistence_module.marker_get and\
+           callable(persistence_module.marker_get):
+            return persistence_module.marker_get(self)
+
+    def get_children(self):
+        if persistence_module.marker_get_children and\
+                callable(persistence_module.marker_get_children):
+            return persistence_module.marker_get_children(self)
+
+    def update_done(self):
+        if not self.children and self.done:
+            if self.bubble_up_done():
+                pass
+            return True
+        elif self.children and not self.done:
+            children_markers = self.get_children()
+            done_markers = [marker for marker in children_markers
+                            if marker and marker.done]
+            if len(done_markers) == len(self.children):
+                self.done = True
+                result = []
+                combiner_func = None
+                if self.all_children_leaves:
+                    #a leaf child may have been replaced with a Context
+                    #which makes all_children_leaves False
+                    self.all_children_leaves = (not Marker.
+                        do_any_have_children(children_markers))
+
 
     def bubble_up_done(self):
         """
@@ -313,3 +350,14 @@ class Marker(object):
             count += child.count_nodes()
 
         return count
+
+def handle_done(async):
+    if async.id:
+        marker = Marker.get(async.id)
+        if not marker:
+            marker = Marker.from_async(async)
+        marker.done = True
+        marker.result = async.result
+        marker.persist()
+        marker.update_done()
+
