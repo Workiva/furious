@@ -361,8 +361,9 @@ class TestMarker(unittest.TestCase):
         mock_count_update.return_value = None
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
-
-        root_marker = Marker(id="delve")
+        context_callbacks = {'success':dummy_success_callback}
+        root_marker = Marker(id="delve",
+            callbacks=context_callbacks)
         for x in xrange(2):
             root_marker.children.append(Marker(
                 id=str(x),
@@ -374,15 +375,31 @@ class TestMarker(unittest.TestCase):
 
         root_marker.persist()
 
-        for internal_node in root_marker.children:
-            for leaf_node in internal_node.children:
-                leaf_node.done = True
-                leaf_node.result = 1
-                leaf_node.update_done(persist_first=True)
+        with patch('furious.tests.context.test_completion_marker.'
+        'dummy_success_callback', autospec=True) as mock_success_callback:
 
-        loaded_root_marker = Marker.get("delve")
-        self.assertTrue(loaded_root_marker.done)
-        self.assertEqual(mock_count_update.call_count,14)
-        #9 is the number of nodes in the graph
-        self.assertEqual(mock_count_marked_as_done.call_count,9)
+            for internal_node in root_marker.children:
+                for leaf_node in internal_node.children:
+                    leaf_node.done = True
+                    leaf_node.result = 1
+                    leaf_node.update_done(persist_first=True)
 
+            loaded_root_marker = Marker.get("delve")
+            self.assertTrue(loaded_root_marker.done)
+            self.assertEqual(mock_count_update.call_count,14)
+            #9 is the number of nodes in the graph
+            self.assertEqual(mock_count_marked_as_done.call_count,9)
+
+            #pretend a task was run again later on after
+            #the root had succeeded, it should only
+            #reach it's parent node and that should
+            #not bubble up
+            leaf_node = root_marker.children[0].children[1]
+            leaf_node.update_done(persist_first=True)
+
+            self.assertEqual(mock_count_update.call_count,16)
+            mock_success_callback.assert_called_once_with("delve",None)
+
+
+def dummy_success_callback(id,results):
+    return
