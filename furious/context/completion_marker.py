@@ -230,6 +230,22 @@ class Marker(object):
                  child_dict in children_dict
                  if isinstance(child_dict,dict)]
 
+
+    def get_group_id(self):
+        group_id = None
+        try:
+            #is the batch_id a valid leaf id?
+            group_id = leaf_persistence_id_to_group_id(self.id)
+        except InvalidLeafId:
+            pass
+
+        if self.group_id:
+            #it is in internal vertex
+            group_id = self.group_id
+
+        return group_id
+
+
     def to_dict(self):
         import copy
 #        logging.info("to dict %s"%self.id)

@@ -137,3 +137,25 @@ class TestMarker(unittest.TestCase):
         len(reconstituted_root.children_to_dict()))
         for child in reconstituted_root.children:
             self.assertIsInstance(child,Marker)
+
+    def test_get_group_id_from_group_id(self):
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="polly")
+        for x in xrange(2):
+            root_marker.children.append(Marker(id=str(x),
+                group_id=root_marker.id))
+
+        for child in root_marker.children:
+            self.assertEqual(child.get_group_id(),"polly")
+
+    def test_get_group_id_from_leaf(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="polly")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        for child in root_marker.children:
+            self.assertEqual(child.get_group_id(),"polly")
+
