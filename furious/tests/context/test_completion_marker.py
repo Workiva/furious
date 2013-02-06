@@ -328,16 +328,35 @@ class TestMarker(unittest.TestCase):
         self.assertTrue(loaded_marker.get_group_id(),'heart')
 
 
-    def test_update_done_of_leaf_travels_to_root_when_last(self):
+    @patch('furious.context.completion_marker.count_update', autospec=True)
+    def test_update_done_of_leaf_travels_to_root_when_last(self, mock_count_update):
         """
         Make sure when all but one marker is done and it
         runs an update_done, the processes will bubble
         up to the root marker and it's update done will be called
         """
+        mock_count_update.return_value = None
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
-        root_marker = Marker(id="gopher")
-        for x in xrange(3):
-            root_marker.children.append(Marker(id=
-            leaf_persistence_id_from_group_id(root_marker.id,x)))
 
+        root_marker = Marker(id="delve")
+        for x in xrange(2):
+            root_marker.children.append(Marker(
+                id=str(x),
+                group_id=root_marker.id,
+                children=[Marker(id=
+                leaf_persistence_id_from_group_id(str(x),i))
+                          for i in xrange(3)]
+            ))
+
+        root_marker.persist()
+
+        for internal_node in root_marker.children:
+            for leaf_node in internal_node.children:
+                leaf_node.done = True
+                leaf_node.result = 1
+                leaf_node.update_done(persist_first=True)
+
+        loaded_root_marker = Marker.get("delve")
+        self.assertTrue(loaded_root_marker.done)
+        self.assertEqual(mock_count_update.call_count(),13)
