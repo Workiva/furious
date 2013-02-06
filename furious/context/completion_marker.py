@@ -17,14 +17,14 @@ import math
 import uuid
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
-from furious.job_utils import function_path_to_reference
-from furious.job_utils import get_function_path_and_options
 from furious.config import get_configured_persistence_module
 persistence_module = get_configured_persistence_module()
 
 BATCH_SIZE = 10
 CHILDREN_ARE_LEAVES = True
 CHILDREN_ARE_INTERNAL_VERTEXES = False
+SIBLING_MARKERS_COMPLETE = True
+SIBLING_MARKERS_INCOMPLETE = False
 
 def round_up(n):
     """
@@ -128,6 +128,13 @@ class InvalidLeafId(Exception):
     separated
     """
 
+class NotSafeToSave(Exception):
+    """
+    A marker may only safely be saved during it's own
+    update_done process or before the Async it represents
+    has had it's task inserted.
+    """
+
 def leaf_persistence_id_from_group_id(group_id, index):
     """
     Args:
@@ -181,6 +188,7 @@ class Marker(object):
 
         self.done = options.get('done',False)
         self.result = options.get('result')
+        self._update_done_in_progress = False
 
         self._options = options
 
@@ -189,18 +197,22 @@ class Marker(object):
     def id(self):
         return self._id
 
+
     @id.setter
     def id(self, value):
         self._id = value
         self._options['id'] = value
 
+
     @property
     def children(self):
         return self._children
 
+
     @children.setter
     def children(self,value):
         self._children = value
+
 
     def children_to_dict(self):
         """
@@ -215,6 +227,15 @@ class Marker(object):
                 or\
                [child.to_dict() for child in self.children
                 if isinstance(child,Marker)]
+
+
+    def children_as_ids(self):
+        return [child for child in self.children
+                if isinstance(child,basestring)]\
+                or\
+               [child.id for child in self.children
+                if isinstance(child,Marker)]
+
 
     @classmethod
     def children_from_dict(cls,children_dict):
@@ -259,6 +280,7 @@ class Marker(object):
 
         return options
 
+
     @classmethod
     def from_dict(cls, marker_dict):
         import copy
@@ -275,6 +297,7 @@ class Marker(object):
 
         return cls(**marker_options)
 
+
     @classmethod
     def from_async_dict(cls, async_dict):
         id = async_dict.get('id')
@@ -289,9 +312,11 @@ class Marker(object):
             callbacks=async_dict.get('callbacks'),
             async=async_dict)
 
+
     @classmethod
     def from_async(cls, async):
         return cls.from_async_dict(async.to_dict())
+
 
     @staticmethod
     def do_any_have_children(markers):
@@ -306,35 +331,68 @@ class Marker(object):
             if marker.children:
                 return True
 
-    def persist(self, whole_graph=False):
-        """
-        Args:
-            whole_graph: boolean, if True, persist will be recursively
-            called on all children markers
 
-        A Marker must only be saved during the update_done stage
+    def persist(self):
+        """
+        Unless this is a root marker being saved before the Context
+        it belongs to started, then
+        a Marker must only be saved during the update_done stage
         just after it has been found to be done because
         more then one process may be checking the done status.
         if a value is changed, it must be done in an idempotent way,
         such that if a value is changed because of a child, other
         simultaneous processes would make the same change
         """
-        if persistence_module.marker_graph_persist and\
+        from furious.context import get_current_context
+        from furious.context import NotInContextError
+        save_leaves = True
+        is_root_marker = False
+        #infer if this is the root marker of a graph
+        #or else just a node saving it's state
+        for child in self.children:
+            if isinstance(child, Marker):
+                #indicates this is the root of a graph
+                #and when a graph is saved, don't
+                #save the leaves
+                is_root_marker = True
+                save_leaves = False
+
+        if save_leaves and not self._update_done_in_progress:
+            raise NotSafeToSave('must only save during update_done'
+            ' or if this is a root marker of a graph before the context'
+            ' has inserted tasks')
+
+        if is_root_marker:
+            current_context = None
+            try:
+                current_context = get_current_context()
+                if current_context and current_context.id == self.id and\
+                   current_context._tasks_inserted:
+                    raise NotSafeToSave('cannot save after tasks have'
+                                    ' been inserted')
+            except NotInContextError:
+                pass
+
+        if hasattr(persistence_module,'marker_persist') and\
                 callable(persistence_module.marker_persist):
-            persistence_module.marker_persist(self, whole_graph)
+            persistence_module.marker_persist(self, save_leaves)
+
 
     @classmethod
     def get(cls,id):
-        if persistence_module.marker_get and\
+        if hasattr(persistence_module,'marker_get') and\
            callable(persistence_module.marker_get):
             return persistence_module.marker_get(id)
 
+
     def get_persisted_children(self):
-        if persistence_module.marker_get_children and\
+        if hasattr(persistence_module,'marker_get_children') and\
                 callable(persistence_module.marker_get_children):
             return persistence_module.marker_get_children(self)
 
+
     def update_done(self):
+        self._update_done_in_progress = True
         if not self.children and self.done:
             if self.bubble_up_done():
                 pass
@@ -352,6 +410,7 @@ class Marker(object):
                     #which makes all_children_leaves False
                     self.all_children_leaves = (not Marker.
                         do_any_have_children(children_markers))
+        self._update_done_in_progress = False
 
 
     def bubble_up_done(self):
@@ -361,12 +420,14 @@ class Marker(object):
         """
         pass
 
+
     def is_done(self):
         """
         TODO: move logic from ndb module to here,
         keeping persistence layer dumb
         """
         pass
+
 
     def _list_children_keys(self):
         """
@@ -375,12 +436,14 @@ class Marker(object):
         """
         pass
 
+
     def _list_of_leaf_keys(self):
         """
         TODO: move logic from ndb module to here,
         keeping persistence layer dumb
         """
         pass
+
 
     def delete_leaves(self):
         """
@@ -389,6 +452,7 @@ class Marker(object):
         """
         pass
 
+
     def delete_children(self):
         """
         TODO: move logic from ndb module to here,
@@ -396,12 +460,14 @@ class Marker(object):
         """
         pass
 
+
     def count_nodes(self):
         count = 1
         for child in self.children:
             count += child.count_nodes()
 
         return count
+
 
 def handle_done(async):
     if async.id:
@@ -412,4 +478,3 @@ def handle_done(async):
         marker.result = async.result
         marker.persist()
         marker.update_done()
-

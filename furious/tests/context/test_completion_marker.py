@@ -16,6 +16,8 @@
 
 from google.appengine.ext import testbed
 from mock import patch
+from mock import Mock
+from mock import MagicMock
 import unittest
 import uuid
 
@@ -71,6 +73,25 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(sizes,expected)
 
 class TestMarker(unittest.TestCase):
+    def setUp(self):
+        import os
+        import uuid
+
+
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub()
+        self.testbed.init_memcache_stub()
+        self.testbed.init_datastore_v3_stub()
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+
     def test_do_any_have_children(self):
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
@@ -158,4 +179,101 @@ class TestMarker(unittest.TestCase):
 
         for child in root_marker.children:
             self.assertEqual(child.get_group_id(),"polly")
+
+
+    def test_persist_marker_tree_graph(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="peanut")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        root_marker.persist()
+
+        loaded_marker = Marker.get(root_marker.id)
+
+        self.assertIsNotNone(loaded_marker)
+        self.assertEqual(root_marker.id,loaded_marker.id)
+        self.assertEqual(root_marker.done,loaded_marker.done)
+        self.assertEqual(len(root_marker.children),
+            len(loaded_marker.children))
+        children_ids = [child.id for child in root_marker.children]
+        loaded_children_ids = loaded_marker.children
+        for index, id in enumerate(children_ids):
+            self.assertEqual(id,loaded_children_ids[index])
+
+        loaded_child_marker = Marker.get(root_marker.children[0].id)
+        self.assertIsNone(loaded_child_marker)
+
+
+    @patch('furious.context.get_current_context', autospec=True)
+    def test_persist_tree_after_tasks_inserted(self,
+                                       mock_get_current_context):
+        from furious.context.context import Context
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        from furious.context.completion_marker import NotSafeToSave
+        a_context = Context(id="zebra")
+        a_context._tasks_inserted = True
+        mock_get_current_context.return_value = a_context
+        root_marker = Marker(id="zebra")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        self.assertRaises(NotSafeToSave, root_marker.persist)
+
+
+
+
+
+    def test_persist_internal_node_marker(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="cracker")
+        for x in xrange(2):
+            root_marker.children.append(Marker(
+                id=str(x),
+                group_id=root_marker.id,
+                children=[Marker(id=
+                leaf_persistence_id_from_group_id(str(x),i))
+                          for i in xrange(3)]
+            ))
+
+        root_marker.persist()
+        internal_node1 = root_marker.children[0]
+        leaf_node2 = internal_node1.children[1]
+        loaded_internal = Marker.get(internal_node1.id)
+        self.assertIsNotNone(loaded_internal)
+        loaded_leaf = Marker.get(leaf_node2.id)
+        self.assertIsNone(loaded_leaf)
+
+
+    def test_persist_leaf_marker(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        from furious.context.completion_marker import NotSafeToSave
+        root_marker = Marker(id="heart")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        leaf_marker = root_marker.children[0]
+        self.assertRaises(NotSafeToSave, leaf_marker.persist)
+        leaf_marker._update_done_in_progress = True
+        leaf_marker.persist()
+        loaded_marker = Marker.get(leaf_marker.id)
+        self.assertIsNotNone(loaded_marker)
+        self.assertIsInstance(loaded_marker,Marker)
+        self.assertTrue(loaded_marker.get_group_id(),'heart')
+
+
+    def test_update_done(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="gopher")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
 
