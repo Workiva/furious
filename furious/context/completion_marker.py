@@ -23,8 +23,6 @@ persistence_module = get_configured_persistence_module()
 BATCH_SIZE = 10
 CHILDREN_ARE_LEAVES = True
 CHILDREN_ARE_INTERNAL_VERTEXES = False
-SIBLING_MARKERS_COMPLETE = True
-SIBLING_MARKERS_INCOMPLETE = False
 
 def round_up(n):
     """
@@ -399,10 +397,11 @@ class Marker(object):
         # are all done and bubbling up. Doing so will allow it's
         # parent to know it's changed
         if persist_first:
+            count_marked_as_done(self.id)
             self.persist()
         if not self.children and self.done:
-            if self.bubble_up_done():
-                pass
+            self.bubble_up_done()
+            self._update_done_in_progress = False
             return True
         elif self.children and not self.done:
             children_markers = self.get_persisted_children()
@@ -417,23 +416,56 @@ class Marker(object):
                     #which makes all_children_leaves False
                     self.all_children_leaves = (not Marker.
                         do_any_have_children(children_markers))
-        self._update_done_in_progress = False
+
+                combiner = None
+                if self.callbacks:
+                    callbacks = decode_callbacks(self.callbacks)
+                    if self.internal_vertex and self.all_children_leaves:
+                        combiner = callbacks.get('leaf_combiner')
+                    elif self.internal_vertex:
+                        combiner = callbacks.get('internal_vertex_combiner')
+
+                if combiner:
+                    self.result = combiner([marker.result for marker in
+                                            done_markers if marker])
+                count_marked_as_done(self.id)
+                self.persist()
+                self._update_done_in_progress = False
+                #bubble up: tell group marker to update done
+                self.bubble_up_done()
+                return True
+
+            self._update_done_in_progress = False
+            return False
+        elif self.done:
+            self._update_done_in_progress = False
+            # no need to bubble up, it would have been done already
+            return True
 
 
     def bubble_up_done(self):
         """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
+        If this marker has a group_id(the ID of it's parent node)
+        load that parent marker and call update_done.
+        If not, this is the root marker and call it's success
+        callback
         """
-        pass
+        group_id = self.get_group_id()
 
+        if group_id:
+            parent_marker = Marker.get(group_id)
+            if parent_marker:
+                return parent_marker.update_done()
+        else:
+            success_callback = None
+            if self.callbacks:
+                callbacks = decode_callbacks(self.callbacks)
+                success_callback = callbacks.get('success')
 
-    def is_done(self):
-        """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
-        """
-        pass
+            if success_callback and callable(success_callback):
+                success_callback(self.id,self.result)
+
+            return True
 
 
     def _list_children_keys(self):
@@ -477,6 +509,9 @@ class Marker(object):
 
 
 def count_update(id):
+    return
+
+def count_marked_as_done(id):
     return
 
 

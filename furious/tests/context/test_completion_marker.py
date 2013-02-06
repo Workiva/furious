@@ -328,12 +328,35 @@ class TestMarker(unittest.TestCase):
         self.assertTrue(loaded_marker.get_group_id(),'heart')
 
 
+    @patch('furious.context.completion_marker.count_marked_as_done',
+        autospec=True)
     @patch('furious.context.completion_marker.count_update', autospec=True)
-    def test_update_done_of_leaf_travels_to_root_when_last(self, mock_count_update):
+    def test_update_done_of_leaf_travels_to_root_when_last(
+            self,
+            mock_count_update,
+            mock_count_marked_as_done):
         """
         Make sure when all but one marker is done and it
         runs an update_done, the processes will bubble
-        up to the root marker and it's update done will be called
+        up to the root marker and it's update done will be called.
+        How many times is Marker.update_done called?
+
+           2
+           \
+         ------
+         \     \
+         3      3
+        ----   ----
+        \ \ \  \ \ \
+        1 1 1  1 1 1
+
+        Each leaf node calls itself once.
+
+        Each internal vertex is called during bubble_up_done
+        of each child.
+
+        The first time the root marker.update_done is run, the
+        right child node is not done
         """
         mock_count_update.return_value = None
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
@@ -359,4 +382,7 @@ class TestMarker(unittest.TestCase):
 
         loaded_root_marker = Marker.get("delve")
         self.assertTrue(loaded_root_marker.done)
-        self.assertEqual(mock_count_update.call_count(),13)
+        self.assertEqual(mock_count_update.call_count,14)
+        #9 is the number of nodes in the graph
+        self.assertEqual(mock_count_marked_as_done.call_count,9)
+
