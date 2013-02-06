@@ -391,8 +391,15 @@ class Marker(object):
             return persistence_module.marker_get_children(self)
 
 
-    def update_done(self):
+    def update_done(self,persist_first=False):
+        count_update(self.id)
         self._update_done_in_progress = True
+        # if a marker has just been changed
+        # it must persist itself before checking if it's children
+        # are all done and bubbling up. Doing so will allow it's
+        # parent to know it's changed
+        if persist_first:
+            self.persist()
         if not self.children and self.done:
             if self.bubble_up_done():
                 pass
@@ -469,12 +476,20 @@ class Marker(object):
         return count
 
 
-def handle_done(async):
+def count_update(id):
+    return
+
+
+def handle_async_done(async):
+    """
+    This will mark and async as done and will
+    begin the process to see if all the other asyncs
+    in it's context, if it has one, are done
+    """
     if async.id:
         marker = Marker.get(async.id)
         if not marker:
             marker = Marker.from_async(async)
         marker.done = True
         marker.result = async.result
-        marker.persist()
-        marker.update_done()
+        marker.update_done(persist_first=True)
