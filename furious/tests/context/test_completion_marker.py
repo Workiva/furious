@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
 
 from google.appengine.ext import testbed
 from mock import patch
@@ -361,13 +362,22 @@ class TestMarker(unittest.TestCase):
         mock_count_update.return_value = None
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
-        context_callbacks = {'success':dummy_success_callback}
+        context_callbacks = {
+            'success':dummy_success_callback,
+            'internal_vertex_combiner':dummy_internal_vertex_combiner,
+            'leaf_combiner':dummy_leaf_combiner
+        }
         root_marker = Marker(id="delve",
-            callbacks=context_callbacks)
+            callbacks=context_callbacks,
+            all_children_leaves=False,
+            internal_vertex=True)
         for x in xrange(2):
             root_marker.children.append(Marker(
                 id=str(x),
+                all_children_leaves=True,
+                internal_vertex=True,
                 group_id=root_marker.id,
+                callbacks=context_callbacks,
                 children=[Marker(id=
                 leaf_persistence_id_from_group_id(str(x),i))
                           for i in xrange(3)]
@@ -375,31 +385,57 @@ class TestMarker(unittest.TestCase):
 
         root_marker.persist()
 
-        with patch('furious.tests.context.test_completion_marker.'
-        'dummy_success_callback', autospec=True) as mock_success_callback:
+        with patch('furious.tests.context.'
+                   'test_completion_marker.'
+                   'dummy_success_callback', autospec=True) \
+                    as mock_success_callback:
+            with patch('furious.tests.context.'
+                       'test_completion_marker.'
+                       'dummy_leaf_combiner', autospec=True) \
+                        as mock_leaf_combiner:
+                with patch('furious.tests.context.'
+                           'test_completion_marker.'
+                           'dummy_internal_vertex_combiner', autospec=True) \
+                            as mock_internal_vertex_combiner:
 
-            for internal_node in root_marker.children:
-                for leaf_node in internal_node.children:
-                    leaf_node.done = True
-                    leaf_node.result = 1
+                    mock_leaf_combiner.return_value = ["1"]
+                    mock_internal_vertex_combiner.return_value = ["2"]
+
+
+
+                    for internal_node in root_marker.children:
+                        for leaf_node in internal_node.children:
+                            leaf_node.done = True
+                            leaf_node.result = 1
+                            leaf_node.update_done(persist_first=True)
+
+                    loaded_root_marker = Marker.get("delve")
+                    self.assertTrue(loaded_root_marker.done)
+                    self.assertEqual(mock_count_update.call_count,14)
+                    #9 is the number of nodes in the graph
+                    self.assertEqual(mock_count_marked_as_done.call_count,9)
+
+                    #pretend a task was run again later on after
+                    #the root had succeeded, it should only
+                    #reach it's parent node and that should
+                    #not bubble up
+                    leaf_node = root_marker.children[0].children[1]
                     leaf_node.update_done(persist_first=True)
 
-            loaded_root_marker = Marker.get("delve")
-            self.assertTrue(loaded_root_marker.done)
-            self.assertEqual(mock_count_update.call_count,14)
-            #9 is the number of nodes in the graph
-            self.assertEqual(mock_count_marked_as_done.call_count,9)
+                    self.assertEqual(mock_count_update.call_count,16)
+                    mock_success_callback.assert_called_once_with("delve",['2'])
 
-            #pretend a task was run again later on after
-            #the root had succeeded, it should only
-            #reach it's parent node and that should
-            #not bubble up
-            leaf_node = root_marker.children[0].children[1]
-            leaf_node.update_done(persist_first=True)
-
-            self.assertEqual(mock_count_update.call_count,16)
-            mock_success_callback.assert_called_once_with("delve",None)
+                    self.assertEqual(mock_internal_vertex_combiner.call_count,1)
+                    self.assertEqual(mock_leaf_combiner.call_count,2)
 
 
 def dummy_success_callback(id,results):
     return
+
+def dummy_leaf_combiner(results):
+    logging.debug("dummy_leaf_combiner been called!")
+    return ["1"]
+
+def dummy_internal_vertex_combiner(results):
+    logging.debug("dummy_internal_vertex_combiner been called!")
+    return ["2"]
