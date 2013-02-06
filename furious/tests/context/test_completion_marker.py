@@ -61,16 +61,26 @@ class TestFunctions(unittest.TestCase):
 
 
     def test_tree_graph_growth(self):
+        """
+        Test function that allows testing of the
+        number of nodes in a marker tree graph
+        """
         from furious.context.completion_marker import tree_graph_growth
         sizes = [tree_graph_growth(n) for n in range(0,100,10)]
         expected = [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
         self.assertEqual(sizes,expected)
 
+
     def test_initial_save_growth(self):
+        """
+        Test function that allows testing of the number of
+        nodes which are saved when persisted
+        """
         from furious.context.completion_marker import initial_save_growth
         sizes = [initial_save_growth(n) for n in range(0,100,10)]
         expected = [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
         self.assertEqual(sizes,expected)
+
 
 class TestMarker(unittest.TestCase):
     def setUp(self):
@@ -93,6 +103,14 @@ class TestMarker(unittest.TestCase):
 
 
     def test_do_any_have_children(self):
+        """
+        Make sure the static method Marker.do_any_have_children
+        properly detects if any of a list of Markers have children.
+        do_any_have_children is for a Marker to detect a state
+        change in an idempotent manner. a child may change from
+        a leaf to an node with children if it the target function
+        returns a new Context.
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="fun")
@@ -111,7 +129,14 @@ class TestMarker(unittest.TestCase):
 
         self.assertTrue(Marker.do_any_have_children(children))
 
+
     def test_individual_serialization(self):
+        """
+        Make sure a marker with children as IDs
+        which is the state they would be in after loading
+        from the persistence layer, the children maintain
+        through serialization
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         marker = Marker.from_dict({'id':'test'})
@@ -137,7 +162,13 @@ class TestMarker(unittest.TestCase):
         self.assertEqual(len(reconstituted_root.children),
             len(reconstituted_root.children_to_dict()))
 
+
     def test_graph_serialization(self):
+        """
+        Make sure when a marker tree graph is serialized
+        (to_dict), it gets deserialized(from_dict) with
+        all it's children intact as Markers
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="jolly")
@@ -159,7 +190,13 @@ class TestMarker(unittest.TestCase):
         for child in reconstituted_root.children:
             self.assertIsInstance(child,Marker)
 
+
     def test_get_group_id_from_group_id(self):
+        """
+        Make sure all children can id their parent marker
+        when they have an independent id, but passed the parent
+        ID as a group_id
+        """
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="polly")
         for x in xrange(2):
@@ -169,7 +206,12 @@ class TestMarker(unittest.TestCase):
         for child in root_marker.children:
             self.assertEqual(child.get_group_id(),"polly")
 
+
     def test_get_group_id_from_leaf(self):
+        """
+        Make sure all children can id their parent marker
+        when their id was created by prefixing with parent id
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="polly")
@@ -182,6 +224,11 @@ class TestMarker(unittest.TestCase):
 
 
     def test_persist_marker_tree_graph(self):
+        """
+        Make sure when a marker tree is persisted,
+        it only saves the non-leaf nodes and the
+        children properties contains only IDs
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="peanut")
@@ -210,6 +257,11 @@ class TestMarker(unittest.TestCase):
     @patch('furious.context.get_current_context', autospec=True)
     def test_persist_tree_after_tasks_inserted(self,
                                        mock_get_current_context):
+        """
+        Make sure a marker tree isn't(Raises exception)
+        persisted after the current context's tasks have
+        been inserted
+        """
         from furious.context.context import Context
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
@@ -225,10 +277,11 @@ class TestMarker(unittest.TestCase):
         self.assertRaises(NotSafeToSave, root_marker.persist)
 
 
-
-
-
     def test_persist_internal_node_marker(self):
+        """
+        Make sure internal nodes are saved during the persistence
+        of a marker tree graph.
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="cracker")
@@ -251,6 +304,12 @@ class TestMarker(unittest.TestCase):
 
 
     def test_persist_leaf_marker(self):
+        """
+        Make sure a leaf marker is saved when it persists
+        itself but only during the update_done process.
+        Make sure that loaded leaf marker can id it's parent
+        marker
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         from furious.context.completion_marker import NotSafeToSave
@@ -269,7 +328,12 @@ class TestMarker(unittest.TestCase):
         self.assertTrue(loaded_marker.get_group_id(),'heart')
 
 
-    def test_update_done(self):
+    def test_update_done_of_leaf_travels_to_root_when_last(self):
+        """
+        Make sure when all but one marker is done and it
+        runs an update_done, the processes will bubble
+        up to the root marker and it's update done will be called
+        """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
         root_marker = Marker(id="gopher")
