@@ -57,7 +57,7 @@ def run_job():
         async.executing = True
         async.result = function(*args, **kwargs)
     except AbortAndRestart:
-        _restart(async)
+        async._restart()
     except Exception as e:
         async.result = encode_exception(e)
 
@@ -112,36 +112,4 @@ def _execute_callback(async, callback):
         return callback.start()
 
     return callback()
-
-
-def _restart(async):
-    """Resets the executing Async and then updates the _process_results
-    function to reinsert itself.
-    """
-    # Reset async execution flags
-    async._executing = False
-    async._executed = False
-
-    new_process_results = None
-
-    # Get _process_results
-    original_process_results = async.get_options().get('_process_results')
-
-    # Replace _process_results
-    if original_process_results:
-
-        # Reset original _process_results function
-        def restart_process_results():
-            async.update_options(
-                {'_process_results': original_process_results})
-            return async
-
-        new_process_results = restart_process_results
-
-    else:
-
-        # Return async
-        new_process_results = lambda: async
-
-    async.update_options({'_process_results': new_process_results})
 
