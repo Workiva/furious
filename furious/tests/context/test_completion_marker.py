@@ -103,6 +103,88 @@ class TestMarker(unittest.TestCase):
         self.testbed.deactivate()
 
 
+    def test_is_marker_leaf(self):
+        """
+        Make sure a marker can report if it is a leaf marker
+        or not
+        """
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="polly")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+
+        originally_a_leaf_marker = root_marker.children[0]
+
+        sub_tree_marker = Marker(id=originally_a_leaf_marker.id,
+        children=[Marker(id=
+        leaf_persistence_id_from_group_id(originally_a_leaf_marker.id,i))
+                  for i in xrange(3)])
+
+        root_marker.children[0] = sub_tree_marker
+
+        still_leaf_marker = root_marker.children[1]
+        now_sub_tree_marker = root_marker.children[0]
+        self.assertTrue(still_leaf_marker.is_leaf())
+        self.assertFalse(now_sub_tree_marker.is_leaf())
+
+
+    def test_get_multi(self):
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="freddy")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        root_marker._persist_whole_graph()
+
+        markers = Marker.get_multi([child.id for child in
+                                    root_marker.children])
+
+        self.assertEqual(len(markers),3)
+
+        markers = Marker.get_multi([root_marker.children[0].id,
+            root_marker.children[1].id,"foobar"])
+
+        self.assertEqual(len(markers),2)
+
+
+    def test_get_marker_tree_leaves(self):
+        """
+        Make sure all the leaves of a marker are returned
+        as expected from marker._list_of_leaf_markers()
+        """
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="polly")
+        for x in xrange(3):
+            root_marker.children.append(Marker(id=
+            leaf_persistence_id_from_group_id(root_marker.id,x)))
+
+        originally_a_leaf_marker = root_marker.children[0]
+
+        sub_tree_marker = Marker(id=originally_a_leaf_marker.id,
+            children=[Marker(id=
+            leaf_persistence_id_from_group_id(originally_a_leaf_marker.id,i))
+                      for i in xrange(3)])
+
+        root_marker.children[0] = sub_tree_marker
+        root_marker.persist()
+
+        leaves = root_marker._list_of_leaf_markers()
+        self.assertEqual(len(leaves),5)
+
+        reloaded_root_marker = Marker.get(root_marker.id)
+        self.assertIsNotNone(reloaded_root_marker)
+        leaves = reloaded_root_marker._list_of_leaf_markers()
+        #no jobs run and updated, so there should be no
+        #leaves persisted yet
+        self.assertEqual(len(leaves),0)
+
+
     def test_do_any_have_children(self):
         """
         Make sure the static method Marker.do_any_have_children
@@ -425,17 +507,73 @@ class TestMarker(unittest.TestCase):
                     self.assertEqual(mock_count_update.call_count,16)
                     mock_success_callback.assert_called_once_with("delve",['2'])
 
-                    self.assertEqual(mock_internal_vertex_combiner.call_count,1)
-                    self.assertEqual(mock_leaf_combiner.call_count,2)
+                    #one for each non-leaf node
+                    self.assertEqual(mock_internal_vertex_combiner.call_count,3)
+                    self.assertEqual(mock_leaf_combiner.call_count,3)
+
+
+    def test_combiner_results(self):
+        """
+        Make sure the expected results are in the root_marker.results
+        after the job is done.
+        """
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import Marker
+        #build marker tree
+        context_callbacks = {
+            'success':dummy_success_callback,
+            'internal_vertex_combiner':dummy_internal_vertex_combiner,
+            'leaf_combiner':dummy_leaf_combiner
+        }
+        root_marker = Marker(id="big_job",
+            callbacks=context_callbacks,
+            all_children_leaves=False,
+            internal_vertex=True)
+        for x in xrange(2):
+            root_marker.children.append(Marker(
+                id=str(x),
+                all_children_leaves=True,
+                internal_vertex=True,
+                group_id=root_marker.id,
+                callbacks=context_callbacks,
+                children=[Marker(id=
+                leaf_persistence_id_from_group_id(str(x),i))
+                          for i in xrange(3)]
+            ))
+
+        originally_a_leaf_marker = root_marker.children[1].children[1]
+
+        sub_tree_marker = Marker(id=originally_a_leaf_marker.id,
+            children=[Marker(id=
+            leaf_persistence_id_from_group_id(originally_a_leaf_marker.id,i))
+                      for i in xrange(3)],
+        callbacks=context_callbacks)
+
+        root_marker.children[1].children[1] = sub_tree_marker
+        #persist marker tree
+        root_marker.persist()
+        #similate running all the jobs
+        leaf_markers = root_marker._list_of_leaf_markers()
+        for marker in leaf_markers:
+            marker.done = True
+            marker.result = 1
+            marker.update_done(persist_first=True)
+
+        loaded_root_marker = Marker.get("big_job")
+        self.assertTrue(loaded_root_marker.done)
+        self.assertEqual(loaded_root_marker.result,
+            [[[1, 1, 1]], [[[1, 1, 1]], [1, 1]]])
 
 
 def dummy_success_callback(id,results):
     return
 
+
 def dummy_leaf_combiner(results):
     logging.debug("dummy_leaf_combiner been called!")
-    return ["1"]
+    return [result for result in results]
+
 
 def dummy_internal_vertex_combiner(results):
     logging.debug("dummy_internal_vertex_combiner been called!")
-    return ["2"]
+    return results

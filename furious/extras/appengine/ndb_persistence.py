@@ -85,7 +85,7 @@ def _marker_persist(marker, save_leaves=True):
             if child_futures:
                 put_futures.extend(child_futures)
 
-    if save_leaves or persisted_children_keys:
+    if save_leaves or not marker.is_leaf():
         put_future = mp.put_async()
         put_futures.append(put_future)
 
@@ -108,6 +108,12 @@ def marker_get(id):
     mp = key.get()
     if mp:
         return mp.to_marker()
+
+
+def marker_get_multi(ids):
+    keys = [ndb.Key('MarkerPersist',id) for id in ids]
+    mps = ndb.get_multi(keys)
+    return [mp.to_marker() for mp in mps if mp]
 
 
 def marker_get_children(marker):

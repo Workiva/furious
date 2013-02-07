@@ -212,6 +212,10 @@ class Marker(object):
         self._children = value
 
 
+    def is_leaf(self):
+        return not bool(self.children)
+
+
     def children_to_dict(self):
         """
         the children property may contain IDs of children
@@ -225,6 +229,19 @@ class Marker(object):
                 or\
                [child.to_dict() for child in self.children
                 if isinstance(child,Marker)]
+
+
+    def children_markers(self):
+        ids = [child for child in self.children
+               if isinstance(child,basestring)]
+
+        child_markers = []
+        if ids:
+            child_markers = Marker.get_multi(ids)
+
+        child_markers.extend([child for child in self.children
+                              if isinstance(child,Marker)])
+        return child_markers
 
 
     def children_as_ids(self):
@@ -361,7 +378,6 @@ class Marker(object):
             ' has inserted tasks')
 
         if is_root_marker:
-            current_context = None
             try:
                 current_context = get_current_context()
                 if current_context and current_context.id == self.id and\
@@ -376,11 +392,42 @@ class Marker(object):
             persistence_module.marker_persist(self, save_leaves)
 
 
+    def _persist_whole_graph(self):
+        """
+        For those times when you absolutely want to
+        save every marker in the tree. It will overwrite any
+        existing Markers. Children of this marker which are
+        only ids of markers will not be saved.
+        """
+        from furious.context import get_current_context
+        from furious.context import NotInContextError
+        save_leaves = True
+        if not self.is_leaf():
+            try:
+                current_context = get_current_context()
+                if current_context and current_context.id == self.id and\
+                   current_context._tasks_inserted:
+                    raise NotSafeToSave('cannot save after tasks have'
+                                        ' been inserted')
+            except NotInContextError:
+                pass
+        if hasattr(persistence_module,'marker_persist') and\
+           callable(persistence_module.marker_persist):
+            persistence_module.marker_persist(self, save_leaves)
+
+
     @classmethod
     def get(cls,id):
         if hasattr(persistence_module,'marker_get') and\
            callable(persistence_module.marker_get):
             return persistence_module.marker_get(id)
+
+
+    @classmethod
+    def get_multi(cls,ids):
+        if hasattr(persistence_module,'marker_get_multi') and\
+           callable(persistence_module.marker_get_multi):
+            return persistence_module.marker_get_multi(ids)
 
 
     def get_persisted_children(self):
@@ -417,17 +464,35 @@ class Marker(object):
                     self.all_children_leaves = (not Marker.
                         do_any_have_children(children_markers))
 
-                combiner = None
+                internal_vertex_combiner = None
+                leaf_combiner = None
                 if self.callbacks:
                     callbacks = decode_callbacks(self.callbacks)
-                    if self.internal_vertex and self.all_children_leaves:
-                        combiner = callbacks.get('leaf_combiner')
-                    elif self.internal_vertex:
-                        combiner = callbacks.get('internal_vertex_combiner')
+                    leaf_combiner = callbacks.get('leaf_combiner')
+                    internal_vertex_combiner = callbacks.get(
+                        'internal_vertex_combiner')
 
-                if combiner:
-                    self.result = combiner([marker.result for marker in
-                                            done_markers if marker])
+                result_of_combined_leaves = None
+                if leaf_combiner:
+                    result_of_combined_leaves = leaf_combiner(
+                        [marker.result for marker in done_markers
+                         if marker and marker.is_leaf()]
+                    )
+
+                internal_vertex_results = [marker.result for marker
+                                           in done_markers
+                                           if marker and not marker.is_leaf()]
+                if result_of_combined_leaves:
+                    internal_vertex_results.append(result_of_combined_leaves)
+
+                result_of_combined_internal_vertexes = None
+                if internal_vertex_combiner:
+                    result_of_combined_internal_vertexes = \
+                    internal_vertex_combiner([result for result in
+                                              internal_vertex_results])
+
+                self.result = result_of_combined_internal_vertexes
+
                 count_marked_as_done(self.id)
                 self.persist()
                 self._update_done_in_progress = False
@@ -468,20 +533,21 @@ class Marker(object):
             return True
 
 
-    def _list_children_keys(self):
+    def _list_of_leaf_markers(self):
         """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
+        Recursively builds a list of all the leaf markers here or below
+        this tree, sub-tree or leaf.
+        It will retrieve child markers from the persistence layer
+        if not already loaded
         """
-        pass
+        leaves = []
+        if self.is_leaf():
+            leaves.append(self)
+        else:
+            for child in self.children_markers():
+                leaves.extend(child._list_of_leaf_markers())
 
-
-    def _list_of_leaf_keys(self):
-        """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
-        """
-        pass
+        return leaves
 
 
     def delete_leaves(self):
