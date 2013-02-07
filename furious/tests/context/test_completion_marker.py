@@ -450,14 +450,10 @@ class TestMarker(unittest.TestCase):
             'leaf_combiner':dummy_leaf_combiner
         }
         root_marker = Marker(id="delve",
-            callbacks=context_callbacks,
-            all_children_leaves=False,
-            internal_vertex=True)
+            callbacks=context_callbacks)
         for x in xrange(2):
             root_marker.children.append(Marker(
                 id=str(x),
-                all_children_leaves=True,
-                internal_vertex=True,
                 group_id=root_marker.id,
                 callbacks=context_callbacks,
                 children=[Marker(id=
@@ -526,14 +522,10 @@ class TestMarker(unittest.TestCase):
             'leaf_combiner':dummy_leaf_combiner
         }
         root_marker = Marker(id="big_job",
-            callbacks=context_callbacks,
-            all_children_leaves=False,
-            internal_vertex=True)
+            callbacks=context_callbacks)
         for x in xrange(2):
             root_marker.children.append(Marker(
                 id=str(x),
-                all_children_leaves=True,
-                internal_vertex=True,
                 group_id=root_marker.id,
                 callbacks=context_callbacks,
                 children=[Marker(id=

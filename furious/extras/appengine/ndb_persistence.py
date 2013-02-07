@@ -28,8 +28,6 @@ class MarkerPersist(ndb.Model):
     children = ndb.KeyProperty(repeated=True,indexed=False)
     done = ndb.BooleanProperty(default=False,indexed=False)
     result = ndb.JsonProperty()
-    all_children_leaves = ndb.BooleanProperty(indexed=False)
-    internal_vertex = ndb.BooleanProperty(indexed=False)
 
 
     @classmethod
@@ -56,8 +54,6 @@ class MarkerPersist(ndb.Model):
             group_id=self.group_id,
             done=self.done,
             result=self.result,
-            internal_vertex=self.internal_vertex,
-            all_children_leaves=self.internal_vertex,
             callbacks=self.callbacks,
             children=[key.id() for key in self.children
                       if key]

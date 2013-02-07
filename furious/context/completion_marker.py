@@ -180,10 +180,6 @@ class Marker(object):
         self.callbacks = options.get('callbacks')
         self._children = options.get('children') or []
         self.async = options.get('async')
-
-        self.internal_vertex = options.get('internal_vertex')
-        self.all_children_leaves = options.get('all_children_leaves')
-
         self.done = options.get('done',False)
         self.result = options.get('result')
         self._update_done_in_progress = False
@@ -458,11 +454,6 @@ class Marker(object):
                 self.done = True
                 result = []
                 combiner_func = None
-                if self.all_children_leaves:
-                    #a leaf child may have been replaced with a Context
-                    #which makes all_children_leaves False
-                    self.all_children_leaves = (not Marker.
-                        do_any_have_children(children_markers))
 
                 internal_vertex_combiner = None
                 leaf_combiner = None
