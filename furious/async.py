@@ -98,6 +98,10 @@ class AlreadyExecutingError(Exception):
     """This Async is currently executing."""
 
 
+class AbortAndRestart(Exception):
+    """This Async needs to be aborted immediately and restarted."""
+
+
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
@@ -128,7 +132,7 @@ class Async(object):
     def executing(self, executing):
         if self._executed:
             raise AlreadyExecutedError(
-                'You can not execute and executed job.')
+                'You can not execute an executed job.')
 
         if self._executing:
             raise AlreadyExecutingError(
