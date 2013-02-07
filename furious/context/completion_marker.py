@@ -212,6 +212,71 @@ class Marker(object):
         return not bool(self.children)
 
 
+    @classmethod
+    def make_markers_for_tasks(cls, tasks, group=None,
+                              context_callbacks=None):
+        markers = []
+        if group is None:
+        #        bootstrap the top level context marker
+            group_id = uuid.uuid4().hex
+        else:
+            group_id = group.id
+
+        if len(tasks) > BATCH_SIZE:
+            #make two internal vertex markers
+            #recurse the first one with ten tasks
+            #and recurse the second with the rest
+            first_tasks = tasks[:BATCH_SIZE]
+            second_tasks = tasks[BATCH_SIZE:]
+
+            first_group = Marker(
+                id=uuid.uuid4().hex, group_id=group_id,
+                callbacks=context_callbacks)
+            first_group.children = cls.make_markers_for_tasks(first_tasks,
+                first_group, context_callbacks)
+
+            second_group = Marker(
+                id=uuid.uuid4().hex, group_id=group_id,
+                callbacks=context_callbacks)
+            second_group.children = cls.make_markers_for_tasks(second_tasks,
+                second_group, context_callbacks)
+
+            #these two will be the children of the caller
+            markers.append(first_group)
+            markers.append(second_group)
+            return markers
+        else:
+            #make leaf markers for the tasks
+            try:
+                markers = []
+                for (index, task) in enumerate(tasks):
+                    id = leaf_persistence_id_from_group_id(group_id,index)
+                    task.id = id
+                    markers.append(Marker.from_async(task))
+
+            except TypeError, e:
+                raise
+            return markers
+
+
+    @classmethod
+    def make_marker_tree_for_context(cls,context):
+        root_marker = Marker(id=str(context.id), group_id=None)
+        if not context._tasks:
+            # if a context is made without any tasks, it will
+            # not complete
+            context.add(target=place_holder_target,args=[0])
+
+        root_marker.children = Marker.make_markers_for_tasks(
+            context._tasks, group=None,
+            context_callbacks=None
+        )
+
+        return root_marker
+
+
+
+
     def children_to_dict(self):
         """
         the children property may contain IDs of children
@@ -571,6 +636,8 @@ def count_update(id):
 def count_marked_as_done(id):
     return
 
+def place_holder_target():
+    return
 
 def handle_async_done(async):
     """

@@ -569,3 +569,42 @@ def dummy_leaf_combiner(results):
 def dummy_internal_vertex_combiner(results):
     logging.debug("dummy_internal_vertex_combiner been called!")
     return results
+
+
+class TestMarkerTreeBuilding(unittest.TestCase):
+    def setUp(self):
+        import os
+        import uuid
+
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub()
+        self.testbed.init_memcache_stub()
+        self.testbed.init_datastore_v3_stub()
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+
+    def test_build_tree_from_context(self):
+        from furious.context.context import Context
+        from furious.context.completion_marker import Marker
+        from furious.context.completion_marker import tree_graph_growth
+
+        context = Context()
+
+        for arg in xrange(23):
+            context.add(target=dummy_success_callback,
+                args=[arg])
+
+
+        root_marker = Marker.make_marker_tree_for_context(context)
+
+        root_marker.persist()
+
+        self.assertEqual(root_marker.count_nodes(),tree_graph_growth(23))
+
