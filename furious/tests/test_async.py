@@ -574,7 +574,7 @@ class TestAsync(unittest.TestCase):
         # self.assertEqual(task, queue_mock.add.call_args)
 
     def test_restart_no_process_result(self):
-        """Ensure that _restart() sets the correct _process_results function"""
+        """Ensure that _restart() sets the new _process_results."""
         from furious.async import Async
 
         async_job = Async("something")
@@ -582,7 +582,38 @@ class TestAsync(unittest.TestCase):
 
         async_job._restart()
 
-        self.assertFalse(async_job._executing)
-        self.assertIsNotNone(async_job.get_options().get('_process_results'))
+        self.assertFalse(async_job._executing, "_executing flag not reset")
+        results_processor = async_job.get_options().get('_process_results')
+        self.assertIsNotNone(results_processor, "_process_results was not set")
 
+        restarted_async = results_processor()
+
+        self.assertEqual(async_job, restarted_async,
+                         "returned Async was not the same as original Async")
+        self.assertEqual(None, async_job.get_options().get('_process_results'),
+                         "_process_results was not reset to None")
+
+    def test_restart_has_process_result(self):
+        """Ensure that _restart() replaces the original _process_results."""
+        from furious.async import Async
+
+        def test_process_results():
+            return 42
+
+        async_job = Async("something", _process_results=test_process_results)
+        async_job._executing = True
+
+        async_job._restart()
+
+        self.assertFalse(async_job._executing, "_executing flag not reset")
+        results_processor = async_job.get_options().get('_process_results')
+        self.assertIsNotNone(results_processor, "_process_results was not set")
+
+        restarted_async = results_processor()
+
+        self.assertEqual(async_job, restarted_async,
+                         "returned Async was not the same as original Async")
+        self.assertEqual(test_process_results,
+                         async_job.get_options().get('_process_results'),
+                         "_process_results was not reset to original value")
 

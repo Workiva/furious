@@ -307,16 +307,21 @@ class Async(object):
         if original_process_results:
 
             # Reset original _process_results function
-            def restart_process_results():
+            def reinsert_process_results():
                 self.update_options(_process_results=original_process_results)
                 return self
 
-            new_process_results = restart_process_results
+            new_process_results = reinsert_process_results
 
         else:
 
+            # Make sure _process_results is returned to empty
+            def clean_process_results():
+                self.update_options(_process_results=None)
+                return self
+
             # Return async
-            new_process_results = lambda: self
+            new_process_results = clean_process_results
 
         self.update_options(_process_results=new_process_results)
 
