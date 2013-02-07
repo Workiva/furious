@@ -18,6 +18,7 @@ import unittest
 
 from google.appengine.ext import testbed
 
+from mock import Mock
 from mock import patch
 
 
@@ -62,6 +63,24 @@ class TestContext(unittest.TestCase):
 
         with Context():
             pass
+
+    def test_context_requires_insert_tasks(self):
+        """Ensure Contexts require a callable insert_tasks function."""
+        from furious.context import Context
+
+        self.assertRaises(TypeError, Context, insert_tasks='nope')
+
+    def test_context_gets_id(self):
+        """Ensure a new Context gets an id generated."""
+        from furious.context import Context
+
+        self.assertTrue(Context().id)
+
+    def test_context_gets_assigned_id(self):
+        """Ensure a new Context keeps its assigned id."""
+        from furious.context import Context
+
+        self.assertEqual('test_id_weee', Context(id='test_id_weee').id)
 
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_add_job_to_context_works(self, queue_add_mock):
@@ -156,6 +175,165 @@ class TestContext(unittest.TestCase):
         self.assertEqual(2, len(queue_registry['A']._calls[0][0][0]))
         self.assertEqual(1, len(queue_registry['B']._calls[0][0][0]))
         self.assertEqual(1, len(queue_registry['C']._calls[0][0][0]))
+
+    def test_to_dict(self):
+        """Ensure to_dict returns a dictionary representation of the Context.
+        """
+        import copy
+
+        from furious.context import Context
+
+        options = {
+            'persistence_engine': 'persistence_engine',
+            'unkown': True,
+        }
+
+        context = Context(**copy.deepcopy(options))
+
+        # This stuff gets dumped out by to_dict().
+        options.update({
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            '_tasks_inserted': False,
+            '_task_ids': [],
+        })
+
+        self.assertEqual(options, context.to_dict())
+
+    def test_to_dict_with_callbacks(self):
+        """Ensure to_dict correctly encodes callbacks."""
+        import copy
+
+        from furious.async import Async
+        from furious.context import Context
+
+        options = {
+            'persistence_engine': 'persistence_engine',
+            'callbacks': {
+                'success': self.__class__.test_to_dict_with_callbacks,
+                'failure': "failure_function",
+                'exec': Async(target=dir)
+            }
+        }
+
+        context = Context(**copy.deepcopy(options))
+
+        # This stuff gets dumped out by to_dict().
+        options.update({
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            'persistence_engine': 'persistence_engine',
+            '_tasks_inserted': False,
+            '_task_ids': [],
+            'callbacks': {
+                'success': ("furious.tests.context.test_context."
+                            "TestContext.test_to_dict_with_callbacks"),
+                'failure': "failure_function",
+                'exec': {'job': ('dir', None, None)}
+            }
+        })
+
+        self.assertEqual(options, context.to_dict())
+
+    def test_from_dict(self):
+        """Ensure from_dict returns the correct Context object."""
+        from furious.context import Context
+
+        from furious.context.context import _insert_tasks
+
+        # TODO: persistence_engine needs set to a real persistence module.
+
+        options = {
+            'id': 123456,
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            'random_option': 'avalue',
+            '_tasks_inserted': True,
+            '_task_ids': [1, 2, 3, 4],
+            'persistence_engine': 'furious.context.Context'
+        }
+
+        context = Context.from_dict(options)
+
+        self.assertEqual(123456, context.id)
+        self.assertEqual([1, 2, 3, 4], context._task_ids)
+        self.assertEqual(True, context._tasks_inserted)
+        self.assertEqual('avalue', context._options.get('random_option'))
+        self.assertEqual(_insert_tasks, context._insert_tasks)
+        self.assertEqual(Context, context._persistence_engine)
+
+    def test_from_dict_with_callbacks(self):
+        """Ensure from_dict reconstructs the Context callbacks correctly."""
+        from furious.context import Context
+
+        callbacks = {
+            'success': ("furious.tests.context.test_context."
+                        "TestContext.test_to_dict_with_callbacks"),
+            'failure': "dir",
+            'exec': {'job': ('id', None, None)}
+        }
+
+        context = Context.from_dict({'callbacks': callbacks})
+
+        check_callbacks = {
+            'success': TestContext.test_to_dict_with_callbacks,
+            'failure': dir
+        }
+
+        callbacks = context._options.get('callbacks')
+        exec_callback = callbacks.pop('exec')
+
+        self.assertEqual(check_callbacks, callbacks)
+        self.assertEqual({'job': ('id', None, None)}, exec_callback.to_dict())
+
+    def test_reconstitution(self):
+        """Ensure to_dict(job.from_dict()) returns the same thing."""
+        from furious.context import Context
+
+        options = {
+            'id': 123098,
+            'insert_tasks': 'furious.context.context._insert_tasks',
+            'persistence_engine': 'furious.job_utils.get_function_path_and_options',
+            '_tasks_inserted': True,
+            '_task_ids': []
+        }
+
+        context = Context.from_dict(options)
+
+        self.assertEqual(options, context.to_dict())
+
+    def test_persist_with_no_engine(self):
+        """Calling persist with no engine should blow up."""
+        from furious.context import Context
+
+        context = Context()
+        self.assertRaises(RuntimeError, context.persist)
+
+    def test_persist_persists(self):
+        """Calling persist with an engine persists the Context."""
+        from furious.context import Context
+
+        persistence_engine = Mock()
+        persistence_engine.func_name = 'persistence_engine'
+        persistence_engine.im_class.__name__ = 'engine'
+
+        context = Context(persistence_engine=persistence_engine)
+
+        context.persist()
+
+        persistence_engine.store_context.assert_called_once_with(
+            context.id, context.to_dict())
+
+    def test_load_context(self):
+        """Calling load with an engine attempts to load the Context."""
+        from furious.context import Context
+
+        persistence_engine = Mock()
+        persistence_engine.func_name = 'persistence_engine'
+        persistence_engine.im_class.__name__ = 'engine'
+        persistence_engine.load_context.return_value = {'id': 'ABC123'}
+
+        context = Context.load('ABC123', persistence_engine)
+
+        persistence_engine.load_context.assert_called_once_with('ABC123')
+        self.assertEqual('ABC123', context.id)
 
 
 class TestInsertTasks(unittest.TestCase):
