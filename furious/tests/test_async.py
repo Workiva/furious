@@ -572,3 +572,17 @@ class TestAsync(unittest.TestCase):
 
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
+
+    def test_restart_no_process_result(self):
+        """Ensure that _restart() sets the correct _process_results function"""
+        from furious.async import Async
+
+        async_job = Async("something")
+        async_job._executing = True
+
+        async_job._restart()
+
+        self.assertFalse(async_job._executing)
+        self.assertIsNotNone(async_job.get_options().get('_process_results'))
+
+

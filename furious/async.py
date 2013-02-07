@@ -308,8 +308,7 @@ class Async(object):
 
             # Reset original _process_results function
             def restart_process_results():
-                self.update_options(
-                    {'_process_results': original_process_results})
+                self.update_options(_process_results=original_process_results)
                 return self
 
             new_process_results = restart_process_results
@@ -319,7 +318,7 @@ class Async(object):
             # Return async
             new_process_results = lambda: self
 
-        self.update_options({'_process_results': new_process_results})
+        self.update_options(_process_results=new_process_results)
 
 
 def defaults(**options):
