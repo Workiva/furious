@@ -209,6 +209,24 @@ class TestRunJob(unittest.TestCase):
 
         returned_async.start.assert_called_once_with()
 
+    @patch('google.appengine.api.taskqueue.Queue.add')
+    @patch('__builtin__.dir')
+    def test_AbortAndRestart(self, dir_mock, queue_add):
+        from furious.async import AbortAndRestart
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        dir_mock.side_effect = AbortAndRestart
+
+        work = Async(target='dir')
+
+        with _ExecutionContext(work):
+            run_job()
+
+        #TODO: Find a better way to test that this works
+        queue_add.assert_called_once()
+
 
 def _fake_async_returning_target(async_to_return):
     return async_to_return

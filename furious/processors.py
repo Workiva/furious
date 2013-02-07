@@ -56,7 +56,6 @@ def run_job():
     try:
         async.executing = True
         async.result = function(*args, **kwargs)
-    #TODO: be sure to add testcase for this
     except AbortAndRestart:
         async._restart()
     except Exception as e:
