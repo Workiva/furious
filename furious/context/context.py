@@ -182,11 +182,11 @@ class Context(object):
         return options
 
     @classmethod
-    def from_dict(cls, context):
+    def from_dict(cls, context_options_dict):
         """Return a context job from a dict output by Context.to_dict."""
         import copy
 
-        context_options = copy.deepcopy(context)
+        context_options = copy.deepcopy(context_options_dict)
 
         tasks_inserted = context_options.pop('_tasks_inserted', False)
         task_ids = context_options.pop('_task_ids', [])
