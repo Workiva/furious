@@ -577,6 +577,48 @@ class Marker(object):
 
 
     def update_done(self,persist_first=False):
+        """
+        Args:
+            persist_first: save any changes before bubbling
+            up the tree. Used after a leaf task has been
+            set as done.
+        Returns:
+            Boolean: True if done
+
+        illustration of a way results are handled
+        Marker tree
+            o
+            \
+        o-----------o
+        \           \
+        --------   -----
+        \ \ \ \ \  \ \ \ \
+        o o o o o   o o o o
+              \
+              ---
+              \ \ \
+              o o o
+
+        ================
+        ints are the order of task results
+            o
+            \
+        o-----------o
+        \           \
+        --------   -------
+        \ \ \ \ \  \ \ \  \
+        0 1 2 o 6  7 8 9  10
+              \
+              ---
+              \ \ \
+              3 4 5
+
+        the leaf combiner would combine each contiguous
+        group of leaf results
+        and the internal vertex combiner will
+        combine each group
+        [[[0,1,2],[[3,4,5]],[6]],[[7,8,9,10]]]
+        """
         count_update(self.id)
         self._update_done_in_progress = True
         # if a marker has just been changed
@@ -586,48 +628,33 @@ class Marker(object):
         if persist_first:
             count_marked_as_done(self.id)
             self.persist()
-        if not self.children and self.done:
+
+        leaf = self.is_leaf()
+        if leaf and self.done:
             self.bubble_up_done()
             self._update_done_in_progress = False
             return True
-        elif self.children and not self.done:
+        elif not leaf and not self.done:
             children_markers = self.get_persisted_children()
             done_markers = [marker for marker in children_markers
                             if marker and marker.done]
             if len(done_markers) == len(self.children):
                 self.done = True
-                result = []
-                combiner_func = None
-
-                internal_vertex_combiner = None
-                leaf_combiner = None
                 if self.callbacks:
                     callbacks = decode_callbacks(self.callbacks)
                     leaf_combiner = callbacks.get('leaf_combiner')
                     internal_vertex_combiner = callbacks.get(
                         'internal_vertex_combiner')
 
-                #each contiguous set of leaf results
-                # get combined with leaf_combiner
-                # and are added to list of internal vertex
-                # results which are then combined with
-                # internal vertex combiner
-                # this maintains the order
-                #
-                #  x is a leaf marker
-                #  o is a non-leaf marker/internal vertex marker
-                #  [xx,o,xx] => [ o , o , o ]
+                    internal_vertex_results = group_into_internal_vertex_results(
+                        done_markers, leaf_combiner)
 
-                internal_vertex_results = group_into_internal_vertex_results(
-                    done_markers, leaf_combiner)
+                    if internal_vertex_combiner:
+                        result_of_combined_internal_vertexes = \
+                        internal_vertex_combiner([result for result in
+                                                  internal_vertex_results])
 
-                result_of_combined_internal_vertexes = None
-                if internal_vertex_combiner:
-                    result_of_combined_internal_vertexes = \
-                    internal_vertex_combiner([result for result in
-                                              internal_vertex_results])
-
-                self.result = result_of_combined_internal_vertexes
+                        self.result = result_of_combined_internal_vertexes
 
                 count_marked_as_done(self.id)
                 self.persist()
@@ -713,14 +740,20 @@ class Marker(object):
 def count_update(id):
     return
 
+
 def count_marked_as_done(id):
     return
+
 
 def place_holder_target():
     return
 
+
 def handle_async_done(async):
     """
+    Args:
+        an Async instance
+        
     This will mark and async as done and will
     begin the process to see if all the other asyncs
     in it's context, if it has one, are done
