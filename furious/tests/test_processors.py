@@ -209,7 +209,7 @@ class TestRunJob(unittest.TestCase):
 
         returned_async.start.assert_called_once_with()
 
-    @patch('google.appengine.api.taskqueue.Queue.add')
+    @patch('furious.async.Async.start')
     @patch('__builtin__.dir')
     def test_AbortAndRestart(self, dir_mock, queue_add):
         """Ensures when AbortAndRestart is raised the Async restarts."""
@@ -219,14 +219,20 @@ class TestRunJob(unittest.TestCase):
         from furious.processors import run_job
 
         dir_mock.side_effect = AbortAndRestart
+        mock_success = Mock()
+        mock_error = Mock()
 
-        work = Async(target='dir')
+        work = Async(target='dir',
+                     success=mock_success,
+                     error=mock_error)
 
         with _ExecutionContext(work):
             run_job()
 
         #TODO: Find a better way to test that this works
         queue_add.assert_called_once()
+        self.assertFalse(mock_success.called)
+        self.assertFalse(mock_error.called)
 
 
 def _fake_async_returning_target(async_to_return):
