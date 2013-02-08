@@ -211,7 +211,7 @@ class TestRunJob(unittest.TestCase):
 
     @patch('furious.async.Async.start')
     @patch('__builtin__.dir')
-    def test_AbortAndRestart(self, dir_mock, queue_add):
+    def test_AbortAndRestart(self, dir_mock, mock_start):
         """Ensures when AbortAndRestart is raised the Async restarts."""
         from furious.async import AbortAndRestart
         from furious.async import Async
@@ -229,8 +229,7 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             run_job()
 
-        #TODO: Find a better way to test that this works
-        queue_add.assert_called_once()
+        mock_start.assert_called_once()
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
 

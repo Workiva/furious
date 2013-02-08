@@ -585,12 +585,27 @@ class TestAsync(unittest.TestCase):
 
         mock_start.assert_called_once()
 
-    def test_restart_not_executing(self):
-        """Ensure that _restart() replaces the original _process_results."""
+    def test_restart_not_started(self):
+        """Ensure that _restart() raises a NotExecutingError when restarting
+        before started.
+        """
         from furious.async import Async
         from furious.async import NotExecutingError
 
         async_job = Async("something")
+
+        self.assertRaises(NotExecutingError, async_job._restart,)
+
+    def test_restart_finished_fails(self):
+        """Ensure that calling _restart() on a finished Async raises a
+        NotExecutingError.
+        """
+        from furious.async import Async
+        from furious.async import NotExecutingError
+
+        async_job = Async("something")
+        async_job._executing = True
+        async_job.result = 'result'
 
         self.assertRaises(NotExecutingError, async_job._restart,)
 
