@@ -536,7 +536,62 @@ class TestMarker(unittest.TestCase):
 
                     #one for each non-leaf node
                     self.assertEqual(mock_internal_vertex_combiner.call_count,3)
-                    self.assertEqual(mock_leaf_combiner.call_count,3)
+                    self.assertEqual(mock_leaf_combiner.call_count,2)
+
+    def test_ordered_grouping_results(self):
+        """
+        Ensure results will be combined into groups of
+        combined leaf results to maintain the result
+        order is the same as the tasks inserted.
+        When a single task fans out, it's results
+        will pulled in position
+
+        """
+        from furious.context.completion_marker import leaf_persistence_id_from_group_id
+        from furious.context.completion_marker import first_iv_markers
+        from furious.context.completion_marker import group_into_internal_vertex_results
+        from furious.context.completion_marker import Marker
+        root_marker = Marker(id="little_job")
+        for x in xrange(3):
+            root_marker.children.append(Marker(
+                id=str(x),
+                group_id=root_marker.id,
+                result=[2,2,2],
+                children=[Marker(id=
+                leaf_persistence_id_from_group_id(str(x),i),
+                result=2)
+                          for i in xrange(3)]
+            ))
+
+        for x in xrange(2):
+            root_marker.children.append(Marker(
+                id=leaf_persistence_id_from_group_id(root_marker.id,x+3),
+                result=1
+            ))
+
+        markers = first_iv_markers(root_marker.children)
+
+        self.assertEqual(len(markers),3)
+
+        iv_results = group_into_internal_vertex_results(root_marker.children,
+            dummy_leaf_combiner)
+
+        self.assertEqual(len(iv_results),4)
+        self.assertEqual(iv_results,[[2, 2, 2], [2, 2, 2], [2, 2, 2], [1, 1]])
+
+        #shuffle children a few times
+        chlin = root_marker.children
+        children = [chlin[3],chlin[4],chlin[0],chlin[1],chlin[2]]
+        iv_results = group_into_internal_vertex_results(children,
+            dummy_leaf_combiner)
+        self.assertEqual(iv_results,[[1, 1], [2, 2, 2], [2, 2, 2], [2, 2, 2]])
+        children = [chlin[3],chlin[0],chlin[4],chlin[1],chlin[2]]
+        iv_results = group_into_internal_vertex_results(children,
+            dummy_leaf_combiner)
+        self.assertEqual(iv_results,[[1],[2, 2, 2], [1],[2, 2, 2], [2, 2, 2]])
+        iv_results = group_into_internal_vertex_results(children,
+            None)
+        self.assertEqual(iv_results,[[2, 2, 2],[2, 2, 2], [2, 2, 2]])
 
 
     def test_combiner_results(self):
@@ -585,7 +640,7 @@ class TestMarker(unittest.TestCase):
         loaded_root_marker = Marker.get("big_job")
         self.assertTrue(loaded_root_marker.done)
         self.assertEqual(loaded_root_marker.result,
-            [[[1, 1, 1]], [[[1, 1, 1]], [1, 1]]])
+            [[[1, 1, 1]], [[1], [[1, 1, 1]], [1]]])
 
 
 def dummy_success_callback(id,results):
@@ -636,6 +691,5 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         root_marker = Marker.make_marker_tree_for_context(context)
 
         root_marker.persist()
-
         self.assertEqual(root_marker.count_nodes(),tree_graph_growth(23))
 
