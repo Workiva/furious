@@ -82,6 +82,37 @@ class TestFunctions(unittest.TestCase):
         expected = [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
         self.assertEqual(sizes,expected)
 
+    def test_random_string_generator(self):
+        """
+        Make sure random alpha numeric string generator
+        produces a string of the expected length with only
+        chars of A-z0-9
+        """
+        from furious.context.completion_marker import random_alpha_numeric
+
+        value = random_alpha_numeric()
+        self.assertIsInstance(value,basestring)
+        self.assertEqual(len(value),2)
+        self.assertRegexpMatches(value,r"^[A-Za-z0-9]{2}$")
+
+
+    def test_ordered_random_task_ids(self):
+        """
+        Make sure an ordered set list of random strings are returned
+        where the length is number_of_ids
+        """
+        from furious.context.completion_marker import ordered_random_ids
+
+        ids = ordered_random_ids(10)
+        self.assertEqual(len(ids),10)
+        for index, item in enumerate(ids):
+            self.assertIsNotNone(item)
+            self.assertIsInstance(item,basestring)
+            self.assertEqual(len(item),3)
+            self.assertEqual(str(index),item[-1])
+        sorted_ids = sorted(ids)
+        self.assertListEqual(ids,sorted_ids)
+
 
 class TestMarker(unittest.TestCase):
     def setUp(self):

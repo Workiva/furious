@@ -18,11 +18,29 @@ import uuid
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
 from furious.config import get_configured_persistence_module
+import random
+import string
 persistence_module = get_configured_persistence_module()
 
 BATCH_SIZE = 10
 CHILDREN_ARE_LEAVES = True
 CHILDREN_ARE_INTERNAL_VERTEXES = False
+
+
+def random_alpha_numeric():
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for x  in range(2))
+
+
+def ordered_random_ids(number_of_ids):
+    ids = set()
+    while len(ids) < number_of_ids:
+        ids.add(random_alpha_numeric())
+
+    ids = list(ids)
+    ids.sort()
+    return [''.join([id,str(i)]) for i,id in enumerate(ids)]
+
 
 def round_up(n):
     """
@@ -249,8 +267,10 @@ class Marker(object):
             #make leaf markers for the tasks
             try:
                 markers = []
-                for (index, task) in enumerate(tasks):
-                    id = leaf_persistence_id_from_group_id(group_id,index)
+                ids = ordered_random_ids(len(tasks))
+                for index, task in enumerate(tasks):
+                    id = leaf_persistence_id_from_group_id(group_id,
+                        ids[index])
                     task.id = id
                     markers.append(Marker.from_async(task))
 
