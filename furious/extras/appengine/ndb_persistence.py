@@ -38,8 +38,6 @@ class MarkerPersist(ndb.Model):
             group_id=marker.group_id,
             done = marker.done,
             result = marker.result,
-            internal_vertex=marker.internal_vertex,
-            all_children_leaves=marker.all_children_leaves,
             group = (ndb.Key('MarkerPersist',marker.group_id)
                      if marker.group_id else None),
             callbacks=marker_dict.get('callbacks'),
