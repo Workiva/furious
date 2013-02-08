@@ -291,39 +291,15 @@ class Async(object):
         return Async(target, args, kwargs, **async_options)
 
     def _restart(self):
-        """Resets the executing Async and then updates the _process_results
-        function to reinsert itself.
-        """
-        # Reset execution flags
+        """Resets the executing Async and restarts it."""
+
+        if not self._executing:
+            raise NotExecutingError("Must be executing to restart the job, "
+                                    "perhaps you want Async.start()")
+
         self._executing = False
-        self._executed = False
 
-        new_process_results = None
-
-        # Get _process_results
-        original_process_results = self._options.get('_process_results')
-
-        # Replace _process_results
-        if original_process_results:
-
-            # Reset original _process_results function
-            def reinsert_process_results():
-                self.update_options(_process_results=original_process_results)
-                return self
-
-            new_process_results = reinsert_process_results
-
-        else:
-
-            # Make sure _process_results is returned to empty
-            def clean_process_results():
-                self.update_options(_process_results=None)
-                return self
-
-            # Return async
-            new_process_results = clean_process_results
-
-        self.update_options(_process_results=new_process_results)
+        return self.start()
 
 
 def defaults(**options):

@@ -212,6 +212,7 @@ class TestRunJob(unittest.TestCase):
     @patch('google.appengine.api.taskqueue.Queue.add')
     @patch('__builtin__.dir')
     def test_AbortAndRestart(self, dir_mock, queue_add):
+        """Ensures when AbortAndRestart is raised the Async restarts."""
         from furious.async import AbortAndRestart
         from furious.async import Async
         from furious.context._execution import _ExecutionContext

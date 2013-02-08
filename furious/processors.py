@@ -56,8 +56,11 @@ def run_job():
     try:
         async.executing = True
         async.result = function(*args, **kwargs)
-    except AbortAndRestart:
+    except AbortAndRestart as restart:
+        import logging
+        logging.info('Async job was aborted and restarted: %r', restart)
         async._restart()
+        return
     except Exception as e:
         async.result = encode_exception(e)
 
