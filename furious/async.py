@@ -291,7 +291,12 @@ class Async(object):
         return Async(target, args, kwargs, **async_options)
 
     def _restart(self):
-        """Resets the executing Async and restarts it."""
+        """Restarts the executing Async.
+
+        If the Async is executing, then it will reset the _executing flag, and
+        restart this job. This means that the job will not necessarily execute
+        immediately, or on the same machine, as it goes back into the queue.
+        """
 
         if not self._executing:
             raise NotExecutingError("Must be executing to restart the job, "
