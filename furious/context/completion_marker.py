@@ -15,11 +15,14 @@
 #
 import math
 import uuid
+import random
+import string
+
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
 from furious.config import get_configured_persistence_module
-import random
-import string
+
+
 persistence_module = get_configured_persistence_module()
 
 BATCH_SIZE = 10
@@ -28,18 +31,28 @@ CHILDREN_ARE_INTERNAL_VERTEXES = False
 
 
 def random_alpha_numeric():
+    """
+
+
+    :return: a string of two random letters or digits
+    """
     chars = string.ascii_letters + string.digits
-    return ''.join(random.choice(chars) for x  in range(2))
+    return ''.join(random.choice(chars) for x in range(2))
 
 
 def ordered_random_ids(number_of_ids):
+    """
+
+    :param number_of_ids:
+    :return: ordered list of random strings with order index as suffix
+    """
     ids = set()
     while len(ids) < number_of_ids:
         ids.add(random_alpha_numeric())
 
     ids = list(ids)
     ids.sort()
-    return [''.join([id,str(i)]) for i,id in enumerate(ids)]
+    return [''.join([idx, str(i)]) for i, idx in enumerate(ids)]
 
 
 def round_up(n):
@@ -61,7 +74,7 @@ def round_down(n):
         n rounded down to the BATCH_SIZE.
          if BATCH_SIZE is 10: 6 => 0, 33 => 30
     """
-    return int(n/BATCH_SIZE)*BATCH_SIZE
+    return int(n / BATCH_SIZE) * BATCH_SIZE
 
 
 def tree_graph_growth(n):
@@ -82,7 +95,7 @@ def tree_graph_growth(n):
     >>> [tree_graph_growth(n) for n in range(0,100,10)]
     [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
     """
-    return max((((round_down(n)+round_up(n%BATCH_SIZE))/BATCH_SIZE)*2-1)+n,1)
+    return max((((round_down(n) + round_up(n % BATCH_SIZE)) / BATCH_SIZE) * 2 - 1) + n, 1)
 
 
 def initial_save_growth(n):
@@ -124,7 +137,7 @@ def initial_save_growth(n):
 
 
     """
-    return max(((round_down(n)+round_up(n%BATCH_SIZE))/BATCH_SIZE)*2-1,1)
+    return max(((round_down(n) + round_up(n % BATCH_SIZE)) / BATCH_SIZE) * 2 - 1, 1)
 
 
 def count_nodes(marker):
@@ -144,12 +157,14 @@ class InvalidLeafId(Exception):
     separated
     """
 
+
 class NotSafeToSave(Exception):
     """
     A marker may only safely be saved during it's own
     update_done process or before the Async it represents
     has had it's task inserted.
     """
+
 
 def leaf_persistence_id_from_group_id(group_id, index):
     """
@@ -182,7 +197,9 @@ def leaf_persistence_id_to_group_id(persistence_id):
         group_id = ",".join(parts)
         return group_id
     except AttributeError:
-        raise InvalidLeafId("Id must be a basestring")
+        raise InvalidLeafId("Id must be a basestring, "
+                            "it is {0}, {0}".format(type(
+                            persistence_id),persistence_id))
 
 
 def first_iv_markers(markers):
@@ -202,7 +219,8 @@ def first_iv_markers(markers):
             first_ivs.append(marker)
     return first_ivs
 
-def group_into_internal_vertex_results(markers,leaf_combiner,
+
+def group_into_internal_vertex_results(markers, leaf_combiner,
                                        grouped_results=None):
     """
     Args:
@@ -221,7 +239,7 @@ def group_into_internal_vertex_results(markers,leaf_combiner,
     for i, marker in enumerate(markers):
         if marker and not marker.is_leaf():
             if leaf_markers and leaf_combiner and \
-               callable(leaf_combiner):
+                    callable(leaf_combiner):
                 result = leaf_combiner(
                     [leaf_marker.result for leaf_marker
                      in leaf_markers if leaf_marker]
@@ -231,7 +249,7 @@ def group_into_internal_vertex_results(markers,leaf_combiner,
             for iv in iv_markers:
                 grouped_results.append(iv.result)
             return group_into_internal_vertex_results(
-                markers[i+len(iv_markers):],leaf_combiner,
+                markers[i + len(iv_markers):], leaf_combiner,
                 grouped_results)
         elif marker:
             leaf_markers.append(marker)
@@ -242,6 +260,7 @@ def group_into_internal_vertex_results(markers,leaf_combiner,
         )
         grouped_results.append(result)
     return grouped_results
+
 
 class AsyncNeedsPersistenceID(Exception):
     """This Async needs to have a _persistence_id to create a Marker."""
@@ -257,41 +276,42 @@ class Marker(object):
         self.callbacks = options.get('callbacks')
         self._children = options.get('children') or []
         self.async = options.get('async')
-        self.done = options.get('done',False)
+        self.done = options.get('done', False)
         self.result = options.get('result')
         self._update_done_in_progress = False
 
         self._options = options
 
-
     @property
     def id(self):
         return self._id
-
 
     @id.setter
     def id(self, value):
         self._id = value
         self._options['id'] = value
 
-
     @property
     def children(self):
         return self._children
 
-
     @children.setter
-    def children(self,value):
+    def children(self, value):
         self._children = value
-
 
     def is_leaf(self):
         return not bool(self.children)
 
-
     @classmethod
     def make_markers_for_tasks(cls, tasks, group=None,
-                              context_callbacks=None):
+                               context_callbacks=None):
+        """
+
+        :param tasks:
+        :param group:
+        :param context_callbacks:
+        :return: :raise:
+        """
         markers = []
         if group is None:
         #        bootstrap the top level context marker
@@ -310,13 +330,13 @@ class Marker(object):
                 id=uuid.uuid4().hex, group_id=group_id,
                 callbacks=context_callbacks)
             first_group.children = cls.make_markers_for_tasks(first_tasks,
-                first_group, context_callbacks)
+                                                              first_group, context_callbacks)
 
             second_group = Marker(
                 id=uuid.uuid4().hex, group_id=group_id,
                 callbacks=context_callbacks)
             second_group.children = cls.make_markers_for_tasks(second_tasks,
-                second_group, context_callbacks)
+                                                               second_group, context_callbacks)
 
             #these two will be the children of the caller
             markers.append(first_group)
@@ -328,23 +348,22 @@ class Marker(object):
                 markers = []
                 ids = ordered_random_ids(len(tasks))
                 for index, task in enumerate(tasks):
-                    id = leaf_persistence_id_from_group_id(group_id,
-                        ids[index])
-                    task.id = id
+                    idx = leaf_persistence_id_from_group_id(group_id,
+                                                            ids[index])
+                    task.id = idx
                     markers.append(Marker.from_async(task))
 
-            except TypeError, e:
+            except TypeError:
                 raise
             return markers
 
-
     @classmethod
-    def make_marker_tree_for_context(cls,context):
+    def make_marker_tree_for_context(cls, context):
         root_marker = Marker(id=str(context.id), group_id=None)
         if not context._tasks:
             # if a context is made without any tasks, it will
             # not complete
-            context.add(target=place_holder_target,args=[0])
+            context.add(target=place_holder_target, args=[0])
 
         root_marker.children = Marker.make_markers_for_tasks(
             context._tasks, group=None,
@@ -352,9 +371,6 @@ class Marker(object):
         )
 
         return root_marker
-
-
-
 
     def children_to_dict(self):
         """
@@ -365,47 +381,43 @@ class Marker(object):
         is restored from the persistence layer with Marker.get
         """
         return [child for child in self.children
-                if isinstance(child,basestring)] \
-                or\
+                if isinstance(child, basestring)] \
+            or \
                [child.to_dict() for child in self.children
-                if isinstance(child,Marker)]
-
+                if isinstance(child, Marker)]
 
     def children_markers(self):
         ids = [child for child in self.children
-               if isinstance(child,basestring)]
+               if isinstance(child, basestring)]
 
         child_markers = []
         if ids:
             child_markers = Marker.get_multi(ids)
 
         child_markers.extend([child for child in self.children
-                              if isinstance(child,Marker)])
+                              if isinstance(child, Marker)])
         return child_markers
-
 
     def children_as_ids(self):
         return [child for child in self.children
-                if isinstance(child,basestring)]\
-                or\
+                if isinstance(child, basestring)] \
+            or \
                [child.id for child in self.children
-                if isinstance(child,Marker)]
-
+                if isinstance(child, Marker)]
 
     @classmethod
-    def children_from_dict(cls,children_dict):
+    def children_from_dict(cls, children_dict):
         """
         the list of children of a marker_dict may be
         IDs or they may be dicts representing child
         markers
         """
         return [child for child in children_dict
-                 if isinstance(child,basestring)]\
-                 or\
-                [cls.from_dict(child_dict) for
-                 child_dict in children_dict
-                 if isinstance(child_dict,dict)]
-
+                if isinstance(child, basestring)] \
+            or \
+               [cls.from_dict(child_dict) for
+                child_dict in children_dict
+                if isinstance(child_dict, dict)]
 
     def get_group_id(self):
         group_id = None
@@ -421,10 +433,9 @@ class Marker(object):
 
         return group_id
 
-
     def to_dict(self):
         import copy
-#        logging.info("to dict %s"%self.id)
+        #        logging.info("to dict %s"%self.id)
         options = copy.deepcopy(self._options)
 
         callbacks = self._options.get('callbacks')
@@ -434,7 +445,6 @@ class Marker(object):
         options['children'] = self.children_to_dict()
 
         return options
-
 
     @classmethod
     def from_dict(cls, marker_dict):
@@ -448,30 +458,27 @@ class Marker(object):
             marker_options['callbacks'] = decode_callbacks(callbacks)
 
         marker_options['children'] = cls.children_from_dict(
-            marker_dict.get('children',[]))
+            marker_dict.get('children', []))
 
         return cls(**marker_options)
 
-
     @classmethod
     def from_async_dict(cls, async_dict):
-        id = async_dict.get('id')
-        if id is None:
+        idx = async_dict.get('id')
+        if idx is None:
             raise AsyncNeedsPersistenceID(
                 'please assign an id to the async '
                 'before creating a marker'
             )
-        group_id = leaf_persistence_id_to_group_id(id)
-        return cls(id=id,
-            group_id=group_id,
-            callbacks=async_dict.get('callbacks'),
-            async=async_dict)
-
+        group_id = leaf_persistence_id_to_group_id(idx)
+        return cls(id=idx,
+                   group_id=group_id,
+                   callbacks=async_dict.get('callbacks'),
+                   async=async_dict)
 
     @classmethod
     def from_async(cls, async):
         return cls.from_async_dict(async.to_dict())
-
 
     @staticmethod
     def do_any_have_children(markers):
@@ -486,7 +493,6 @@ class Marker(object):
             if marker.children:
                 return True
 
-
     def persist(self):
         """
         Unless this is a root marker being saved before the Context
@@ -500,6 +506,7 @@ class Marker(object):
         """
         from furious.context import get_current_context
         from furious.context import NotInContextError
+
         save_leaves = True
         is_root_marker = False
         #infer if this is the root marker of a graph
@@ -514,23 +521,22 @@ class Marker(object):
 
         if save_leaves and not self._update_done_in_progress:
             raise NotSafeToSave('must only save during update_done'
-            ' or if this is a root marker of a graph before the context'
-            ' has inserted tasks')
+                                ' or if this is a root marker of a graph before the context'
+                                ' has inserted tasks')
 
         if is_root_marker:
             try:
                 current_context = get_current_context()
-                if current_context and current_context.id == self.id and\
-                   current_context._tasks_inserted:
+                if current_context and current_context.id == self.id and \
+                        current_context._tasks_inserted:
                     raise NotSafeToSave('cannot save after tasks have'
-                                    ' been inserted')
+                                        ' been inserted')
             except NotInContextError:
                 pass
 
-        if hasattr(persistence_module,'marker_persist') and\
+        if hasattr(persistence_module, 'marker_persist') and \
                 callable(persistence_module.marker_persist):
             persistence_module.marker_persist(self, save_leaves)
-
 
     def _persist_whole_graph(self):
         """
@@ -541,42 +547,39 @@ class Marker(object):
         """
         from furious.context import get_current_context
         from furious.context import NotInContextError
+
         save_leaves = True
         if not self.is_leaf():
             try:
                 current_context = get_current_context()
-                if current_context and current_context.id == self.id and\
-                   current_context._tasks_inserted:
+                if current_context and current_context.id == self.id and \
+                        current_context._tasks_inserted:
                     raise NotSafeToSave('cannot save after tasks have'
                                         ' been inserted')
             except NotInContextError:
                 pass
-        if hasattr(persistence_module,'marker_persist') and\
-           callable(persistence_module.marker_persist):
+        if hasattr(persistence_module, 'marker_persist') and \
+                callable(persistence_module.marker_persist):
             persistence_module.marker_persist(self, save_leaves)
 
+    @classmethod
+    def get(cls, idx):
+        if hasattr(persistence_module, 'marker_get') and \
+                callable(persistence_module.marker_get):
+            return persistence_module.marker_get(idx)
 
     @classmethod
-    def get(cls,id):
-        if hasattr(persistence_module,'marker_get') and\
-           callable(persistence_module.marker_get):
-            return persistence_module.marker_get(id)
-
-
-    @classmethod
-    def get_multi(cls,ids):
-        if hasattr(persistence_module,'marker_get_multi') and\
-           callable(persistence_module.marker_get_multi):
+    def get_multi(cls, ids):
+        if hasattr(persistence_module, 'marker_get_multi') and \
+                callable(persistence_module.marker_get_multi):
             return persistence_module.marker_get_multi(ids)
 
-
     def get_persisted_children(self):
-        if hasattr(persistence_module,'marker_get_children') and\
+        if hasattr(persistence_module, 'marker_get_children') and \
                 callable(persistence_module.marker_get_children):
             return persistence_module.marker_get_children(self)
 
-
-    def update_done(self,persist_first=False):
+    def update_done(self, persist_first=False):
         """
         Args:
             persist_first: save any changes before bubbling
@@ -651,8 +654,8 @@ class Marker(object):
 
                     if internal_vertex_combiner:
                         result_of_combined_internal_vertexes = \
-                        internal_vertex_combiner([result for result in
-                                                  internal_vertex_results])
+                            internal_vertex_combiner([result for result in
+                                                      internal_vertex_results])
 
                         self.result = result_of_combined_internal_vertexes
 
@@ -669,7 +672,6 @@ class Marker(object):
             self._update_done_in_progress = False
             # no need to bubble up, it would have been done already
             return True
-
 
     def bubble_up_done(self):
         """
@@ -691,10 +693,9 @@ class Marker(object):
                 success_callback = callbacks.get('success')
 
             if success_callback and callable(success_callback):
-                success_callback(self.id,self.result)
+                success_callback(self.id, self.result)
 
             return True
-
 
     def _list_of_leaf_markers(self):
         """
@@ -712,7 +713,6 @@ class Marker(object):
 
         return leaves
 
-
     def delete_leaves(self):
         """
         TODO: move logic from ndb module to here,
@@ -720,14 +720,12 @@ class Marker(object):
         """
         pass
 
-
     def delete_children(self):
         """
         TODO: move logic from ndb module to here,
         keeping persistence layer dumb
         """
         pass
-
 
     def count_nodes(self):
         count = 1
@@ -737,15 +735,30 @@ class Marker(object):
         return count
 
 
-def count_update(id):
+def count_update(idx):
+    """
+
+    :param idx:
+    :return:
+    """
     return
 
 
-def count_marked_as_done(id):
+def count_marked_as_done(idx):
+    """
+
+    :param idx:
+    :return:
+    """
     return
 
 
 def place_holder_target():
+    """
+
+
+    :return:
+    """
     return
 
 
@@ -753,7 +766,7 @@ def handle_async_done(async):
     """
     Args:
         an Async instance
-        
+
     This will mark and async as done and will
     begin the process to see if all the other asyncs
     in it's context, if it has one, are done
