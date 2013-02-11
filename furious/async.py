@@ -100,6 +100,10 @@ class AlreadyExecutingError(Exception):
     """This Async is currently executing."""
 
 
+class Abort(Exception):
+    """This Async needs to be aborted immediately."""
+
+
 class AbortAndRestart(Exception):
     """This Async needs to be aborted immediately and restarted."""
 

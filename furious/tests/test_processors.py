@@ -233,6 +233,29 @@ class TestRunJob(unittest.TestCase):
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
 
+    @patch('__builtin__.dir')
+    def test_Abort(self, dir_mock):
+        """Ensures that when Abort is raised, the Async immediately stops."""
+        from furious.async import Abort
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        dir_mock.side_effect = Abort
+
+        mock_success = Mock()
+        mock_error = Mock()
+
+        work = Async(target='dir',
+                     callbacks={'success': mock_success,
+                                'error': mock_error})
+
+        with _ExecutionContext(work):
+            run_job()
+
+        self.assertFalse(mock_success.called)
+        self.assertFalse(mock_error.called)
+
 
 def _fake_async_returning_target(async_to_return):
     return async_to_return
