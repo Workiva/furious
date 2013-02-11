@@ -43,6 +43,7 @@ Usage:
 """
 
 import uuid
+from furious.context.completion_marker import Marker
 
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
@@ -65,11 +66,11 @@ class Context(object):
     def __init__(self, **options):
         self._tasks = []
 
-        id = options.get('id')
-        if not id:
-            id = uuid.uuid4().hex
+        idx = options.get('id')
+        if not idx:
+            idx = uuid.uuid4().hex
         self._tasks_inserted = False
-        self._id = id
+        self._id = idx
 
         self._options = options
 
@@ -97,6 +98,9 @@ class Context(object):
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
+
+        root_marker = Marker.make_marker_tree_for_context(self)
+        root_marker.persist()
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():

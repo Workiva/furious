@@ -23,6 +23,7 @@ from collections import namedtuple
 from .async import Async
 from .context import Context
 from .context import get_current_async
+from furious.context.completion_marker import handle_async_done
 from .job_utils import function_path_to_reference
 
 
@@ -64,7 +65,12 @@ def run_job():
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
+        #clone _persistence_id so the context's
+        #success callback gets hit when the this next async is done
+        processor_result.id = async.id
         processor_result.start()
+    else:
+        handle_async_done(async)
 
 
 def encode_exception(exception):
