@@ -24,13 +24,22 @@ more complicated processing pipelines.
 import webapp2
 
 from .async_intro import AsyncIntroHandler
-from .context_intro import ContextIntroHandler
+from .batcher import BatcherHandler
+from .batcher import BatcherStatsHandler
+from .batcher import BatcherViewHandler
 from .callback import AsyncCallbackHandler
 from .callback import AsyncErrorCallbackHandler
 from .callback import AsyncAsyncCallbackHandler
-from .simple_workflow import SimpleWorkflowHandler
 from .complex_workflow import ComplexWorkflowHandler
+from .context_intro import ContextIntroHandler
+from .grep import GrepHandler
+from .simple_workflow import SimpleWorkflowHandler
 
+config = {
+    'webapp2_extras.jinja2': {
+        'template_path': 'example/templates'
+    }
+}
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
@@ -40,4 +49,9 @@ app = webapp2.WSGIApplication([
     ('/callback/async', AsyncAsyncCallbackHandler),
     ('/workflow', SimpleWorkflowHandler),
     ('/workflow/complex', ComplexWorkflowHandler),
-])
+    ('/batcher', BatcherViewHandler),
+    ('/batcher/run', BatcherHandler),
+    ('/batcher/stats', BatcherStatsHandler),
+    ('/grep', GrepHandler),
+], config=config)
+
