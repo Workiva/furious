@@ -57,7 +57,6 @@ def log_results():
         logging.info(result)
 
 
-@defaults(callbacks={'success': log_results})
 def build_and_start(query, directory):
     """This function will create and then start a new Async task with the
     default callbacks argument defined in the decorator."""
@@ -71,6 +70,7 @@ def grep_file(query, item):
             if re.search(query, line)]
 
 
+@defaults(callbacks={'success': log_results})
 def grep(query, directory):
     """This function will search through the directory structure of the
     application and for each directory it finds it launches an Async task to
