@@ -31,7 +31,6 @@ def small_aggregated_results_success_callback(id,result):
     In this case it checks the real time the job took
     At this point, the result can be no larger then 1MB
     """
-    from furious.extras.appengine.ndb_persistence import Result
     start_time = memcache.get("JOBTIMESTART:{0}".format(id))
     job_time = 0
     if start_time:
@@ -42,11 +41,5 @@ def small_aggregated_results_success_callback(id,result):
         except ValueError:
             pass
 
-    #write the result to the datastore
-    result = Result(
-        id=id,
-        job_time=job_time,
-        result=result)
-    result.put()
     #Flag the job as done
     memcache.set("Furious:{0}".format(id), "done by callback")

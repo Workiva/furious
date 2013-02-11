@@ -17,67 +17,66 @@ import json
 
 import webapp2
 from webapp2 import Route
-from furious.config import get_configured_persistence_module
-persistence_module = get_configured_persistence_module()
+from furious.context.completion_marker import Marker
 
-def get_status(id):
+
+def get_status(idx):
     """Helper function that gets the status of a job
     Args:
-        id: the id of a Context job
+        idx: the id of a Context job
     Returns:
         a dictionary indicating the status of the job
     """
     status = {
-        'progress':0,
-        'aborted':False,
-        'complete':False,
-        'warnings':False,
-        'errors':False
+        'progress': 0,
+        'aborted': False,
+        'complete': False,
+        'warnings': False,
+        'errors': False
     }
 
-    stored_status = persistence_module.get_job_status(id)
-    status.update(stored_status)
+    root_marker = Marker.get(idx)
+
+    status.update({'complete': root_marker.done})
 
     return status
 
-def get_result(id,cursor=None):
-    return persistence_module.get_result(id,cursor)
-
 
 class DoneCheckHandler(webapp2.RequestHandler):
-    def get(self, id):
+    def get(self, idx):
         #subclass and add authorization
         #TODO: use config to allow user to specify auth function
-        self.process(id)
+        self.process(idx)
 
-    def process(self, id):
+    def process(self, idx):
         """
         returns a value if the job is done
         """
-        status = get_status(id)
+        status = get_status(idx)
 
         self.response.content_type = "text/json"
         self.response.write(json.dumps(status))
 
 
 class ResultRetriever(webapp2.RequestHandler):
-    def get(self, id):
+    def get(self, idx):
         #subclass and add authorization
-        # TODO: use hmac signed id token for authorization
+        # TODO: use hmac signed idx token for authorization
         #TODO: use config to allow user to specify auth function
-        self.process(id)
+        self.process(idx)
 
-    def process(self, id):
+    def process(self, idx):
         """
         returns the result of the job
         """
-
-        result = get_result(id)
+        root_marker = Marker.get(idx)
+        result = root_marker.result
 
         self.response.content_type = "text/json"
         self.response.write(json.dumps(result))
 
+
 app = webapp2.WSGIApplication([
-    Route('/_context_job/<id:[^/]+>/done', handler=DoneCheckHandler),
-    Route('/_context_job/<id:[^/]+>/result', handler=ResultRetriever),
-    ])
+    Route('/_context_job/<idx:[^/]+>/done', handler=DoneCheckHandler),
+    Route('/_context_job/<idx:[^/]+>/result', handler=ResultRetriever),
+])

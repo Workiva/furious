@@ -17,12 +17,14 @@
 import logging
 import os
 import re
+import json
 
 import webapp2
-import json
 from webapp2_extras import jinja2
+
 from furious.extras.callbacks import small_aggregated_results_success_callback
 from furious.extras.combiners import lines_combiner
+
 
 class ContextGrepHandler(webapp2.RequestHandler):
     def get(self):
@@ -46,12 +48,13 @@ class ContextGrepHandler(webapp2.RequestHandler):
         ctx = context_grepp(query, curdir)
         self.response.content_type = "text/json"
         self.response.out.write(json.dumps({
-            'success':True,
-            'job_id':ctx.id,
-            'check_done_url':"/_context_job/{0}/done".format(ctx.id),
-            'result_url':"/_context_job/{0}/result".format(ctx.id),
-            'query':query,
+            'success': True,
+            'job_id': ctx.id,
+            'check_done_url': "/_context_job/{0}/done".format(ctx.id),
+            'result_url': "/_context_job/{0}/result".format(ctx.id),
+            'query': query,
         }))
+
 
 class GrepViewHandler(webapp2.RequestHandler):
     """Grep view to search this code base and see the results
@@ -75,7 +78,7 @@ class GrepViewHandler(webapp2.RequestHandler):
         self.render_response('grep_codebase.html', **context)
 
 
-def simultaneous_grepp(query,directory):
+def simultaneous_grepp(query, directory):
     """
     args:
         query: a string
@@ -92,22 +95,24 @@ def simultaneous_grepp(query,directory):
         on that directory
     """
     from furious import context
+
     dir_contents = os.listdir(directory)
     ctx = context.Context(callbacks={
-        'internal_vertex_combiner':lines_combiner,
-        'leaf_combiner':lines_combiner,
-        'success':small_aggregated_results_success_callback})
+        'internal_vertex_combiner': lines_combiner,
+        'leaf_combiner': lines_combiner,
+        'success': small_aggregated_results_success_callback})
 
     for item in dir_contents:
         path = os.path.join(directory, item)
         if os.path.isdir(path):
-            ctx.add(target=simultaneous_grepp,args=[query, path])
+            ctx.add(target=simultaneous_grepp, args=[query, path])
         else:
             if item.endswith('.py'):
-                ctx.add(target=grep_file,args=[query, path],
-                    callbacks={'success': log_results})
+                ctx.add(target=grep_file, args=[query, path],
+                        callbacks={'success': log_results})
 
     return ctx
+
 
 def context_grepp(query, directory):
     """
@@ -120,9 +125,10 @@ def context_grepp(query, directory):
     this kicks off the whole process get the job context
     from simultaneous_grepp and then starting it.
     """
-    ctx =  simultaneous_grepp(query,directory)
+    ctx = simultaneous_grepp(query, directory)
     ctx.start()
     return ctx
+
 
 def grep_file(query, item):
     """
@@ -134,13 +140,15 @@ def grep_file(query, item):
         containing the query
     """
     results = []
-    for index,line in enumerate(open(item)):
-        if re.search("{0}".format(query),line):
-            results.append('{0}:{1} {2}'.format(item,index+1,line))
+    for index, line in enumerate(open(item)):
+        if re.search("{0}".format(query), line):
+            results.append('{0}:{1} {2}'.format(item, index + 1, line))
     return results
+
 
 def log_results():
     from furious.context import get_current_async
+
     async = get_current_async()
     for result in async.result:
         logging.info(result)

@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+
 def lines_combiner(results):
     """
     args:
@@ -22,5 +23,5 @@ def lines_combiner(results):
         joins all the results together into a string
         if one of the results is None, "" will be used instead
     """
-    return reduce(lambda x,y: x+"".join(y) if isinstance(y,list)
-    else x+(y or ""),results,"")
+    return reduce(lambda x, y: x + "".join(y) if isinstance(y, list)
+                  else x + (y or ""), results, "")
