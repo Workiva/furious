@@ -26,7 +26,7 @@ In the simplest form, usage looks like:
     # Create an Async object.
     async = Async(
         target="your.module.func",
-        args=("positstional", "args"),
+        args=("positional", "args"),
         kwargs={"kwargs": "too"})
 
     # Tell the async to insert itself to be run.

@@ -44,6 +44,12 @@ Usage:
 
 import uuid
 
+from ..job_utils import decode_callbacks
+from ..job_utils import encode_callbacks
+from ..job_utils import function_path_to_reference
+from ..job_utils import get_function_path_and_options
+
+
 class ContextAlreadyStartedError(Exception):
     """Attempt to set context on an Async that is already executing in a
     context.
@@ -65,9 +71,13 @@ class Context(object):
         self._tasks_inserted = False
         self._id = id
 
-        insert_tasks = options.get('insert_tasks')
-        self._insert_tasks = insert_tasks or _insert_tasks
+        self._options = options
 
+        self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
+        if not callable(self._insert_tasks):
+            raise TypeError('You must provide a valid insert_tasks function.')
+
+        self._persistence_engine = options.pop('persistence_engine', None)
 
     @property
     def id(self):
@@ -129,6 +139,80 @@ class Context(object):
         """Insert this Context's tasks executing."""
         if self._tasks:
             self._handle_tasks()
+
+    def persist(self):
+        """Store the context."""
+        if not self._persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to persist this context.')
+
+        return self._persistence_engine.store_context(self.id, self.to_dict())
+
+    @classmethod
+    def load(cls, context_id, persistence_engine):
+        """Load and instantiate a Context from the persistence_engine."""
+        if not persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to load the context.')
+
+        return cls.from_dict(persistence_engine.load_context(context_id))
+
+    def to_dict(self):
+        """Return this Context as a dict suitable for json encoding."""
+        import copy
+
+        options = copy.deepcopy(self._options)
+
+        if self._insert_tasks:
+            options['insert_tasks'], _ = get_function_path_and_options(
+                self._insert_tasks)
+
+        if self._persistence_engine:
+            options['persistence_engine'], _ = get_function_path_and_options(
+                self._persistence_engine)
+
+        options.update({
+            '_tasks_inserted': self._tasks_inserted,
+            '_task_ids': [async.id for async in self._tasks]
+        })
+
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            options['callbacks'] = encode_callbacks(callbacks)
+
+        return options
+
+    @classmethod
+    def from_dict(cls, context_options_dict):
+        """Return a context job from a dict output by Context.to_dict."""
+        import copy
+
+        context_options = copy.deepcopy(context_options_dict)
+
+        tasks_inserted = context_options.pop('_tasks_inserted', False)
+        task_ids = context_options.pop('_task_ids', [])
+
+        insert_tasks = context_options.pop('insert_tasks', None)
+        if insert_tasks:
+            context_options['insert_tasks'] = function_path_to_reference(
+                insert_tasks)
+
+        persistence_engine = context_options.pop('persistence_engine', None)
+        if persistence_engine:
+            context_options['persistence_engine'] = function_path_to_reference(
+                persistence_engine)
+
+        # If there are callbacks, reconstitute them.
+        callbacks = context_options.pop('callbacks', None)
+        if callbacks:
+            context_options['callbacks'] = decode_callbacks(callbacks)
+
+        context = cls(**context_options)
+
+        context._tasks_inserted = tasks_inserted
+        context._task_ids = task_ids
+
+        return context
 
 
 def _insert_tasks(tasks, queue, transactional=False):
