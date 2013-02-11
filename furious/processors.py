@@ -18,6 +18,8 @@
 functions.
 """
 
+import logging
+
 from collections import namedtuple
 
 from .async import AbortAndRestart
@@ -26,6 +28,8 @@ from .context import Context
 from .context import get_current_async
 from .job_utils import function_path_to_reference
 
+
+MAX_DEPTH = 50
 
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
 
@@ -38,6 +42,15 @@ def run_job():
     """Takes an async object and executes its job."""
     async = get_current_async()
     async_options = async.get_options()
+
+    current_depth = async_options.get('current_depth', 0)
+    max_depth = async_options.get('max_depth', MAX_DEPTH)
+
+    if current_depth > max_depth:
+        logging.info('Async execution has reached max_depth %s and is ceasing'
+                     'execution.' % max_depth)
+        async.result = None
+        return
 
     job = async_options.get('job')
     if not job:
@@ -57,7 +70,6 @@ def run_job():
         async.executing = True
         async.result = function(*args, **kwargs)
     except AbortAndRestart as restart:
-        import logging
         logging.info('Async job was aborted and restarted: %r', restart)
         async._restart()
         return
