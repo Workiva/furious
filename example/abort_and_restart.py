@@ -41,6 +41,9 @@ class AbortAndRestartHandler(webapp2.RequestHandler):
 def aborting_function():
     """There is a 50% chance that this function will AbortAndRestart or
     complete successfully.
+
+    The 50% chance simply represents a process that will fail half the time
+    and succeed half the time.
     """
     import random
 
