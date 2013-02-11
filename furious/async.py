@@ -107,7 +107,6 @@ class Async(object):
         # Make sure nothing is snuck in.
         _check_options(options)
 
-        self.id = options.pop('id',None)
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
@@ -264,8 +263,6 @@ class Async(object):
         callbacks = self._options.get('callbacks')
         if callbacks:
             options['callbacks'] = encode_callbacks(callbacks)
-
-        options['id']=self.id
 
         return options
 
