@@ -16,7 +16,7 @@
 
 import webapp2
 
-from . import process_async_task
+from furious.handlers import process_async_task
 
 
 class AsyncJobHandler(webapp2.RequestHandler):
