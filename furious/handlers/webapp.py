@@ -1,5 +1,5 @@
 #
-# Copyright 2012 WebFilings, LLC
+# Copyright 2013 WebFilings, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ class AsyncJobHandler(webapp2.RequestHandler):
         """Pass request info to the async framework."""
         headers = self.request.headers
 
-        staus_code, output = process_async_task(headers, self.request.body)
+        status_code, output = process_async_task(headers, self.request.body)
 
-        self.response.set_status(staus_code)
+        self.response.set_status(status_code)
         self.response.out.write(output)
 
 app = webapp2.WSGIApplication([
