@@ -20,10 +20,10 @@ import string
 
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
-from furious.config import get_configured_persistence_module
+from furious.config import get_default_persistence_engine
 
 
-persistence_module = get_configured_persistence_module()
+persistence_module = get_default_persistence_engine()
 
 BATCH_SIZE = 10
 CHILDREN_ARE_LEAVES = True
