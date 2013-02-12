@@ -233,6 +233,20 @@ class TestRunJob(unittest.TestCase):
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
 
+    @patch('furious.job_utils.function_path_to_reference')
+    def test_max_depth(self, mock_function):
+        """Ensures that the Async stops when max_depth is reached."""
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        work = Async(dir, current_depth=51)
+
+        with _ExecutionContext(work):
+            run_job()
+
+        self.assertFalse(mock_function.called)
+
 
 def _fake_async_returning_target(async_to_return):
     return async_to_return

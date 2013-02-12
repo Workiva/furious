@@ -29,6 +29,7 @@ from .context import get_current_async
 from .job_utils import function_path_to_reference
 
 
+#TODO: What is an appropriate max_depth
 MAX_DEPTH = 50
 
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
@@ -49,7 +50,6 @@ def run_job():
     if current_depth > max_depth:
         logging.info('Async execution has reached max_depth %s and is ceasing'
                      'execution.' % max_depth)
-        async.result = None
         return
 
     job = async_options.get('job')
