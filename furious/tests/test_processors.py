@@ -223,8 +223,8 @@ class TestRunJob(unittest.TestCase):
         mock_error = Mock()
 
         work = Async(target='dir',
-                     success=mock_success,
-                     error=mock_error)
+                     callbacks={'success': mock_success,
+                                'error': mock_error})
 
         with _ExecutionContext(work):
             run_job()
