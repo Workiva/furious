@@ -233,8 +233,11 @@ class TestRunJob(unittest.TestCase):
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
 
+    @patch('logging.error', autospec=True)
+    @patch('logging.info', autospec=True)
+    @patch('furious.async.Async.start', autospec=True)
     @patch('__builtin__.dir')
-    def test_Abort(self, dir_mock):
+    def test_Abort(self, dir_mock, mock_start, log_info, log_error):
         """Ensures that when Abort is raised, the Async immediately stops."""
         from furious.async import Abort
         from furious.async import Async
@@ -255,6 +258,9 @@ class TestRunJob(unittest.TestCase):
 
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
+        self.assertFalse(mock_start.called)
+        self.assertTrue(log_info.called)
+        self.assertFalse(log_error.called)
 
 
 def _fake_async_returning_target(async_to_return):
