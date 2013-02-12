@@ -53,7 +53,6 @@ def run_job():
         return
 
     next_depth = current_depth + 1
-    async.update_options(current_depth=next_depth)
 
     job = async_options.get('job')
     if not job:
@@ -74,6 +73,7 @@ def run_job():
         async.result = function(*args, **kwargs)
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
+        async.update_options(current_depth=next_depth)
         async._restart()
         return
     except Exception as e:
@@ -85,6 +85,7 @@ def run_job():
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
+        processor_result.update_options(current_depth=next_depth)
         processor_result.start()
 
 

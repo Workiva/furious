@@ -253,7 +253,27 @@ class TestRunJob(unittest.TestCase):
         from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
-        work = Async(dir)
+        mock_async = Mock(spec=Async)
+
+        work = Async(target=_fake_async_returning_target,
+                     args=[mock_async])
+
+        with _ExecutionContext(work):
+            run_job()
+
+        mock_async.update_options.assert_called_once_with(current_depth=1)
+
+    @patch('__builtin__.dir')
+    def test_depth_increment_restart(self, dir_mock):
+        """Ensures that current_depth increments while exeucting."""
+        from furious.async import AbortAndRestart
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        dir_mock.side_effect = AbortAndRestart
+
+        work = Async(target='dir')
 
         with _ExecutionContext(work):
             run_job()
