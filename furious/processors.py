@@ -52,6 +52,9 @@ def run_job():
                      'execution.' % max_depth)
         return
 
+    next_depth = current_depth + 1
+    async.update_options(current_depth=next_depth)
+
     job = async_options.get('job')
     if not job:
         raise Exception('This async contains no job to execute!')
