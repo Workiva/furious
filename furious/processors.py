@@ -64,7 +64,7 @@ def run_job():
         return
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
-        async.update_options(current_depth=next_depth)
+        async.update_options(current_depth=next_depth, max_depth=max_depth)
         async._restart()
         return
     except Exception as e:
@@ -76,7 +76,8 @@ def run_job():
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
-        processor_result.update_options(current_depth=next_depth)
+        processor_result.update_options(current_depth=next_depth,
+                                        max_depth=max_depth)
         processor_result.start()
 
 
