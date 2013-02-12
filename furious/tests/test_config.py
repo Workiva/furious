@@ -73,10 +73,6 @@ class TestConfigurationLoading(unittest.TestCase):
                                      'task_system': 'flah'})
 
     def test_get_configured_persistence_exists(self):
-        """
-
-        
-        """
         os.path.exists = Mock(return_value=True)
         example_yaml = str('secret_key: "blah"\n'
                            'persistence: bubble\n'
@@ -94,10 +90,12 @@ class TestConfigurationLoading(unittest.TestCase):
         self.assertEqual(persistence_module, config)
 
     def mock_get_config_raises(self, yaml_contents, exception=Exception):
-        """
-
-        :param yaml_contents:
-        :param exception:
+        """Mocks open to return yaml_contents instead of furious.yaml
+        and expects yaml_contents to be malformed in a way to
+        cause exception to raise
+        Args:
+            yaml_contents: invalid yaml as a string
+            exception: an exception class
         """
         with patch('__builtin__.open', create=True) as mock_open:
             mock_open.return_value = MagicMock(spec=file)
