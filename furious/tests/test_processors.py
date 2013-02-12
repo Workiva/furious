@@ -233,16 +233,24 @@ class TestRunJob(unittest.TestCase):
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
 
-    @patch('logging.error', autospec=True)
-    @patch('logging.info', autospec=True)
     @patch('furious.async.Async.start', autospec=True)
     @patch('__builtin__.dir')
-    def test_Abort(self, dir_mock, mock_start, log_info, log_error):
+    def test_Abort(self, dir_mock, mock_start):
         """Ensures that when Abort is raised, the Async immediately stops."""
+        import logging
+
         from furious.async import Abort
         from furious.async import Async
         from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
+
+        class AbortLogHandler(logging.Handler):
+
+            def emit(self, record):
+                if record.levelno >= logging.ERROR:
+                    raise Exception('An Error level log should not be output')
+
+        logging.getLogger().addHandler(AbortLogHandler())
 
         dir_mock.side_effect = Abort
 
@@ -259,8 +267,8 @@ class TestRunJob(unittest.TestCase):
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
         self.assertFalse(mock_start.called)
-        self.assertTrue(log_info.called)
-        self.assertFalse(log_error.called)
+
+        logging.getLogger().removeHandler(AbortLogHandler())
 
 
 def _fake_async_returning_target(async_to_return):
