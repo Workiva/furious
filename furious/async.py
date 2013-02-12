@@ -101,7 +101,9 @@ class AlreadyExecutingError(Exception):
 
 
 class Abort(Exception):
-    """This Async needs to be aborted immediately."""
+    """This Async needs to be aborted immediately. Only an info level logging
+    message will be output about the aborted job.
+    """
 
 
 class AbortAndRestart(Exception):
