@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import logging
 import math
 import uuid
 import random
 import string
+logger = logging.getLogger('completion_marker')
+logger.setLevel(logging.DEBUG)
 
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
@@ -166,6 +169,12 @@ class NotSafeToSave(Exception):
     """
 
 
+class InvalidGroupId(Exception):
+    """GroupId must be a basestring
+
+    """
+
+
 def leaf_persistence_id_from_group_id(group_id, index):
     """
     Args:
@@ -175,6 +184,9 @@ def leaf_persistence_id_from_group_id(group_id, index):
     Returns:
         A string that is a comma separated join of the two args
     """
+    if not isinstance(group_id,basestring):
+        raise InvalidGroupId("Not a valid group_id, expected "
+                             "string, got {0}".format(group_id))
     return ",".join([str(group_id), str(index)])
 
 
@@ -275,11 +287,10 @@ class Marker(object):
         self.group_id = options.get('group_id')
         self.callbacks = options.get('callbacks')
         self._children = options.get('children') or []
-        self.async = options.get('async')
         self.done = options.get('done', False)
         self.result = options.get('result')
         self._update_done_in_progress = False
-
+        self._work_time = options.get('work_time')
         self._options = options
 
     @property
@@ -292,6 +303,10 @@ class Marker(object):
         self._options['id'] = value
 
     @property
+    def work_time(self):
+        return self._work_time
+
+    @property
     def children(self):
         return self._children
 
@@ -302,8 +317,15 @@ class Marker(object):
     def is_leaf(self):
         return not bool(self.children)
 
+    def result_to_dict(self):
+        return {
+            'id': self.id,
+            'job_time': self.work_time,
+            'result': self.result
+        }
+
     @classmethod
-    def make_markers_for_tasks(cls, tasks, group=None,
+    def make_markers_for_tasks(cls, tasks, group_id=None,
                                context_callbacks=None):
         """
 
@@ -313,11 +335,10 @@ class Marker(object):
         :return: :raise:
         """
         markers = []
-        if group is None:
-        #        bootstrap the top level context marker
+        if group_id is None:
+            # Bootstrap the top level context marker.
+            logger.debug("bootstrapping group id")
             group_id = uuid.uuid4().hex
-        else:
-            group_id = group.id
 
         if len(tasks) > BATCH_SIZE:
             #make two internal vertex markers
@@ -327,16 +348,21 @@ class Marker(object):
             second_tasks = tasks[BATCH_SIZE:]
 
             first_group = Marker(
-                id=uuid.uuid4().hex, group_id=group_id,
+                id=uuid.uuid4().hex,
+                group_id=group_id,
                 callbacks=context_callbacks)
-            first_group.children = cls.make_markers_for_tasks(first_tasks,
-                                                              first_group, context_callbacks)
+            first_group.children = cls.make_markers_for_tasks(
+                tasks=first_tasks,
+                group_id=first_group.id,
+                context_callbacks=context_callbacks)
 
             second_group = Marker(
                 id=uuid.uuid4().hex, group_id=group_id,
                 callbacks=context_callbacks)
-            second_group.children = cls.make_markers_for_tasks(second_tasks,
-                                                               second_group, context_callbacks)
+            second_group.children = cls.make_markers_for_tasks(
+                second_tasks,
+                group_id=second_group.id,
+                context_callbacks=context_callbacks)
 
             #these two will be the children of the caller
             markers.append(first_group)
@@ -350,6 +376,9 @@ class Marker(object):
                 for index, task in enumerate(tasks):
                     idx = leaf_persistence_id_from_group_id(group_id,
                                                             ids[index])
+                    # Assign this leaf marker id to the Async
+                    # so when the task is processed, it
+                    # can write this marker
                     task.id = idx
                     markers.append(Marker.from_async(task))
 
@@ -359,15 +388,34 @@ class Marker(object):
 
     @classmethod
     def make_marker_tree_for_context(cls, context):
-        root_marker = Marker(id=str(context.id), group_id=None)
+        root_marker = Marker(
+            id=str(context.id),
+            group_id=None,
+            callbacks=context._options.get('callbacks'))
+
+        # if no callbacks were given check if this context
+        # has a parent and if so, load parent and use
+        # it's callbacks if it has any. if this context was
+        # spawned by a leaf node it will want to use the
+        # context callback of it's parent context
+        if not root_marker.callbacks:
+            group_id = root_marker.get_group_id()
+            if group_id:
+                group_marker = Marker.get(group_id)
+                if group_marker and group_marker.callbacks:
+                    logger.debug("using parent callbacks for %s" %
+                                 root_marker.id)
+                    root_marker.callbacks = group_marker.callbacks
+
         if not context._tasks:
             # if a context is made without any tasks, it will
             # not complete
             context.add(target=place_holder_target, args=[0])
 
         root_marker.children = Marker.make_markers_for_tasks(
-            context._tasks, group=None,
-            context_callbacks=None
+            context._tasks,
+            group_id=context.id,
+            context_callbacks=context._options.get('callbacks')
         )
 
         return root_marker
@@ -435,7 +483,7 @@ class Marker(object):
 
     def to_dict(self):
         import copy
-        #        logging.info("to dict %s"%self.id)
+        #        logger.debug("to dict %s"%self.id)
         options = copy.deepcopy(self._options)
 
         callbacks = self._options.get('callbacks')
@@ -443,6 +491,7 @@ class Marker(object):
             options['callbacks'] = encode_callbacks(callbacks)
 
         options['children'] = self.children_to_dict()
+        options['work_time'] = self.work_time
 
         return options
 
@@ -470,15 +519,32 @@ class Marker(object):
                 'please assign an id to the async '
                 'before creating a marker'
             )
-        group_id = leaf_persistence_id_to_group_id(idx)
+        group_id = None
+        try:
+            #is the batch_id a valid leaf id?
+            group_id = leaf_persistence_id_to_group_id(idx)
+        except InvalidLeafId:
+            pass
         return cls(id=idx,
                    group_id=group_id,
-                   callbacks=async_dict.get('callbacks'),
+                   callbacks=decode_callbacks(
+                       async_dict.get('callbacks')),
                    async=async_dict)
 
     @classmethod
     def from_async(cls, async):
-        return cls.from_async_dict(async.to_dict())
+        group_id = None
+        try:
+            #is the batch_id a valid leaf id?
+            group_id = leaf_persistence_id_to_group_id(async.id)
+        except InvalidLeafId:
+            pass
+
+        callbacks = async._options.get('callbacks')
+        marker = cls(id=async.id,
+                     group_id=group_id,
+                     callbacks=callbacks)
+        return marker
 
     @staticmethod
     def do_any_have_children(markers):
@@ -628,21 +694,25 @@ class Marker(object):
         # it must persist itself before checking if it's children
         # are all done and bubbling up. Doing so will allow it's
         # parent to know it's changed
+        logger.debug("update done for id: %s"%self.id)
         if persist_first:
             count_marked_as_done(self.id)
             self.persist()
 
         leaf = self.is_leaf()
         if leaf and self.done:
+            logger.debug("leaf and done id: %s"%self.id)
             self.bubble_up_done()
             self._update_done_in_progress = False
             return True
         elif not leaf and not self.done:
+            logger.debug("not leaf and not done yet id: %s"%self.id)
             children_markers = self.get_persisted_children()
             done_markers = [marker for marker in children_markers
                             if marker and marker.done]
             if len(done_markers) == len(self.children):
                 self.done = True
+                logger.debug("done now")
                 if self.callbacks:
                     callbacks = decode_callbacks(self.callbacks)
                     leaf_combiner = callbacks.get('leaf_combiner')
@@ -669,6 +739,7 @@ class Marker(object):
             self._update_done_in_progress = False
             return False
         elif self.done:
+            logger.debug("already done id: %s"%self.id)
             self._update_done_in_progress = False
             # no need to bubble up, it would have been done already
             return True
@@ -680,13 +751,17 @@ class Marker(object):
         If not, this is the root marker and call it's success
         callback
         """
+        logger.debug("start bubble up")
         group_id = self.get_group_id()
 
         if group_id:
             parent_marker = Marker.get(group_id)
             if parent_marker:
+                logger.debug("has parent bubble up")
                 return parent_marker.update_done()
+            logger.error("group marker %s did not load" % group_id)
         else:
+            logger.debug("top level reached, job complete")
             success_callback = None
             if self.callbacks:
                 callbacks = decode_callbacks(self.callbacks)
@@ -753,7 +828,7 @@ def count_marked_as_done(idx):
     return
 
 
-def place_holder_target():
+def place_holder_target(*args, **kwargs):
     """
 
 

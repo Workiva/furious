@@ -17,6 +17,8 @@
 import logging
 from google.appengine.ext.ndb import Future
 from google.appengine.ext import ndb
+import time
+logger = logging.getLogger('completion_marker')
 
 
 class MarkerPersist(ndb.Model):
@@ -28,6 +30,8 @@ class MarkerPersist(ndb.Model):
     children = ndb.KeyProperty(repeated=True, indexed=False)
     done = ndb.BooleanProperty(default=False, indexed=False)
     result = ndb.JsonProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True, indexed=False)
+    updated = ndb.DateTimeProperty(auto_now=True, indexed=False)
 
 
     @classmethod
@@ -52,11 +56,15 @@ class MarkerPersist(ndb.Model):
             if key:
                 children_ids.append(key.id())
 
+        created_time = time.mktime(self.created.timetuple())
+        last_updated_time = time.mktime(self.updated.timetuple())
+        work_time = last_updated_time - created_time
 
         marker = Marker(
             id=(self.key.id() if self.key else None),
             group_id=self.group_id,
             done=self.done,
+            work_time = work_time,
             result=self.result,
             callbacks=self.callbacks,
             children=children_ids

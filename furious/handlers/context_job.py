@@ -70,7 +70,7 @@ class ResultRetriever(webapp2.RequestHandler):
         returns the result of the job
         """
         root_marker = Marker.get(idx)
-        result = root_marker.result
+        result = root_marker.result_to_dict()
 
         self.response.content_type = "text/json"
         self.response.write(json.dumps(result))
