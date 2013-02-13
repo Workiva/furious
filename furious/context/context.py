@@ -84,6 +84,10 @@ class Context(object):
     def id(self):
         return self._id
 
+    @id.setter
+    def id(self, value):
+        self._id = value
+
     def __enter__(self):
         return self
 
@@ -141,8 +145,7 @@ class Context(object):
 
     def start(self):
         """Insert this Context's tasks executing."""
-        if self._tasks:
-            self._handle_tasks()
+        self._handle_tasks()
 
     def persist(self):
         """Store the context."""

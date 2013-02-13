@@ -23,6 +23,7 @@ from collections import namedtuple
 from .async import Async
 from .context import Context
 from .context import get_current_async
+from furious.context import _local
 from furious.context.completion_marker import handle_async_done
 from .job_utils import function_path_to_reference
 
@@ -68,6 +69,12 @@ def run_job():
         #clone _persistence_id so the context's
         #success callback gets hit when the this next async is done
         processor_result.id = async.id
+        if isinstance(processor_result, Context):
+            # if not processor_result.callbacks:
+            #     # Load the parent marker and use it's callbacks
+            #     this_marker = Marker.get()
+            #     parent_marker = Marker.get()
+            _local.get_local_context().registry.append(processor_result)
         processor_result.start()
     else:
         handle_async_done(async)
