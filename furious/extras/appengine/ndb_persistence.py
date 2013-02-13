@@ -25,38 +25,43 @@ class MarkerPersist(ndb.Model):
     group_id = ndb.StringProperty(indexed=False)
     group = ndb.KeyProperty(indexed=False)
     callbacks = ndb.JsonProperty()
-    children = ndb.KeyProperty(repeated=True,indexed=False)
-    done = ndb.BooleanProperty(default=False,indexed=False)
+    children = ndb.KeyProperty(repeated=True, indexed=False)
+    done = ndb.BooleanProperty(default=False, indexed=False)
     result = ndb.JsonProperty()
 
 
     @classmethod
-    def from_marker(cls,marker):
+    def from_marker(cls, marker):
         marker_dict = marker.to_dict()
         return cls(
             id=marker.id,
             group_id=marker.group_id,
-            done = marker.done,
-            result = marker.result,
-            group = (ndb.Key('MarkerPersist',marker.group_id)
-                     if marker.group_id else None),
+            done=marker.done,
+            result=marker.result,
+            group=(ndb.Key('MarkerPersist', marker.group_id)
+                   if marker.group_id else None),
             callbacks=marker_dict.get('callbacks'),
-            children = [ndb.Key('MarkerPersist',id) for id in
-                        marker.children_as_ids()]
+            children=[ndb.Key('MarkerPersist', idx) for idx in
+                      marker.children_as_ids()]
         )
 
     def to_marker(self):
         from furious.context.completion_marker import Marker
-        return Marker(
+        children_ids = []
+        for key in self.children:
+            if key:
+                children_ids.append(key.id())
+
+
+        marker = Marker(
             id=(self.key.id() if self.key else None),
             group_id=self.group_id,
             done=self.done,
             result=self.result,
             callbacks=self.callbacks,
-            children=[key.id() for key in self.children
-                      if key]
+            children=children_ids
         )
-
+        return marker
 
 
 def _marker_persist(marker, save_leaves=True):
@@ -67,19 +72,23 @@ def _marker_persist(marker, save_leaves=True):
     marker_persist waits for the put futures to finish.
     """
     from furious.context.completion_marker import Marker
+
     mp = MarkerPersist.from_marker(marker)
     put_futures = []
 
     persisted_children_keys = []
     for child in marker.children:
-        if isinstance(child,Marker):
+        if isinstance(child, Marker):
             child_mp, child_futures = _marker_persist(child, save_leaves)
             if child_mp:
                 persisted_children_keys.append(child_mp.key)
             if child_futures:
                 put_futures.extend(child_futures)
 
+    logger.debug("save marker? leaf:%s  %s group_id: %s" % (
+        marker.is_leaf(), marker.id, marker.get_group_id()))
     if save_leaves or not marker.is_leaf():
+        logger.debug("saved marker %s" % marker.id)
         put_future = mp.put_async()
         put_futures.append(put_future)
 
@@ -93,19 +102,19 @@ def marker_persist(marker, save_leaves=True):
     """
     mp, put_futures = _marker_persist(marker, save_leaves)
     Future.wait_all(put_futures)
-    logging.info("all root and internal vertex markers saved")
+    logging.debug("marker saved id: %s" % marker.id)
     return
 
 
-def marker_get(id):
-    key = ndb.Key('MarkerPersist',id)
+def marker_get(idx):
+    key = ndb.Key('MarkerPersist', idx)
     mp = key.get()
     if mp:
         return mp.to_marker()
 
 
 def marker_get_multi(ids):
-    keys = [ndb.Key('MarkerPersist',id) for id in ids]
+    keys = [ndb.Key('MarkerPersist', idx) for idx in ids]
     mps = ndb.get_multi(keys)
     return [mp.to_marker() for mp in mps if mp]
 
