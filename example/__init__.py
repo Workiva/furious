@@ -23,6 +23,7 @@ more complicated processing pipelines.
 
 import webapp2
 
+from .abort_and_restart import AbortAndRestartHandler
 from .async_intro import AsyncIntroHandler
 from .batcher import BatcherHandler
 from .batcher import BatcherStatsHandler
@@ -43,6 +44,7 @@ config = {
 
 app = webapp2.WSGIApplication([
     ('/', AsyncIntroHandler),
+    ('/abort_and_restart', AbortAndRestartHandler),
     ('/context', ContextIntroHandler),
     ('/callback', AsyncCallbackHandler),
     ('/callback/error', AsyncErrorCallbackHandler),
