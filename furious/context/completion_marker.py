@@ -19,7 +19,7 @@ import uuid
 import random
 import string
 logger = logging.getLogger('completion_marker')
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
