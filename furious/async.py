@@ -100,6 +100,10 @@ class AlreadyExecutingError(Exception):
     """This Async is currently executing."""
 
 
+class AbortAndRestart(Exception):
+    """This Async needs to be aborted immediately and restarted."""
+
+
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
@@ -140,7 +144,7 @@ class Async(object):
     def executing(self, executing):
         if self._executed:
             raise AlreadyExecutedError(
-                'You can not execute and executed job.')
+                'You can not execute an executed job.')
 
         if self._executing:
             raise AlreadyExecutingError(
@@ -301,6 +305,22 @@ class Async(object):
             async_options['callbacks'] = decode_callbacks(callbacks)
 
         return cls(target, args, kwargs, **async_options)
+
+    def _restart(self):
+        """Restarts the executing Async.
+
+        If the Async is executing, then it will reset the _executing flag, and
+        restart this job. This means that the job will not necessarily execute
+        immediately, or on the same machine, as it goes back into the queue.
+        """
+
+        if not self._executing:
+            raise NotExecutingError("Must be executing to restart the job, "
+                                    "perhaps you want Async.start()")
+
+        self._executing = False
+
+        return self.start()
 
 
 def defaults(**options):

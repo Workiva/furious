@@ -20,6 +20,7 @@ functions.
 
 from collections import namedtuple
 
+from .async import AbortAndRestart
 from .async import Async
 from .context import Context
 from .context import get_current_async
@@ -57,6 +58,11 @@ def run_job():
     try:
         async.executing = True
         async.result = function(*args, **kwargs)
+    except AbortAndRestart as restart:
+        import logging
+        logging.info('Async job was aborted and restarted: %r', restart)
+        async._restart()
+        return
     except Exception as e:
         async.result = encode_exception(e)
 

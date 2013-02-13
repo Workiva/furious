@@ -574,3 +574,40 @@ class TestAsync(unittest.TestCase):
 
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
+
+    @patch('furious.async.Async.start')
+    def test_restart(self, mock_start):
+        """Ensure that _restart() calls Async.start() again."""
+        from furious.async import Async
+
+        async_job = Async("something")
+        async_job._executing = True
+
+        async_job._restart()
+
+        mock_start.assert_called_once()
+
+    def test_restart_not_started(self):
+        """Ensure that _restart() raises a NotExecutingError when restarting
+        before started.
+        """
+        from furious.async import Async
+        from furious.async import NotExecutingError
+
+        async_job = Async("something")
+
+        self.assertRaises(NotExecutingError, async_job._restart,)
+
+    def test_restart_finished_fails(self):
+        """Ensure that calling _restart() on a finished Async raises a
+        NotExecutingError.
+        """
+        from furious.async import Async
+        from furious.async import NotExecutingError
+
+        async_job = Async("something")
+        async_job._executing = True
+        async_job.result = 'result'
+
+        self.assertRaises(NotExecutingError, async_job._restart,)
+
