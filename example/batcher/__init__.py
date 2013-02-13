@@ -149,9 +149,10 @@ def process_messages(tag, retries=0):
     # create a message iteragor for the tag in batches of 500
     message_iterator = MessageIterator(tag, MESSAGE_DEFAULT_QUEUE, 500)
 
-    # get the stats object from cache
     client = memcache.Client()
-    stats = client.get(tag)
+
+    # get the stats object from cache
+    stats = client.gets(tag)
 
     # json decode it if it exists otherwise get the default state.
     stats = json.loads(stats) if stats else get_default_stats()
@@ -172,8 +173,15 @@ def process_messages(tag, retries=0):
         set_stats(stats["colors"][color], value)
 
     # insert the stats back into cache
-    if not client.cas(tag, json.dumps(stats)):
-        raise Exception("Transaction Collision.")
+    json_stats = json.dumps(stats)
+
+    # try and do an add first to see if it's new. We can't trush get due to
+    # a race condition.
+    if not client.add(tag, json_stats):
+        # if we couldn't add than lets do a compare and set to safely
+        # update the stats
+        if not client.cas(tag, json_stats):
+            raise Exception("Transaction Collision.")
 
     # bump the process batch id
     bump_batch(tag)
