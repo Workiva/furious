@@ -22,6 +22,7 @@ from ..async import Async
 from .. import context
 from ..processors import run_job
 
+from ..context import _local
 
 def process_async_task(headers, request_body):
     """Process an Async task and execute the requested function."""
@@ -31,7 +32,14 @@ def process_async_task(headers, request_body):
     logging.info(async._function_path)
 
     with context.execution_context_from_async(async):
+        local_context = _local.get_local_context()
+        executing_asyncs = local_context._executing_async
+        logging.debug("local context initialized: {0}".format(local_context._initialized))
+        logging.debug("executing asyncs: {0}".format(executing_asyncs))
         run_job()
+        executing_asyncs = local_context._executing_async
+        logging.debug("local context initialized: {0}".format(local_context._initialized))
+        logging.debug("executing asyncs after run_job: {0}".format(executing_asyncs))
 
     return 200, async._function_path
 
