@@ -184,7 +184,7 @@ def leaf_persistence_id_from_group_id(group_id, index):
     Returns:
         A string that is a comma separated join of the two args
     """
-    if not isinstance(group_id,basestring):
+    if not isinstance(group_id, basestring):
         raise InvalidGroupId("Not a valid group_id, expected "
                              "string, got {0}".format(group_id))
     return ",".join([str(group_id), str(index)])
@@ -211,7 +211,7 @@ def leaf_persistence_id_to_group_id(persistence_id):
     except AttributeError:
         raise InvalidLeafId("Id must be a basestring, "
                             "it is {0}, {0}".format(type(
-                            persistence_id),persistence_id))
+                            persistence_id), persistence_id))
 
 
 def first_iv_markers(markers):
@@ -690,23 +690,24 @@ class Marker(object):
         """
         count_update(self.id)
         self._update_done_in_progress = True
-        # if a marker has just been changed
+
+        # If a marker has just been changed
         # it must persist itself before checking if it's children
         # are all done and bubbling up. Doing so will allow it's
-        # parent to know it's changed
-        logger.debug("update done for id: %s"%self.id)
+        # parent to know it's changed.
+        logger.debug("update done for id: %s" % self.id)
         if persist_first:
             count_marked_as_done(self.id)
             self.persist()
 
         leaf = self.is_leaf()
         if leaf and self.done:
-            logger.debug("leaf and done id: %s"%self.id)
+            logger.debug("leaf and done id: %s" % self.id)
             self.bubble_up_done()
             self._update_done_in_progress = False
             return True
         elif not leaf and not self.done:
-            logger.debug("not leaf and not done yet id: %s"%self.id)
+            logger.debug("not leaf and not done yet id: %s" % self.id)
             children_markers = self.get_persisted_children()
             done_markers = [marker for marker in children_markers
                             if marker and marker.done]
@@ -732,16 +733,18 @@ class Marker(object):
                 count_marked_as_done(self.id)
                 self.persist()
                 self._update_done_in_progress = False
-                #bubble up: tell group marker to update done
+
+                # Bubble up to tell the group marker to update done.
                 self.bubble_up_done()
                 return True
 
             self._update_done_in_progress = False
             return False
         elif self.done:
-            logger.debug("already done id: %s"%self.id)
+            logger.debug("already done id: %s" % self.id)
             self._update_done_in_progress = False
-            # no need to bubble up, it would have been done already
+
+            # No need to bubble up, it would have been done already.
             return True
 
     def bubble_up_done(self):

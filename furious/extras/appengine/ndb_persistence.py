@@ -33,7 +33,6 @@ class MarkerPersist(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True, indexed=False)
     updated = ndb.DateTimeProperty(auto_now=True, indexed=False)
 
-
     @classmethod
     def from_marker(cls, marker):
         marker_dict = marker.to_dict()
