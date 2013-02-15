@@ -73,8 +73,9 @@ def run_job():
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
 
-        #clone _persistence_id so the context's
-        #success callback gets hit when the this next async is done
+        # Use async's id so the context's
+        # success callback gets hit when the this
+        # next async is done.
         processor_result.id = async.id
 
         if isinstance(processor_result, Context):
