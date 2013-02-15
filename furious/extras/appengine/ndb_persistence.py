@@ -21,6 +21,11 @@ import time
 logger = logging.getLogger('completion_marker')
 
 
+class ContextPersist(ndb.Model):
+    data = ndb.JsonProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
+
 class MarkerPersist(ndb.Model):
     """
     """
@@ -130,3 +135,13 @@ def marker_get_children(marker):
     mp = MarkerPersist.from_marker(marker)
     children = ndb.get_multi(mp.children)
     return [child.to_marker() for child in children if child]
+
+
+def store_context(idx, context_dict):
+    cp = ContextPersist(id=idx, data=context_dict)
+    cp.put()
+
+
+def load_context(idx):
+    cp = ContextPersist.get_by_id(idx)
+    return cp.data
