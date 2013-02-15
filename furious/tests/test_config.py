@@ -33,21 +33,21 @@ def mock_get_config_as(yaml_contents):
         mock_open.return_value = MagicMock(spec=file)
         manager = mock_open.return_value.__enter__.return_value
         manager.read.return_value = yaml_contents
-        from ..config import _parse_yaml_config
+        from furious.config import _parse_yaml_config
 
         return _parse_yaml_config()
 
 
 class TestConfigurationLoading(unittest.TestCase):
     def test_module_import_missing_module(self):
-        from ..config import BadModulePathError
-        from ..config import module_import
+        from furious.config import BadModulePathError
+        from furious.config import module_import
 
         self.assertRaises(BadModulePathError,
                           module_import, 'furious.extras.not_here')
 
     def test_module_import(self):
-        from ..config import module_import
+        from furious.config import module_import
         from .. import config
 
         module = module_import('furious.config')
@@ -55,7 +55,7 @@ class TestConfigurationLoading(unittest.TestCase):
 
     def test_not_find_yaml(self):
         os.path.exists = Mock(return_value=False)
-        from ..config import find_furious_yaml
+        from furious.config import find_furious_yaml
 
         config_yaml_path = find_furious_yaml()
         self.assertIsNone(config_yaml_path)
@@ -101,7 +101,7 @@ class TestConfigurationLoading(unittest.TestCase):
             mock_open.return_value = MagicMock(spec=file)
             manager = mock_open.return_value.__enter__.return_value
             manager.read.return_value = yaml_contents
-            from ..config import _parse_yaml_config
+            from furious.config import _parse_yaml_config
 
             self.assertRaises(exception, _parse_yaml_config)
 
@@ -129,7 +129,7 @@ class TestConfigurationLoading(unittest.TestCase):
 
     def test_get_config_with_no_yaml_file(self):
         os.path.exists = Mock(return_value=False)
-        from ..config import _parse_yaml_config
+        from furious.config import _parse_yaml_config
 
         config = _parse_yaml_config()
 

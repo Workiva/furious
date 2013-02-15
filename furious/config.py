@@ -71,9 +71,11 @@ def module_import(module_path):
     try:
         # Import whole module path.
         module = __import__(module_path)
+
         # Split into components: ['furious',
         # 'extras','appengine','ndb_persistence'].
         components = module_path.split('.')
+
         # Starting at the second component, set module to a
         # a reference to that component. at the end
         # module with be the last component. In this case:
@@ -177,14 +179,13 @@ def _parse_yaml_config():
     furious_yaml_path = find_furious_yaml()
     data_map = default_config()
     if furious_yaml_path is None:
-    #        raise MissingYamlFile("furious.yaml is missing")
         logging.debug("furious.yaml is missing, using default config")
         return data_map
 
     with open(furious_yaml_path) as yaml_file:
-    #        TODO: validate the yaml contents
-        #load file contents into a StringIO to enable use of a
-        #a mock file with yaml.load, preventing it from hanging
+        # TODO: validate the yaml contents
+        # Load file contents into a StringIO to enable use of a
+        # a mock file with yaml.load, preventing it from hanging.
         string_io_file = StringIO(yaml_file.read())
         data = yaml.load(string_io_file)
         if not isinstance(data, dict):
