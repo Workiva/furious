@@ -30,7 +30,9 @@ Usage:
 """
 
 from . import _local
-
+import logging
+import StringIO
+import traceback
 
 __all__ = ["ContextExistsError",
            "CorruptContextError",
@@ -84,13 +86,31 @@ class _ExecutionContext(object):
     def __enter__(self):
         """Enter the context, add this async to the executing context stack."""
         _local.get_local_context()._executing_async.append(self._async)
+        logging.debug("on enter, self.async: {0}".format(self._async))
         return self
 
     def __exit__(self, *exc_info):
         """Exit the context, pop this async from the executing context stack.
         """
+        try:
+            one, two, three = exc_info
+            logging.debug("three: {0}".format(three))
+            logging.debug("three type: {0}".format(type(three)))
+            if three:
+                string_io_file = StringIO.StringIO()
+                traceback.print_tb(three, 30, string_io_file)
+                logging.debug(string_io_file.getvalue())
+                string_io_file.close()
+        except Exception:
+            logging.debug("the third arg wasn't a traceback")
+
+        logging.debug("exc_info: {0}".format(exc_info))
+        logging.debug("on exit, self.async: {0}".format(self._async))
         local_context = _local.get_local_context()
+        logging.debug("in exit, local context initialized: {0}".format(local_context._initialized))
+        logging.debug("in exit, executing asyncs: {0}".format(local_context._executing_async))
         last = local_context._executing_async.pop()
+        logging.info("compare asyncs: {0} - {1}".format(self._async,last))
         if last is not self._async:
             local_context._executing_async.append(last)
             raise CorruptContextError(*exc_info)
