@@ -341,9 +341,9 @@ class Marker(object):
             group_id = uuid.uuid4().hex
 
         if len(tasks) > BATCH_SIZE:
-            #make two internal vertex markers
-            #recurse the first one with ten tasks
-            #and recurse the second with the rest
+            # Make two internal vertex markers.
+            # Recurse the first one with ten tasks
+            # then recurse the second with the rest.
             first_tasks = tasks[:BATCH_SIZE]
             second_tasks = tasks[BATCH_SIZE:]
 
@@ -364,12 +364,12 @@ class Marker(object):
                 group_id=second_group.id,
                 context_callbacks=context_callbacks)
 
-            #these two will be the children of the caller
+            # These two will be sibling nodes.
             markers.append(first_group)
             markers.append(second_group)
             return markers
         else:
-            #make leaf markers for the tasks
+            # Make leaf markers for the tasks.
             try:
                 markers = []
                 ids = ordered_random_ids(len(tasks))
@@ -393,11 +393,11 @@ class Marker(object):
             group_id=None,
             callbacks=context._options.get('callbacks'))
 
-        # if no callbacks were given check if this context
+        # If no callbacks were given, check if this context
         # has a parent and if so, load parent and use
-        # it's callbacks if it has any. if this context was
-        # spawned by a leaf node it will want to use the
-        # context callback of it's parent context
+        # it's callbacks if it has any. If this context was
+        # spawned by a leaf node it will use the
+        # context callback of it's parent context.
         if not root_marker.callbacks:
             group_id = root_marker.get_group_id()
             if group_id:
@@ -408,8 +408,8 @@ class Marker(object):
                     root_marker.callbacks = group_marker.callbacks
 
         if not context._tasks:
-            # if a context is made without any tasks, it will
-            # not complete
+            # If a context is made without any tasks, it will
+            # not complete, so this adds a do-nothing target.
             context.add(target=place_holder_target, args=[0])
 
         root_marker.children = Marker.make_markers_for_tasks(
@@ -422,11 +422,11 @@ class Marker(object):
 
     def children_to_dict(self):
         """
-        the children property may contain IDs of children
-        or Marker instances.
-        Marker instances will be there when the graph is
-        created and the IDs will be there when a marker
-        is restored from the persistence layer with Marker.get
+        The children property may contain IDs of children
+        or Marker instances. Marker instances will be there
+        when the graph is created and the IDs will be there
+        when a marker is restored from the persistence
+        layer with Marker.get(the_id).
         """
         return [child for child in self.children
                 if isinstance(child, basestring)] \
@@ -512,34 +512,15 @@ class Marker(object):
         return cls(**marker_options)
 
     @classmethod
-    def from_async_dict(cls, async_dict):
-        idx = async_dict.get('id')
-        if idx is None:
-            raise AsyncNeedsPersistenceID(
-                'please assign an id to the async '
-                'before creating a marker'
-            )
-        group_id = None
-        try:
-            #is the batch_id a valid leaf id?
-            group_id = leaf_persistence_id_to_group_id(idx)
-        except InvalidLeafId:
-            pass
-        return cls(id=idx,
-                   group_id=group_id,
-                   callbacks=decode_callbacks(
-                       async_dict.get('callbacks')),
-                   async=async_dict)
-
-    @classmethod
     def from_async(cls, async):
+        if async is None:
+            return
         group_id = None
         try:
-            #is the batch_id a valid leaf id?
+            # Does the async have an id with a valid group id?
             group_id = leaf_persistence_id_to_group_id(async.id)
         except InvalidLeafId:
             pass
-
         callbacks = async._options.get('callbacks')
         marker = cls(id=async.id,
                      group_id=group_id,
@@ -566,7 +547,7 @@ class Marker(object):
         a Marker must only be saved during the update_done stage
         just after it has been found to be done because
         more then one process may be checking the done status.
-        if a value is changed, it must be done in an idempotent way,
+        If a value is changed, it must be done in an idempotent way,
         such that if a value is changed because of a child, other
         simultaneous processes would make the same change
         """
@@ -575,13 +556,13 @@ class Marker(object):
 
         save_leaves = True
         is_root_marker = False
-        #infer if this is the root marker of a graph
-        #or else just a node saving it's state
+        # Infer if this is the root marker of a graph
+        # or else just a node saving it's state.
         for child in self.children:
             if isinstance(child, Marker):
-                #indicates this is the root of a graph
-                #and when a graph is saved, don't
-                #save the leaves
+                # Indicates this is the root of a graph
+                # and when a graph is saved, don't
+                # save the leaves.
                 is_root_marker = True
                 save_leaves = False
 
@@ -793,15 +774,13 @@ class Marker(object):
 
     def delete_leaves(self):
         """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
+        TODO: delete all the sub leaf markers
         """
         pass
 
     def delete_children(self):
         """
-        TODO: move logic from ndb module to here,
-        keeping persistence layer dumb
+        TODO: delete all sub markers
         """
         pass
 
