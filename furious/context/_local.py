@@ -52,15 +52,11 @@ def _init():
 
     NOTE: Do not directly run this method.
     """
-    global _local_context
-
     # If there is a context and it is initialized to this request,
     # return, otherwise reinitialize the _local_context.
     if (hasattr(_local_context, '_initialized') and
             _local_context._initialized == os.environ['REQUEST_ID_HASH']):
         return
-
-    _local_context = threading.local()
 
     # Used to track the context object stack.
     _local_context.registry = []
@@ -77,5 +73,5 @@ def _init():
 
 # NOTE: Do not import this directly.  If you MUST use this, access it
 # through get_local_context.
-_local_context = None
+_local_context = threading.local()
 
