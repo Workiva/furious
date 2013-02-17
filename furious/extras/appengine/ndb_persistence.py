@@ -41,6 +41,20 @@ class MarkerPersist(ndb.Model):
     @classmethod
     def from_marker(cls, marker):
         marker_dict = marker.to_dict()
+        if hasattr(marker,'_marker_persist'):
+            referenced_marker_persist = marker._marker_persist
+            referenced_marker_persist.done = marker.done
+            referenced_marker_persist.result = marker.result
+            referenced_marker_persist.group = (
+                ndb.Key('MarkerPersist', marker.group_id)
+                if marker.group_id else None)
+            referenced_marker_persist.callbacks = marker_dict.get('callbacks')
+            referenced_marker_persist.children = [
+                ndb.Key('MarkerPersist', idx) for idx in
+                marker.children_as_ids()
+            ]
+            return referenced_marker_persist
+
         return cls(
             id=marker.id,
             group_id=marker.group_id,
@@ -60,8 +74,9 @@ class MarkerPersist(ndb.Model):
             if key:
                 children_ids.append(key.id())
 
-        created_time = time.mktime(self.created.timetuple())
-        last_updated_time = time.mktime(self.updated.timetuple())
+        created_time = round(float(self.created.strftime('%s.%f')), 3)
+        last_updated_time = round(float(self.updated.strftime('%s.%f')), 3)
+
         work_time = last_updated_time - created_time
 
         marker = Marker(
@@ -73,6 +88,8 @@ class MarkerPersist(ndb.Model):
             callbacks=self.callbacks,
             children=children_ids
         )
+        marker._marker_persist = self
+
         return marker
 
 
