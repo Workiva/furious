@@ -93,6 +93,14 @@ class TestDefaultsDecorator(unittest.TestCase):
 class TestAsync(unittest.TestCase):
     """Make sure Async produces correct Task objects."""
 
+    def setUp(self):
+        from furious.context import _local
+
+        local_context = _local.get_local_context()
+        local_context._executing_async_context = None
+
+        super(TestAsync, self).setUp()
+
     def test_none_function(self):
         """Ensure passing None as function raises."""
         from furious.async import Async
@@ -624,4 +632,66 @@ class TestAsync(unittest.TestCase):
         async_job.result = 'result'
 
         self.assertRaises(NotExecutingError, async_job._restart,)
+
+    @patch('furious.async.Async.to_task')
+    def test_start_max_depth_reached(self, to_task):
+        """Ensure that when max recursion depth is reached start is a no-op."""
+        from furious.async import Async
+        from furious.async import MAX_DEPTH
+
+        async_job = Async("something", _recursion={'current': MAX_DEPTH + 1,
+                                                   'max': MAX_DEPTH})
+
+        async_job.start()
+
+        self.assertFalse(to_task.called)
+
+    def test_check_and_update_depth_defaults(self):
+        """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
+        from furious.async import Async
+        from furious.async import MAX_DEPTH
+
+        async_job = Async("something")
+
+        result = async_job._check_and_update_depth()
+
+        self.assertFalse(result)
+        options = async_job.get_options()['_recursion']
+        self.assertEqual(1, options['current'])
+        self.assertEqual(MAX_DEPTH, options['max'])
+
+    def test_check_and_update_depth_execution_context(self):
+        """Ensure that when there is an existing Async that the correct values
+        are pulled and incremented from there and not defaults.
+        """
+        from furious.async import Async
+        from furious.context import execution_context_from_async
+
+        context_async = Async("something", _recursion={'current': 42,
+                                                       'max': 77})
+        new_async = Async("something_else")
+
+        result = None
+
+        with execution_context_from_async(context_async):
+            result = new_async._check_and_update_depth()
+
+        self.assertFalse(result)
+        options = new_async.get_options()['_recursion']
+        self.assertEqual(43, options['current'])
+        self.assertEqual(77, options['max'])
+
+    def test_check_and_update_depth_overflow(self):
+        """Ensures that the result is True when max_depth_reached."""
+        from furious.async import Async
+        from furious.async import MAX_DEPTH
+
+        async_job = Async("something", _recursion={'current': MAX_DEPTH + 1,
+                                                   'max': MAX_DEPTH})
+
+        result = async_job._check_and_update_depth()
+
+        self.assertTrue(result)
+        options = async_job.get_options()['_recursion']
+        self.assertEqual(MAX_DEPTH + 1, options['current'])
 

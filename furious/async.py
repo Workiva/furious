@@ -335,16 +335,13 @@ class Async(object):
 
         execution_context = get_local_context()._executing_async_context
 
-        import logging
-
-        logging.debug(execution_context)
-
         if execution_context:
             # We're in an existing Async chain
 
-            wrapping_async_options = execution_context.async.get_options()
-            current_depth = wrapping_async_options['_recursion']['current']
-            max_depth = wrapping_async_options['_recursion']['max']
+            wrapping_options = execution_context.async.get_options()
+            wrapping_recursion = wrapping_options.get('_recursion', {})
+            current_depth = wrapping_recursion.get('current', current_depth)
+            max_depth = wrapping_recursion.get('max', max_depth)
 
         if current_depth > max_depth:
             return True
