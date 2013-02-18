@@ -169,32 +169,48 @@ def default_config():
             'task_system': 'appengine_taskqueue'}
 
 
-def _parse_yaml_config():
+def _load_yaml_config(path=None):
+    """Open and return the yaml contents."""
+    furious_yaml_path = path or find_furious_yaml()
+    if furious_yaml_path is None:
+        logging.debug("furious.yaml not found.")
+        return None
+
+    with open(furious_yaml_path) as yaml_file:
+        return yaml_file.read()
+
+
+def _parse_yaml_config(config_data=None):
     """
     Gets the configuration from the found furious.yaml
     file and parses the data.
     Returns:
         a dictionary parsed from the yaml file
     """
-    furious_yaml_path = find_furious_yaml()
     data_map = default_config()
-    if furious_yaml_path is None:
-        logging.debug("furious.yaml is missing, using default config")
+
+    # If we were given config data to use, use it.  Otherwise, see if there is
+    # a furious.yaml to read the config from.
+    config_data = config_data or _load_yaml_config()
+    if config_data is None:
+        logging.debug("No custom furious config, using default config.")
         return data_map
 
-    with open(furious_yaml_path) as yaml_file:
-        # TODO: validate the yaml contents
-        # Load file contents into a StringIO to enable use of a
-        # a mock file with yaml.load, preventing it from hanging.
-        string_io_file = StringIO(yaml_file.read())
-        data = yaml.load(string_io_file)
-        if not isinstance(data, dict):
-            if data is None:
-                raise EmptyYamlFile("The furious.yaml file is empty")
-            else:
-                raise InvalidYamlFile("The furious.yaml file "
-                                      "is invalid yaml")
-        data_map.update(data)
+    # TODO: validate the yaml contents
+    config = yaml.load(config_data)
+
+    # If there was a valid custom config, it will be a dict.  Otherwise, it is
+    # an error.
+    if not isinstance(config, dict):
+        if config is None:
+            raise EmptyYamlFile("The furious.yaml file is empty")
+
+        raise InvalidYamlFile("The furious.yaml file is invalid yaml")
+
+    # Apply the custom config over the default config.  This allows us to
+    # extend functionality without breaking old stuff.
+    data_map.update(config)
+
     return data_map
 
 
@@ -202,3 +218,4 @@ def get_config():
     return _config
 
 _config = _parse_yaml_config()
+
