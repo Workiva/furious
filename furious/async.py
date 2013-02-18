@@ -82,6 +82,7 @@ __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 
 ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
+MAX_DEPTH = 100
 
 
 class NotExecutedError(Exception):
@@ -235,6 +236,14 @@ class Async(object):
         If a TaskAlreadyExistsError or TombstonedTaskError is hit the task will
         silently fail.
         """
+
+        if self._check_and_update_depth():
+            import logging
+
+            logging.warning('Async %s execution has reached max_depth and is '
+                            'ceasing execution.' % self._function_path)
+            return
+
         from google.appengine.api import taskqueue
 
         task = self.to_task()
@@ -308,6 +317,43 @@ class Async(object):
         self._executing = False
 
         return self.start()
+
+    def _check_and_update_depth(self):
+        """Check to see if we've exceeded the max recursion depth.
+
+        Returns True if current depth > max depth.
+
+        When that is False, it updates this Async with the incremented depth
+        and the max depth.
+        """
+
+        from .context._local import get_local_context
+
+        recursion_options = self.get_options().get('_recursion', {})
+        current_depth = recursion_options.get('current', 0)
+        max_depth = recursion_options.get('max', MAX_DEPTH)
+
+        execution_context = get_local_context()._executing_async_context
+
+        import logging
+
+        logging.debug(execution_context)
+
+        if execution_context:
+            # We're in an existing Async chain
+
+            wrapping_async_options = execution_context.async.get_options()
+            current_depth = wrapping_async_options['_recursion']['current']
+            max_depth = wrapping_async_options['_recursion']['max']
+
+        if current_depth > max_depth:
+            return True
+
+        # Increment and store
+        self.update_options(_recursion={'current': current_depth + 1,
+                                        'max': max_depth})
+
+        return False
 
 
 def defaults(**options):
