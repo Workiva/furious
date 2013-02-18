@@ -44,12 +44,12 @@ def run_job():
     async = get_current_async()
     async_options = async.get_options()
 
-    current_depth = async_options.get('current_depth', 0)
-    max_depth = async_options.get('max_depth', MAX_DEPTH)
+    current_depth = async_options.get('_recursion', {}).get('current', 0)
+    max_depth = async_options.get('_recursion', {}).get('max', MAX_DEPTH)
 
     if current_depth > max_depth:
-        logging.info('Async execution has reached max_depth %s and is ceasing'
-                     'execution.' % max_depth)
+        logging.warning('Async execution has reached max_depth %s and is '
+                        'ceasing execution.' % max_depth)
         return
 
     next_depth = current_depth + 1
@@ -73,7 +73,8 @@ def run_job():
         async.result = function(*args, **kwargs)
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
-        async.update_options(current_depth=next_depth, max_depth=max_depth)
+        async.update_options(_recursion={'current': next_depth,
+                                         'max': max_depth})
         async._restart()
         return
     except Exception as e:
@@ -85,8 +86,8 @@ def run_job():
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
-        processor_result.update_options(current_depth=next_depth,
-                                        max_depth=max_depth)
+        processor_result.update_options(_recursion={'current': next_depth,
+                                                    'max': max_depth})
         processor_result.start()
 
 

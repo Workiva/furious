@@ -240,7 +240,7 @@ class TestRunJob(unittest.TestCase):
         from furious.context._execution import _ExecutionContext
         from furious.processors import run_job
 
-        work = Async(dir, current_depth=51)
+        work = Async(dir, _recursion={'current': 51, 'max': 50})
 
         with _ExecutionContext(work):
             run_job()
@@ -262,8 +262,29 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             run_job()
 
-        mock_async.update_options.assert_called_once_with(current_depth=1,
-                                                          max_depth=MAX_DEPTH)
+        mock_async.update_options.assert_called_once_with(
+            _recursion={'current': 1, 'max': MAX_DEPTH})
+
+    def test_depth_increment_arbitrary(self):
+        """Ensures that current increments while executing from an arbitrary
+        point.
+        """
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import MAX_DEPTH
+        from furious.processors import run_job
+
+        mock_async = Mock(spec=Async)
+
+        work = Async(target=_fake_async_returning_target,
+                     args=[mock_async],
+                     _recursion={'current': 42})
+
+        with _ExecutionContext(work):
+            run_job()
+
+        mock_async.update_options.assert_called_once_with(
+            _recursion={'current': 43, 'max': MAX_DEPTH})
 
     @patch('__builtin__.dir')
     def test_depth_increment_restart(self, dir_mock):
@@ -275,12 +296,13 @@ class TestRunJob(unittest.TestCase):
 
         dir_mock.side_effect = AbortAndRestart
 
-        work = Async(target='dir')
+        work = Async(target='dir',
+                     _recursion={'current': 42})
 
         with _ExecutionContext(work):
             run_job()
 
-        self.assertEqual(1, work.get_options()['current_depth'])
+        self.assertEqual(43, work.get_options()['_recursion']['current'])
 
     def test_max_depth_set(self):
         """Ensure that max_depth is propagated on the new async."""
@@ -292,30 +314,13 @@ class TestRunJob(unittest.TestCase):
 
         work = Async(target=_fake_async_returning_target,
                      args=[mock_async],
-                     max_depth=10)
+                     _recursion={'max': 10})
 
         with _ExecutionContext(work):
             run_job()
 
-        mock_async.update_options.assert_called_once_with(current_depth=1,
-                                                          max_depth=10)
-
-    @patch('__builtin__.dir')
-    def test_max_depth_set_restart(self, dir_mock):
-        """Ensure that max_depth is propagated on the new async."""
-        from furious.async import AbortAndRestart
-        from furious.async import Async
-        from furious.context._execution import _ExecutionContext
-        from furious.processors import run_job
-
-        dir_mock.side_effect = AbortAndRestart
-
-        work = Async(target='dir', max_depth=10)
-
-        with _ExecutionContext(work):
-            run_job()
-
-        self.assertEqual(10, work.get_options()['max_depth'])
+        mock_async.update_options.assert_called_once_with(
+            _recursion={'current': 1, 'max': 10})
 
 
 def _fake_async_returning_target(async_to_return):
