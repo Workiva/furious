@@ -17,7 +17,6 @@
 import logging
 from google.appengine.ext.ndb import Future
 from google.appengine.ext import ndb
-import time
 logger = logging.getLogger('completion_marker')
 
 

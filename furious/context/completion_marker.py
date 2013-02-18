@@ -407,11 +407,6 @@ class Marker(object):
                                  root_marker.id)
                     root_marker.callbacks = group_marker.callbacks
 
-        if not context._tasks:
-            # If a context is made without any tasks, it will
-            # not complete, so this adds a do-nothing target.
-            context.add(target=place_holder_target, args=[0])
-
         root_marker.children = Marker.make_markers_for_tasks(
             context._tasks,
             group_id=context.id,
@@ -805,15 +800,6 @@ def count_marked_as_done(idx):
     """
 
     :param idx:
-    :return:
-    """
-    return
-
-
-def place_holder_target(*args, **kwargs):
-    """
-
-
     :return:
     """
     return

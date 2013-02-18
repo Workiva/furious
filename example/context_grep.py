@@ -111,7 +111,10 @@ def simultaneous_grepp(query, directory):
                 ctx.add(target=grep_file, args=[query, path],
                         callbacks={'success': log_results})
 
-    return ctx
+    if ctx._tasks:
+        return ctx
+
+    return None
 
 
 def context_grepp(query, directory):
@@ -126,8 +129,10 @@ def context_grepp(query, directory):
     from simultaneous_grepp and then starting it.
     """
     ctx = simultaneous_grepp(query, directory)
-    ctx.start()
-    return ctx
+    if ctx:
+        ctx.start()
+        return ctx
+    return None
 
 
 def grep_file(query, item):

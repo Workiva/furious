@@ -279,7 +279,7 @@ class Async(object):
             options['callbacks'] = encode_callbacks(callbacks)
 
         #persistence layer may have assigned an id
-        options['id']=self.id
+        options['id'] = self.id
 
         return options
 

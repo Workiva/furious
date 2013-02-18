@@ -103,8 +103,14 @@ class Context(object):
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
-        root_marker = Marker.make_marker_tree_for_context(self)
-        root_marker.persist()
+        # If the user needs context callbacks called,
+        # construct a marker tree which assigns ids to all
+        # of the Asyncs.
+        if self._options.get('callbacks'):
+            root_marker = Marker.make_marker_tree_for_context(self)
+
+            # Persist the marker tree.
+            root_marker.persist()
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
@@ -145,7 +151,8 @@ class Context(object):
 
     def start(self):
         """Insert this Context's tasks executing."""
-        self._handle_tasks()
+        if self._tasks:
+            self._handle_tasks()
 
     def persist(self):
         """Store the context."""
