@@ -510,11 +510,14 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(123, job.result)
         self.assertTrue(job.executed)
 
+    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_transient_error(self, queue_mock):
+    def test_start_hits_transient_error(self, queue_mock, mock_depth):
         """Ensure the task retries if a transient error is hit."""
         from google.appengine.api.taskqueue import TransientError
         from furious.async import Async
+
+        mock_depth.return_value = False
 
         def add(task, *args, **kwargs):
             def add_second(task, *args, **kwargs):
@@ -531,11 +534,16 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(2, queue_mock.return_value.add.call_count)
 
+    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_task_already_exists_error_error(self, queue_mock):
+    def test_start_hits_task_already_exists_error_error(self,
+                                                        queue_mock,
+                                                        mock_depth):
         """Ensure the task returns if a task already exists error is hit."""
         from google.appengine.api.taskqueue import TaskAlreadyExistsError
         from furious.async import Async
+
+        mock_depth.return_value = False
 
         queue_mock.return_value.add.side_effect = TaskAlreadyExistsError()
 
@@ -545,11 +553,16 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
+    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_tombstoned_task_error_error(self, queue_mock):
+    def test_start_hits_tombstoned_task_error_error(self,
+                                                    queue_mock,
+                                                    mock_depth):
         """Ensure the task returns if a tombstoned task error is hit."""
         from google.appengine.api.taskqueue import TombstonedTaskError
         from furious.async import Async
+
+        mock_depth.return_value = False
 
         queue_mock.return_value.add.side_effect = TombstonedTaskError()
 
@@ -559,10 +572,13 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
+    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_runs_successfully(self, queue_mock):
+    def test_start_runs_successfully(self, queue_mock, mock_depth):
         """Ensure the Task is inserted into the specified queue."""
         from furious.async import Async
+
+        mock_depth.return_value = False
 
         async_job = Async("something", queue='my_queue')
         async_job.start()
@@ -583,7 +599,7 @@ class TestAsync(unittest.TestCase):
 
         async_job._restart()
 
-        mock_start.assert_called_once()
+        self.assertTrue(mock_start.called)
 
     def test_restart_not_started(self):
         """Ensure that _restart() raises a NotExecutingError when restarting
