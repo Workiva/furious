@@ -27,7 +27,6 @@ class TestConfigurationLoading(unittest.TestCase):
         contents = _load_yaml_config(os.path.join('furious','_furious.yaml'))
         self.assertEqual(contents, "persistence: ndb\n")
 
-
     def test_module_import_missing_module(self):
         """Ensure module_import raises an exception when the specified module
         does not exist.

@@ -76,6 +76,13 @@ class TestContext(unittest.TestCase):
 
         self.assertTrue(Context().id)
 
+    def test_context_sets_id(self):
+        from furious.context import Context
+
+        ctx = Context()
+        ctx.id = 5
+        self.assertEqual(ctx.id, 5)
+
     def test_context_gets_assigned_id(self):
         """Ensure a new Context keeps its assigned id."""
         from furious.context import Context
