@@ -651,6 +651,19 @@ def dummy_success_callback(idx, results):
     return
 
 
+def sub_context_empty_target_example():
+    from furious.context import Context
+    ctx = Context()
+    return ctx
+
+
+def sub_context_target_example():
+    from furious.context import Context
+    ctx = Context()
+    ctx.add(target=dummy_success_callback, args=[1])
+    return ctx
+
+
 def dummy_leaf_combiner(results):
     logging.debug("dummy_leaf_combiner been called!")
     return [result for result in results]
@@ -695,4 +708,93 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         root_marker = Marker.make_marker_tree_for_context(context)
 
         root_marker.persist()
+        # Plus one, because of the empty context.
         self.assertEqual(root_marker.count_nodes(), tree_graph_growth(23))
+
+    def test_task_returns_empty_context(self):
+        from furious.async import Async
+        from furious import context
+
+        # Create a new furious Context.
+        with context.new(callbacks={'internal_vertex_combiner': l_combiner,
+                                    'leaf_combiner': l_combiner,
+                                    'success': example_callback_success}) as ctx:
+            # "Manually" instantiate and add an Async object to the Context.
+            async_task = Async(
+                target=example_function, kwargs={'first': 'async'})
+            ctx.add(async_task)
+            logging.info('Added manual job to context.')
+
+            # instantiate and add an Async who's function creates another Context.
+            # enabling extra fan-out of a job
+            async_task = Async(
+                target=make_a_new_context_example, kwargs={'extra': 'async'})
+            ctx.add(async_task)
+            logging.info('Added sub context')
+            async_task = Async(
+                target=make_a_new_empty_context_example, kwargs={'extra': 'async'})
+            ctx.add(async_task)
+            logging.info('Added sub context')
+
+            # Use the shorthand style, note that add returns the Async object.
+            for i in xrange(25):
+                ctx.add(target=example_function, args=[i])
+                logging.info('Added job %d to context.', i)
+
+            # Instantiate and add an Async who's function creates another Async
+            # enabling portions of the job to be serial
+            async_task = Async(
+                target=make_a_new_async_example, kwargs={'second': 'async'})
+            ctx.add(async_task)
+
+
+def l_combiner(results):
+    return reduce(lambda x, y: x + y, results, 0)
+
+
+def iv_combiner(results):
+    return results
+
+
+def example_callback_success(idx, result):
+    pass
+
+
+def example_function(*args, **kwargs):
+    """This function is called by furious tasks to demonstrate usage."""
+    logging.info('example_function executed with args: %r, kwargs: %r',
+                 args, kwargs)
+    return l_combiner(args)
+
+
+def make_a_new_async_example(*args, **kwargs):
+    from furious.async import Async
+
+    async_task = Async(
+        target=example_function, args=[500])
+
+    return async_task
+
+
+def make_a_new_context_example(*args, **kwargs):
+    from furious import context
+
+    ctx = context.Context(callbacks={'internal_vertex_combiner': l_combiner,
+                                     'leaf_combiner': l_combiner,
+                                     'success': example_callback_success})
+    # Use the shorthand style, note that add returns the Async object.
+    for i in xrange(2):
+        ctx.add(target=example_function, args=[i])
+        logging.info('Added job %d to context.', i)
+
+    return ctx
+
+
+def make_a_new_empty_context_example(*args, **kwargs):
+    from furious import context
+
+    ctx = context.Context(callbacks={'internal_vertex_combiner': l_combiner,
+                                     'leaf_combiner': l_combiner,
+                                     'success': example_callback_success})
+
+    return ctx

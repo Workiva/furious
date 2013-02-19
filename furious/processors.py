@@ -80,7 +80,18 @@ def run_job():
 
         if isinstance(processor_result, Context):
             _local.get_local_context().registry.append(processor_result)
-        processor_result.start()
+            # If the context contained no tasks go ahead and
+            # mark this node as done and bubble up.
+            if not processor_result._tasks:
+                # Clear the empty Context from the async result.
+                async._executing = True
+                async.result = None
+                async._executing = False
+                handle_async_done(async)
+            else:
+                processor_result.start()
+        else:
+            processor_result.start()
     else:
         handle_async_done(async)
 
