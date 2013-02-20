@@ -24,6 +24,7 @@ from webapp2_extras import jinja2
 
 from furious.extras.callbacks import small_aggregated_results_success_callback
 from furious.extras.combiners import lines_combiner
+from furious.handlers.context_job import JOB_ENDPOINT
 
 
 class ContextGrepHandler(webapp2.RequestHandler):
@@ -50,8 +51,8 @@ class ContextGrepHandler(webapp2.RequestHandler):
         self.response.out.write(json.dumps({
             'success': True,
             'job_id': ctx.id,
-            'check_done_url': "/_context_job/{0}/done".format(ctx.id),
-            'result_url': "/_context_job/{0}/result".format(ctx.id),
+            'check_done_url': "{0}/{1}/done".format(JOB_ENDPOINT, ctx.id),
+            'result_url': "{0}/{1}/result".format(JOB_ENDPOINT, ctx.id),
             'query': query,
         }))
 

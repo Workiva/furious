@@ -316,12 +316,16 @@ class Marker(object):
     @classmethod
     def make_markers_for_tasks(cls, tasks, group_id=None,
                                context_callbacks=None):
-        """
+        """Builds a marker tree below a parent marker.
+        Assigns ids to Asyncs(tasks) to assign them to
+        leaf nodes.
 
-        :param tasks:
-        :param group:
-        :param context_callbacks:
-        :return: :raise:
+        Args:
+            tasks: List of Asyncs.
+            group_id: Id of the parent marker node.
+            context_callbacks: callbacks to be called when
+            a group of tasks are complete.
+        Returns: List of markers.
         """
         markers = []
 
@@ -373,24 +377,14 @@ class Marker(object):
 
     @classmethod
     def make_marker_tree_for_context(cls, context):
+        """Constructs a root marker for the context
+        and build a marker tree from it's tasks.
+
+        """
         root_marker = Marker(
             id=str(context.id),
             group_id=None,
             callbacks=context._options.get('callbacks'))
-
-        # If no callbacks were given, check if this context
-        # has a parent and if so, load parent and use
-        # it's callbacks if it has any. If this context was
-        # spawned by a leaf node it will use the
-        # context callback of it's parent context.
-        if not root_marker.callbacks:
-            group_id = root_marker.get_group_id()
-            if group_id:
-                group_marker = Marker.get(group_id)
-                if group_marker and group_marker.callbacks:
-                    logger.debug("using parent callbacks for %s" %
-                                 root_marker.id)
-                    root_marker.callbacks = group_marker.callbacks
 
         root_marker.children = Marker.make_markers_for_tasks(
             context._tasks,
@@ -448,6 +442,9 @@ class Marker(object):
                 if isinstance(child_dict, dict)]
 
     def get_group_id(self):
+        """The group id may be stored as the group_id property
+        or extracted from the id.
+        """
         group_id = None
         try:
             #is the batch_id a valid leaf id?
@@ -778,7 +775,7 @@ def count_update(idx):
     :param idx:
     :return:
     """
-    return
+    return idx
 
 
 def count_marked_as_done(idx):
@@ -787,7 +784,7 @@ def count_marked_as_done(idx):
     :param idx:
     :return:
     """
-    return
+    return idx
 
 
 def handle_async_done(async):

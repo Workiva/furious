@@ -19,6 +19,8 @@ import webapp2
 from webapp2 import Route
 from furious.context.completion_marker import Marker
 
+JOB_ENDPOINT = '/_context_job'
+
 
 def get_status(idx):
     """Helper function that gets the status of a job
@@ -77,6 +79,6 @@ class ResultRetriever(webapp2.RequestHandler):
 
 
 app = webapp2.WSGIApplication([
-    Route('/_context_job/<idx:[^/]+>/done', handler=DoneCheckHandler),
-    Route('/_context_job/<idx:[^/]+>/result', handler=ResultRetriever),
+    Route('{0}/<idx:[^/]+>/done'.format(JOB_ENDPOINT), handler=DoneCheckHandler),
+    Route('{0}/<idx:[^/]+>/result'.format(JOB_ENDPOINT), handler=ResultRetriever),
 ])
