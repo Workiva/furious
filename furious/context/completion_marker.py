@@ -143,17 +143,6 @@ def initial_save_growth(n):
     return max(((round_down(n) + round_up(n % BATCH_SIZE)) / BATCH_SIZE) * 2 - 1, 1)
 
 
-def count_nodes(marker):
-    """
-    counts the nodes of a marker graph
-    """
-    count = 1
-    for child in marker.children:
-        count += count_nodes(child)
-
-    return count
-
-
 class InvalidLeafId(Exception):
     """
     This leaf id is invalid, it must be prefixed by a group id, comma
@@ -335,10 +324,6 @@ class Marker(object):
         :return: :raise:
         """
         markers = []
-        if group_id is None:
-            # Bootstrap the top level context marker.
-            logger.debug("bootstrapping group id")
-            group_id = uuid.uuid4().hex
 
         if len(tasks) > BATCH_SIZE:
             # Make two internal vertex markers.
