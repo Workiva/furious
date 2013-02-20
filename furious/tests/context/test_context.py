@@ -342,6 +342,17 @@ class TestContext(unittest.TestCase):
         persistence_engine.load_context.assert_called_once_with('ABC123')
         self.assertEqual('ABC123', context.id)
 
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_context_fails_to_start_twice(self, queue_add_mock):
+        from furious.context import Context
+        from furious.context.context import ContextAlreadyStartedError
+        ctx = Context()
+        ctx.add('test', args=[1, 2])
+        ctx.start()
+        self.assertRaises(ContextAlreadyStartedError, ctx.add,
+                          'test', args=[1, 2])
+        self.assertRaises(ContextAlreadyStartedError, ctx.start)
+
 
 class TestInsertTasks(unittest.TestCase):
     """Test that _insert_tasks behaves as expected."""

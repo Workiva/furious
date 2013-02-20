@@ -252,8 +252,12 @@ class TestMarker(unittest.TestCase):
         """
         from furious.context.completion_marker import leaf_persistence_id_from_group_id
         from furious.context.completion_marker import Marker
+        from furious.job_utils import encode_callbacks
 
-        marker = Marker.from_dict({'id': 'test'})
+        marker = Marker.from_dict({'id': 'test', 'callbacks':
+                                  encode_callbacks({
+                                  'success': dummy_success_callback
+                                  })})
         self.assertEqual(marker.id, 'test')
         marker2 = Marker.from_dict(marker.to_dict())
         self.assertEqual(marker2.to_dict(), marker.to_dict())
@@ -648,7 +652,7 @@ class TestMarker(unittest.TestCase):
 
 
 def dummy_success_callback(idx, results):
-    return
+    return [idx, results]
 
 
 def sub_context_empty_target_example():
@@ -711,41 +715,96 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         # Plus one, because of the empty context.
         self.assertEqual(root_marker.count_nodes(), tree_graph_growth(23))
 
-    def test_task_returns_empty_context(self):
-        from furious.async import Async
-        from furious import context
+    def test_count_nodes(self):
+        """Ensure Marker.count_nodes
 
-        # Create a new furious Context.
-        with context.new(callbacks={'internal_vertex_combiner': l_combiner,
-                                    'leaf_combiner': l_combiner,
-                                    'success': example_callback_success}) as ctx:
-            # "Manually" instantiate and add an Async object to the Context.
-            async_task = Async(
-                target=example_function, kwargs={'first': 'async'})
-            ctx.add(async_task)
-            logging.info('Added manual job to context.')
+        """
+        from furious.context import _local
+        from furious.context.context import Context
+        from furious.context.completion_marker import Marker
 
-            # instantiate and add an Async who's function creates another Context.
-            # enabling extra fan-out of a job
-            async_task = Async(
-                target=make_a_new_context_example, kwargs={'extra': 'async'})
-            ctx.add(async_task)
-            logging.info('Added sub context')
-            async_task = Async(
-                target=make_a_new_empty_context_example, kwargs={'extra': 'async'})
-            ctx.add(async_task)
-            logging.info('Added sub context')
+        context = Context()
 
-            # Use the shorthand style, note that add returns the Async object.
-            for i in xrange(25):
-                ctx.add(target=example_function, args=[i])
-                logging.info('Added job %d to context.', i)
+        context.add(target=dummy_success_callback,
+                    args=[1])
 
-            # Instantiate and add an Async who's function creates another Async
-            # enabling portions of the job to be serial
-            async_task = Async(
-                target=make_a_new_async_example, kwargs={'second': 'async'})
-            ctx.add(async_task)
+        _local.get_local_context().registry.append(context)
+
+        root_marker = Marker.make_marker_tree_for_context(context)
+
+        root_marker.persist()
+        # Plus one, because of the empty context.
+        self.assertEqual(root_marker.count_nodes(), 2)
+
+    @patch('furious.context.completion_marker.Marker.update_done', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_handle_async_done(self, queue_add_mock, update_done_mock):
+        """Ensure handle_async_done is called when Context is given a
+        callback.
+        """
+        from furious.context import Context
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        update_done_mock.return_value = True
+
+        with Context(callbacks={'success': example_callback_success}) as ctx:
+            job = ctx.add(example_function, args=[1, 2])
+
+        with _ExecutionContext(job):
+            run_job()
+
+        update_done_mock.assert_called_once()
+        queue_add_mock.assert_called_once()
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_internal_vertex_combiner_called(self, queue_add_mock):
+        """Call lines_combiner and small_aggregated_results_success_callback
+        """
+        from furious.context import Context
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+        from furious.extras.combiners import lines_combiner
+        from furious.extras.callbacks import small_aggregated_results_success_callback
+
+        with Context(callbacks={'internal_vertex_combiner': lines_combiner,
+                                'success': small_aggregated_results_success_callback}) as ctx:
+            job = ctx.add(pass_args_function, args=[1, 2])
+
+        with _ExecutionContext(job):
+            run_job()
+
+        queue_add_mock.assert_called_once()
+
+
+    @patch('furious.extras.combiners.lines_combiner', auto_spec=True)
+    @patch('furious.extras.callbacks.small_aggregated_results_success_callback', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_success_and_combiner_called(self, queue_add_mock,
+                                             success_mock,
+                                             combiner_mock):
+        """Ensure context success and internal vertex combiner
+        is called when all the context's tasks are processed.
+        """
+        from furious.context import Context
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+        from furious.job_utils import encode_callbacks
+
+        with Context(callbacks=encode_callbacks(
+                {'internal_vertex_combiner':
+                     'furious.extras.combiners.lines_combiner',
+                    'success':
+                    'furious.extras.callbacks.small_aggregated'
+                    '_results_success_callback'})) as ctx:
+            job = ctx.add(pass_args_function, args=[1, 2])
+
+        with _ExecutionContext(job):
+            run_job()
+
+        queue_add_mock.assert_called_once()
+        combiner_mock.assert_called_once()
+        success_mock.assert_called_once()
 
 
 def l_combiner(results):
@@ -767,6 +826,10 @@ def example_function(*args, **kwargs):
     return l_combiner(args)
 
 
+def pass_args_function(*args, **kwargs):
+    return args
+
+
 def make_a_new_async_example(*args, **kwargs):
     from furious.async import Async
 
@@ -778,8 +841,8 @@ def make_a_new_async_example(*args, **kwargs):
 
 def make_a_new_context_example(*args, **kwargs):
     from furious import context
-
-    ctx = context.Context(callbacks={'internal_vertex_combiner': l_combiner,
+    from furious.extras.combiners import lines_combiner
+    ctx = context.Context(callbacks={'internal_vertex_combiner': lines_combiner,
                                      'leaf_combiner': l_combiner,
                                      'success': example_callback_success})
     # Use the shorthand style, note that add returns the Async object.

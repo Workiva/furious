@@ -34,5 +34,20 @@ class TestPersistMarker(unittest.TestCase):
         # Ensure each test looks like it is in a new request.
         os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
+    def test_store_context(self):
+        from furious.extras.appengine.ndb_persistence import store_context
+        from furious.extras.appengine.ndb_persistence import load_context
+        from furious.extras.appengine.ndb_persistence import ContextPersist
+        from furious.context import Context
+        ctx = Context()
+        ctx.add('test', args=[1, 2])
+        ctx_dict = ctx.to_dict()
+        store_context(ctx.id, ctx_dict)
+        ctx_persisted = ContextPersist.get_by_id(ctx.id)
+        self.assertIsNotNone(ctx_persisted)
+        reloaded_ctx = load_context(ctx.id)
+        self.assertEqual(reloaded_ctx, ctx_dict)
+
+
     def tearDown(self):
         self.testbed.deactivate()
