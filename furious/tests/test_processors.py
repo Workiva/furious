@@ -212,7 +212,7 @@ class TestRunJob(unittest.TestCase):
                 run_job()
                 mock2_handle_async_done.assert_called_once_with(work)
 
-        self.assertEqual(returned_context.start.called, 0)
+        self.assertEqual(returned_context._handle_tasks.called, False)
 
     def test_starts_context_result(self):
         """Ensure run_job will call start on an Context object, with

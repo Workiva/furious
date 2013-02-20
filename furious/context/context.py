@@ -97,6 +97,12 @@ class Context(object):
 
         return False
 
+    def will_completion_run(self):
+        if self._tasks:
+            if self._options.get('callbacks'):
+                return True
+        return False
+
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
@@ -106,7 +112,7 @@ class Context(object):
         # If the user needs context callbacks called,
         # construct a marker tree which assigns ids to all
         # of the Asyncs.
-        if self._options.get('callbacks'):
+        if self.will_completion_run():
             root_marker = Marker.make_marker_tree_for_context(self)
 
             # Persist the marker tree.

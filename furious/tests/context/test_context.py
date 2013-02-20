@@ -353,6 +353,43 @@ class TestContext(unittest.TestCase):
                           'test', args=[1, 2])
         self.assertRaises(ContextAlreadyStartedError, ctx.start)
 
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_will_completion_run(self, queue_add_mock):
+        """Ensure context.will_completion_run correctly identifies
+        the conditions under which completion callbacks will be
+        called or task completion events will bubble up to the top.
+
+        """
+        from furious.context import Context
+        from furious.extras.callbacks import small_aggregated_results_success_callback
+        from furious.extras.combiners import lines_combiner
+
+        context_callbacks = {
+            'success': small_aggregated_results_success_callback,
+            'internal_vertex_combiner': lines_combiner,
+            'leaf_combiner': lines_combiner
+        }
+
+        # No tasks, even with callbacks, does not complete.
+        ctx = Context(callbacks=context_callbacks)
+        self.assertFalse(ctx.will_completion_run())
+
+        # No callbacks, does not complete
+        ctx = Context()
+        ctx.add('test', args=[1, 2])
+        self.assertFalse(ctx.will_completion_run())
+
+        # Context is a sub-context, but not given
+        # callbacks, does not complete.
+        ctx = Context(id="big_job,sub_context",)
+        ctx.add('test', args=[1, 2])
+        self.assertFalse(ctx.will_completion_run())
+
+        # Callbacks set, completion runs.
+        ctx = Context(callbacks=context_callbacks)
+        ctx.add('test', args=[1, 2])
+        self.assertTrue(ctx.will_completion_run())
+
 
 class TestInsertTasks(unittest.TestCase):
     """Test that _insert_tasks behaves as expected."""
