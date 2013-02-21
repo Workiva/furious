@@ -218,3 +218,10 @@ class TestFunctionPathToReference(unittest.TestCase):
             BadFunctionPathError, "Unable to find function",
             function_path_to_reference, "email.parser.NonExistentThing")
 
+    def test_encode_no_callbacks(self):
+        """Ensure encode_callbacks returns None when
+        called with no callbacks
+        """
+        from furious.job_utils import encode_callbacks
+        self.assertIsNone(encode_callbacks(None))
+
