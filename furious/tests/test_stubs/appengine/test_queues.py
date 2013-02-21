@@ -32,8 +32,8 @@ class TestExecuteTask(unittest.TestCase):
         """When a task is passed to _execute_task, make sure it is executed,
         and the task's environment is cleaned up."""
 
-        from furious.context.execute_queues import _execute_task
         from furious.context import _local
+        from furious.test_stubs.appengine.queues import _execute_task
 
         # Create the async_options to call the dir function
         async_options = {'job': ('furious.batcher.Message', None, None)}

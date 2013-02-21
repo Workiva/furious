@@ -8,8 +8,8 @@ import base64
 import os
 import uuid
 
-from _local import _clear_context
-from ..handlers import process_async_task
+from furious.context._local import _clear_context
+from furious.handlers import process_async_task
 
 
 def _execute_task(task):
