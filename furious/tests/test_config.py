@@ -22,7 +22,9 @@ class TestConfigurationLoading(unittest.TestCase):
     def test_load_yaml_config(self):
         """Ensure _load_yaml_config will load a specified path."""
         from furious.config import _load_yaml_config
+
         contents = _load_yaml_config(os.path.join('furious', '_furious.yaml'))
+
         self.assertEqual(contents, "persistence: ndb\n")
 
     def test_module_import_missing_module(self):
@@ -41,15 +43,18 @@ class TestConfigurationLoading(unittest.TestCase):
         from furious import config
 
         module = module_import('furious.config')
+
         self.assertEqual(module, config)
 
     @patch('os.path.exists', autospec=True)
     def test_not_find_yaml(self, mock_exists):
         """Ensure when no furious.yaml exists, no file is found."""
         mock_exists.return_value = False
+
         from furious.config import find_furious_yaml
 
         config_yaml_path = find_furious_yaml()
+
         self.assertIsNone(config_yaml_path)
 
     def test_get_config(self):
@@ -100,13 +105,18 @@ class TestConfigurationLoading(unittest.TestCase):
         """Ensure the chosen persistence module will load a module."""
         from furious.config import get_persistence_module
         from furious import config
+
         module = get_persistence_module('furious.config')
+
         self.assertEqual(module, config)
 
     def test_get_config_empty_yaml(self):
         """Ensure an empty furious.yaml will produce a default config."""
         from furious.config import default_config
         from furious.config import _parse_yaml_config
+
         example_yaml = str('')
+
         my_config = _parse_yaml_config(example_yaml)
+
         self.assertEqual(my_config, default_config())
