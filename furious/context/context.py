@@ -43,7 +43,7 @@ Usage:
 """
 
 import uuid
-from furious.context.completion_marker import Marker
+from furious.marker_tree.marker import Marker
 
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks

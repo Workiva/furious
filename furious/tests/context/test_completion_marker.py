@@ -26,9 +26,9 @@ class TestFunctions(unittest.TestCase):
         """
         Ensure the group id can be retrieved from the id given to an async
         """
-        from furious.context.completion_marker import InvalidLeafId
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import leaf_persistence_id_to_group_id
+        from furious.marker_tree.exceptions import InvalidLeafId
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.identity_utils import leaf_persistence_id_to_group_id
 
         group_id = uuid.uuid4().hex
         index = 2
@@ -64,7 +64,7 @@ class TestFunctions(unittest.TestCase):
         Test function that allows testing of the
         number of nodes in a marker tree graph
         """
-        from furious.context.completion_marker import tree_graph_growth
+        from furious.marker_tree.graph_analysis import tree_graph_growth
 
         sizes = [tree_graph_growth(n) for n in range(0, 100, 10)]
         expected = [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
@@ -75,7 +75,7 @@ class TestFunctions(unittest.TestCase):
         Test function that allows testing of the number of
         nodes which are saved when persisted
         """
-        from furious.context.completion_marker import initial_save_growth
+        from furious.marker_tree.graph_analysis import initial_save_growth
 
         sizes = [initial_save_growth(n) for n in range(0, 100, 10)]
         expected = [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
@@ -87,7 +87,7 @@ class TestFunctions(unittest.TestCase):
         produces a string of the expected length with only
         chars of A-z0-9
         """
-        from furious.context.completion_marker import random_alpha_numeric
+        from furious.marker_tree.identity_utils import random_alpha_numeric
 
         value = random_alpha_numeric()
         self.assertIsInstance(value, basestring)
@@ -99,7 +99,7 @@ class TestFunctions(unittest.TestCase):
         Make sure an ordered set list of random strings are returned
         where the length is number_of_ids
         """
-        from furious.context.completion_marker import ordered_random_ids
+        from furious.marker_tree.identity_utils import ordered_random_ids
 
         ids = ordered_random_ids(10)
         self.assertEqual(len(ids), 10)
@@ -134,8 +134,8 @@ class TestMarker(unittest.TestCase):
         Make sure a marker can report if it is a leaf marker
         or not
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(3):
@@ -159,8 +159,8 @@ class TestMarker(unittest.TestCase):
         self.assertFalse(now_sub_tree_marker.is_leaf())
 
     def test_get_multi(self):
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="freddy")
         for x in xrange(3):
@@ -185,8 +185,8 @@ class TestMarker(unittest.TestCase):
         Make sure all the leaves of a marker are returned
         as expected from marker._list_of_leaf_markers()
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(3):
@@ -223,8 +223,8 @@ class TestMarker(unittest.TestCase):
         a leaf to an node with children if it the target function
         returns a new Context.
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="fun")
         children = []
@@ -250,8 +250,8 @@ class TestMarker(unittest.TestCase):
         from the persistence layer, the children maintain
         through serialization
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
         from furious.job_utils import encode_callbacks
 
         marker = Marker.from_dict({'id': 'test', 'callbacks':
@@ -287,8 +287,8 @@ class TestMarker(unittest.TestCase):
         (to_dict), it gets deserialized(from_dict) with
         all it's children intact as Markers
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="jolly")
         for x in xrange(3):
@@ -316,7 +316,7 @@ class TestMarker(unittest.TestCase):
         when they have an independent id, but passed the parent
         ID as a group_id
         """
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(2):
@@ -331,8 +331,8 @@ class TestMarker(unittest.TestCase):
         Make sure all children can id their parent marker
         when their id was created by prefixing with parent id
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(3):
@@ -349,8 +349,8 @@ class TestMarker(unittest.TestCase):
         it only saves the non-leaf nodes and the
         children properties contains only IDs
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="peanut")
         for x in xrange(3):
@@ -384,9 +384,9 @@ class TestMarker(unittest.TestCase):
         been inserted
         """
         from furious.context.context import Context
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
-        from furious.context.completion_marker import NotSafeToSave
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
+        from furious.marker_tree.exceptions import NotSafeToSave
 
         a_context = Context(id="zebra")
         a_context._tasks_inserted = True
@@ -404,8 +404,8 @@ class TestMarker(unittest.TestCase):
         Make sure internal nodes are saved during the persistence
         of a marker tree graph.
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="cracker")
         for x in xrange(2):
@@ -432,9 +432,9 @@ class TestMarker(unittest.TestCase):
         Make sure that loaded leaf marker can id it's parent
         marker
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
-        from furious.context.completion_marker import NotSafeToSave
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
+        from furious.marker_tree.exceptions import NotSafeToSave
 
         root_marker = Marker(id="heart")
         for x in xrange(3):
@@ -482,8 +482,8 @@ class TestMarker(unittest.TestCase):
         right child node is not done
         """
         mock_count_update.return_value = None
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
 
         context_callbacks = {
             'success': dummy_success_callback,
@@ -555,10 +555,10 @@ class TestMarker(unittest.TestCase):
         will pulled in position
 
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import first_iv_markers
-        from furious.context.completion_marker import group_into_internal_vertex_results
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.result_sorter import first_iv_markers
+        from furious.marker_tree.result_sorter import group_into_internal_vertex_results
+        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="little_job")
         for x in xrange(3):
@@ -607,8 +607,8 @@ class TestMarker(unittest.TestCase):
         Make sure the expected results are in the root_marker.results
         after the job is done.
         """
-        from furious.context.completion_marker import leaf_persistence_id_from_group_id
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.marker import Marker
         #build marker tree
         context_callbacks = {
             'success': dummy_success_callback,
@@ -698,8 +698,8 @@ class TestMarkerTreeBuilding(unittest.TestCase):
     def test_build_tree_from_context(self):
         from furious.context import _local
         from furious.context.context import Context
-        from furious.context.completion_marker import Marker
-        from furious.context.completion_marker import tree_graph_growth
+        from furious.marker_tree.marker import Marker
+        from furious.marker_tree.graph_analysis import tree_graph_growth
 
         context = Context()
 
@@ -721,7 +721,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         """
         from furious.context import _local
         from furious.context.context import Context
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.marker import Marker
 
         context = Context()
 

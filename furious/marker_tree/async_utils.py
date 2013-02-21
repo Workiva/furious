@@ -13,3 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+from furious.marker_tree.marker import Marker
+
+
+def handle_async_done(async):
+    """
+    Args:
+        an Async instance
+
+    This will mark and async as done and will
+    begin the process to see if all the other asyncs
+    in it's context, if it has one, are done
+    """
+    if async.id:
+        marker = Marker.get(async.id)
+        if not marker:
+            marker = Marker.from_async(async)
+        marker.done = True
+        marker.result = async.result
+        marker.update_done(persist_first=True)

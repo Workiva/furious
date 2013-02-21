@@ -25,7 +25,7 @@ from .async import Async
 from .context import Context
 from .context import get_current_async
 from furious.context import _local
-from furious.context.completion_marker import handle_async_done
+from furious.marker_tree.async_utils import handle_async_done
 from .job_utils import function_path_to_reference
 
 

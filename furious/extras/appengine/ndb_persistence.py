@@ -17,7 +17,7 @@
 import logging
 from google.appengine.ext.ndb import Future
 from google.appengine.ext import ndb
-logger = logging.getLogger('completion_marker')
+logger = logging.getLogger('marker_tree')
 
 
 class ContextPersist(ndb.Model):
@@ -67,7 +67,7 @@ class MarkerPersist(ndb.Model):
         )
 
     def to_marker(self):
-        from furious.context.completion_marker import Marker
+        from furious.marker_tree.marker import Marker
         children_ids = []
         for key in self.children:
             if key:
@@ -99,7 +99,7 @@ def _marker_persist(marker, save_leaves=True):
     asynchronously. It collects the put futures as it goes.
     marker_persist waits for the put futures to finish.
     """
-    from furious.context.completion_marker import Marker
+    from furious.marker_tree.marker import Marker
 
     mp = MarkerPersist.from_marker(marker)
     put_futures = []
