@@ -92,4 +92,4 @@ def leaf_persistence_id_to_group_id(persistence_id):
     except AttributeError:
         raise InvalidLeafId("Id must be a basestring, "
                             "it is {0}, {0}".format(type(
-            persistence_id), persistence_id))
+                            persistence_id), persistence_id))
