@@ -16,6 +16,8 @@
 
 import random
 import string
+from furious.marker_tree.exceptions import InvalidGroupId
+from furious.marker_tree.exceptions import InvalidLeafId
 
 
 def random_alpha_numeric():
@@ -41,7 +43,6 @@ def ordered_random_ids(number_of_ids):
     ids = list(ids)
     ids.sort()
     return [''.join([idx, str(i)]) for i, idx in enumerate(ids)]
-
 
 
 def leaf_persistence_id_from_group_id(group_id, index):

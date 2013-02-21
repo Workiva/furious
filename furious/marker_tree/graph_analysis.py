@@ -15,7 +15,7 @@
 #
 
 import math
-from furious.marker_tree.marker import BATCH_SIZE
+from furious.marker_tree import BATCH_SIZE
 
 
 def count_update(idx):

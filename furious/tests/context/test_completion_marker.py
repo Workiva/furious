@@ -375,7 +375,7 @@ class TestMarker(unittest.TestCase):
         loaded_child_marker = Marker.get(root_marker.children[0].id)
         self.assertIsNone(loaded_child_marker)
 
-    @patch('furious.context.get_current_context', autospec=True)
+    @patch('furious.context.get_current_context', auto_spec=True)
     def test_persist_tree_after_tasks_inserted(self,
                                                mock_get_current_context):
         """
@@ -451,9 +451,9 @@ class TestMarker(unittest.TestCase):
         self.assertIsInstance(loaded_marker, Marker)
         self.assertTrue(loaded_marker.get_group_id(), 'heart')
 
-    @patch('furious.context.completion_marker.count_marked_as_done',
-           autospec=True)
-    @patch('furious.context.completion_marker.count_update', autospec=True)
+    @patch('furious.marker_tree.marker.count_marked_as_done',
+           auto_spec=True)
+    @patch('furious.marker_tree.marker.count_update', auto_spec=True)
     def test_update_done_of_leaf_travels_to_root_when_last(
             self,
             mock_count_update,
@@ -506,15 +506,15 @@ class TestMarker(unittest.TestCase):
 
         with patch('furious.tests.context.'
                    'test_completion_marker.'
-                   'dummy_success_callback', autospec=True) \
+                   'dummy_success_callback', auto_spec=True) \
                 as mock_success_callback:
             with patch('furious.tests.context.'
                        'test_completion_marker.'
-                       'dummy_leaf_combiner', autospec=True) \
+                       'dummy_leaf_combiner', auto_spec=True) \
                     as mock_leaf_combiner:
                 with patch('furious.tests.context.'
                            'test_completion_marker.'
-                           'dummy_internal_vertex_combiner', autospec=True) \
+                           'dummy_internal_vertex_combiner', auto_spec=True) \
                         as mock_internal_vertex_combiner:
 
                     mock_leaf_combiner.return_value = ["1"]
@@ -736,7 +736,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         # Plus one, because of the empty context.
         self.assertEqual(root_marker.count_nodes(), 2)
 
-    @patch('furious.context.completion_marker.Marker.update_done', auto_spec=True)
+    @patch('furious.marker_tree.marker.Marker.update_done', auto_spec=True)
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_handle_async_done(self, queue_add_mock, update_done_mock):
         """Ensure handle_async_done is called when Context is given a

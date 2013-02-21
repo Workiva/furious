@@ -1,1 +1,3 @@
-__author__ = 'johnlockwood'
+BATCH_SIZE = 10
+CHILDREN_ARE_LEAVES = True
+CHILDREN_ARE_INTERNAL_VERTEXES = False

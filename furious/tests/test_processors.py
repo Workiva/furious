@@ -192,7 +192,7 @@ class TestRunJob(unittest.TestCase):
 
         returned_async.start.assert_called_once_with()
 
-    @patch("furious.context.completion_marker.handle_async_done", autospec=True)
+    @patch("furious.marker_tree.async_utils.handle_async_done", autospec=True)
     def test_skip_empty_context_result(self, mock_handle_async_done):
         """Ensure run_job will not call start on an Context object, with
          no tasks, as a result of the Async target function."""
@@ -207,7 +207,7 @@ class TestRunJob(unittest.TestCase):
                      args=[returned_context])
 
         with _ExecutionContext(work):
-            with patch("furious.context.completion_marker.handle_async_done",
+            with patch("furious.marker_tree.async_utils.handle_async_done",
                        autospec=True) as mock2_handle_async_done:
                 run_job()
                 mock2_handle_async_done.assert_called_once_with(work)
@@ -280,7 +280,6 @@ def _fake_async_returning_target(async_to_return):
 
 
 def _fake_context_returning_target(context_to_return):
-    # import gaepdb;gaepdb.set_trace()
     return context_to_return
 
 

@@ -21,6 +21,7 @@ from furious.config import get_default_persistence_engine
 
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
+from furious.marker_tree import BATCH_SIZE
 
 from furious.marker_tree.exceptions import InvalidLeafId
 from furious.marker_tree.exceptions import NotSafeToSave
@@ -35,9 +36,7 @@ persistence_module = get_default_persistence_engine()
 logger = logging.getLogger('marker_tree')
 # logger.setLevel(logging.DEBUG)
 
-BATCH_SIZE = 10
-CHILDREN_ARE_LEAVES = True
-CHILDREN_ARE_INTERNAL_VERTEXES = False
+
 
 
 class Marker(object):
