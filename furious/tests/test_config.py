@@ -98,18 +98,17 @@ class TestConfigurationLoading(unittest.TestCase):
         self.assertEqual(persistence_module, config)
 
     def test_get_config_invalid_yaml(self):
-        """Ensure an invalid yaml file will produce a default config.
+        """Ensure an invalid yaml file will raise InvalidYamlFile.
 
         """
-        from furious.config import default_config
+        from furious.config import InvalidYamlFile
         from furious.config import _parse_yaml_config
 
         example_yaml = str('secret_key:"blah"\n'
                            'persistence:bubble\n'
                            'task_system:flah\n')
 
-        my_config = _parse_yaml_config(example_yaml)
-        self.assertEqual(my_config, default_config())
+        self.assertRaises(InvalidYamlFile, _parse_yaml_config, example_yaml)
 
     def test_get_persistence_module(self):
         """Ensure the chosen persistence module will load a module.
