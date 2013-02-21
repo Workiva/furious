@@ -172,30 +172,46 @@ class Marker(object):
         when a marker is restored from the persistence
         layer with Marker.get(the_id).
         """
-        return [child for child in self.children
-                if isinstance(child, basestring)] \
-            or \
-               [child.to_dict() for child in self.children
-                if isinstance(child, Marker)]
+        child_dicts = []
+        for child in self.children:
+            if isinstance(child, basestring):
+                child_dicts.append(child)
+
+        if not child_dicts:
+            for child in self.children:
+                if isinstance(child, Marker):
+                    child_dicts.append(child.to_dict())
+
+        return child_dicts
 
     def children_markers(self):
-        ids = [child for child in self.children
-               if isinstance(child, basestring)]
+        children_ids = []
+        for child in self.children:
+            if isinstance(child, basestring):
+                children_ids.append(child)
 
         child_markers = []
-        if ids:
-            child_markers = Marker.get_multi(ids)
+        if children_ids:
+            child_markers = Marker.get_multi(children_ids)
 
-        child_markers.extend([child for child in self.children
-                              if isinstance(child, Marker)])
+        for child in self.children:
+            if isinstance(child, Marker):
+                child_markers.append(child)
+
         return child_markers
 
     def children_as_ids(self):
-        return [child for child in self.children
-                if isinstance(child, basestring)] \
-            or \
-               [child.id for child in self.children
-                if isinstance(child, Marker)]
+        children_ids = []
+        for child in self.children:
+            if isinstance(child, basestring):
+                children_ids.append(child)
+
+        if not children_ids:
+            for child in self.children:
+                if isinstance(child, Marker):
+                    children_ids.append(child.id)
+
+        return children_ids
 
     @classmethod
     def children_from_dict(cls, children_dict):
@@ -204,12 +220,17 @@ class Marker(object):
         IDs or they may be dicts representing child
         markers
         """
-        return [child for child in children_dict
-                if isinstance(child, basestring)] \
-            or \
-               [cls.from_dict(child_dict) for
-                child_dict in children_dict
-                if isinstance(child_dict, dict)]
+        children = []
+        for child in children_dict:
+            if isinstance(child, basestring):
+                children.append(child)
+
+        if not children:
+            for child_dict in children_dict:
+                if isinstance(child_dict, dict):
+                    children.append(cls.from_dict(child_dict))
+
+        return children
 
     def get_group_id(self):
         """The group id may be stored as the group_id property
