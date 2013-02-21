@@ -15,24 +15,11 @@
 #
 
 
-class InvalidLeafId(Exception):
-    """
-    This leaf id is invalid, it must be prefixed by a group id, comma
-    separated
-    """
-
-
 class NotSafeToSave(Exception):
     """
     A marker may only safely be saved during it's own
     update_done process or before the Async it represents
     has had it's task inserted.
-    """
-
-
-class InvalidGroupId(Exception):
-    """GroupId must be a basestring
-
     """
 
 

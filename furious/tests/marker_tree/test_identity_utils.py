@@ -22,7 +22,7 @@ class TestFunctions(unittest.TestCase):
         Ensure the group id can be retrieved from the id given to an async
         """
         import uuid
-        from furious.marker_tree.exceptions import InvalidLeafId
+        from furious.marker_tree.identity_utils import InvalidLeafId
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
         from furious.marker_tree.identity_utils import leaf_persistence_id_to_group_id
 
@@ -54,6 +54,13 @@ class TestFunctions(unittest.TestCase):
 
         group_id = leaf_persistence_id_to_group_id(u"234,4")
         self.assertEqual(u"234", group_id)
+
+    def test_invalid_group_id(self):
+        """Ensure exception raises on an invalid group_id"""
+        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
+        from furious.marker_tree.identity_utils import InvalidGroupId
+
+        self.assertRaises(InvalidGroupId, leaf_persistence_id_from_group_id, None, "1")
 
     def test_random_string_generator(self):
         """

@@ -16,8 +16,19 @@
 
 import random
 import string
-from furious.marker_tree.exceptions import InvalidGroupId
-from furious.marker_tree.exceptions import InvalidLeafId
+
+
+class InvalidLeafId(Exception):
+    """
+    This leaf id is invalid, it must be prefixed by a group id, comma
+    separated
+    """
+
+
+class InvalidGroupId(Exception):
+    """GroupId must be a basestring
+
+    """
 
 
 def random_alpha_numeric():

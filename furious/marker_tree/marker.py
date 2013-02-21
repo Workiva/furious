@@ -23,13 +23,15 @@ from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
 from furious.marker_tree import BATCH_SIZE
 
-from furious.marker_tree.exceptions import InvalidLeafId
 from furious.marker_tree.exceptions import NotSafeToSave
 from furious.marker_tree.graph_analysis import count_update
 from furious.marker_tree.graph_analysis import count_marked_as_done
-from furious.marker_tree.identity_utils import ordered_random_ids
+
+from furious.marker_tree.identity_utils import InvalidLeafId
 from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
 from furious.marker_tree.identity_utils import leaf_persistence_id_to_group_id
+from furious.marker_tree.identity_utils import ordered_random_ids
+
 from furious.marker_tree.result_sorter import group_into_internal_vertex_results
 
 persistence_module = get_default_persistence_engine()
