@@ -39,6 +39,7 @@ Usage:
 """
 
 from . import _local
+import logging
 from .context import Context
 
 from . import _execution
@@ -59,10 +60,10 @@ class NotInContextError(Exception):
     """Call that requires context made outside context."""
 
 
-def new():
+def new(**options):
     """Get a new furious context and add it to the registry."""
 
-    new_context = Context()
+    new_context = Context(**options)
 
     _local.get_local_context().registry.append(new_context)
 

@@ -111,6 +111,7 @@ class Async(object):
         # Make sure nothing is snuck in.
         _check_options(options)
 
+        self._id = options.get('id')
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
@@ -121,6 +122,15 @@ class Async(object):
         self._executed = False
 
         self._result = None
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
+        self._options['id'] = value
 
     @property
     def executed(self):
@@ -267,6 +277,9 @@ class Async(object):
         callbacks = self._options.get('callbacks')
         if callbacks:
             options['callbacks'] = encode_callbacks(callbacks)
+
+        #persistence layer may have assigned an id
+        options['id'] = self.id
 
         return options
 
