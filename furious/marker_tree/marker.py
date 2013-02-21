@@ -58,11 +58,6 @@ class Marker(object):
     def id(self):
         return self._id
 
-    @id.setter
-    def id(self, value):
-        self._id = value
-        self._options['id'] = value
-
     @property
     def work_time(self):
         return self._work_time
@@ -283,8 +278,6 @@ class Marker(object):
 
     @classmethod
     def from_async(cls, async):
-        if async is None:
-            return
         group_id = None
         try:
             # Does the async have an id with a valid group id?
@@ -541,18 +534,6 @@ class Marker(object):
                 leaves.extend(child._list_of_leaf_markers())
 
         return leaves
-
-    def delete_leaves(self):
-        """
-        TODO: delete all the sub leaf markers
-        """
-        pass
-
-    def delete_children(self):
-        """
-        TODO: delete all sub markers
-        """
-        pass
 
     def count_nodes(self):
         count = 1
