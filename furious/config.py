@@ -205,6 +205,9 @@ def _parse_yaml_config(config_data=None):
         # Apply the custom config over the default config.  This allows us to
         # extend functionality without breaking old stuff.
         data_map.update(config)
+    elif not None:
+        raise InvalidYamlFile("The furious.yaml file "
+                              "is invalid yaml")
 
     return data_map
 
