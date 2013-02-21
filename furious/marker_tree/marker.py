@@ -37,8 +37,6 @@ logger = logging.getLogger('marker_tree')
 # logger.setLevel(logging.DEBUG)
 
 
-
-
 class Marker(object):
     def __init__(self, **options):
         """
