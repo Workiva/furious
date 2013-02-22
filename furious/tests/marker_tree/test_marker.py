@@ -36,6 +36,18 @@ class TestMarker(unittest.TestCase):
     def tearDown(self):
         self.testbed.deactivate()
 
+    @patch("furious.marker_tree.identity_utils.InvalidGroupId", autospec=True)
+    def test_async_to_marker(self, invalid_group_id):
+        from furious.marker_tree.marker import Marker
+        from furious.async import Async
+
+        task = Async(target=dir)
+        task.id = "1"
+
+        marker = Marker.from_async(task)
+
+        self.assertIsNone(marker.group_id)
+
     def test_is_marker_leaf(self):
         """
         Make sure a marker can report if it is a leaf marker
@@ -181,12 +193,15 @@ class TestMarker(unittest.TestCase):
         root_marker.children = [marker.id for marker in children]
 
         root_dict = root_marker.to_dict()
+
         self.assertTrue('children' in root_dict.keys())
         self.assertEqual(len(children), len(root_dict['children']))
+
         for index, child_id in enumerate(root_dict['children']):
             self.assertEqual(children[index].id, child_id)
 
         reconstituted_root = Marker.from_dict(root_dict)
+
         self.assertEqual(len(reconstituted_root.children),
                          len(reconstituted_root.children_to_dict()))
 
@@ -206,6 +221,7 @@ class TestMarker(unittest.TestCase):
                     root_marker.id, x)))
 
         root_dict = root_marker.to_dict()
+
         self.assertTrue('children' in root_dict.keys())
         self.assertEqual(len(root_marker.children), len(root_dict['children']))
 
@@ -276,12 +292,15 @@ class TestMarker(unittest.TestCase):
         self.assertEqual(root_marker.done, loaded_marker.done)
         self.assertEqual(len(root_marker.children),
                          len(loaded_marker.children))
+
         children_ids = [child.id for child in root_marker.children]
         loaded_children_ids = loaded_marker.children
+
         for index, idx in enumerate(children_ids):
             self.assertEqual(idx, loaded_children_ids[index])
 
         loaded_child_marker = Marker.get(root_marker.children[0].id)
+
         self.assertIsNone(loaded_child_marker)
 
     @patch('furious.context.get_current_context', auto_spec=True)
@@ -330,8 +349,11 @@ class TestMarker(unittest.TestCase):
         internal_node1 = root_marker.children[0]
         leaf_node2 = internal_node1.children[1]
         loaded_internal = Marker.get(internal_node1.id)
+
         self.assertIsNotNone(loaded_internal)
+
         loaded_leaf = Marker.get(leaf_node2.id)
+
         self.assertIsNone(loaded_leaf)
 
     def test_persist_leaf_marker(self):
@@ -356,6 +378,7 @@ class TestMarker(unittest.TestCase):
         leaf_marker._update_done_in_progress = True
         leaf_marker.persist()
         loaded_marker = Marker.get(leaf_marker.id)
+
         self.assertIsNotNone(loaded_marker)
         self.assertIsInstance(loaded_marker, Marker)
         self.assertTrue(loaded_marker.get_group_id(), 'heart')
