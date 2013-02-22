@@ -213,19 +213,6 @@ class Marker(object):
 
         return children
 
-    @staticmethod
-    def do_any_have_children(markers):
-        """
-        Args:
-            markers: a list of Marker instances
-        Returns:
-            Boolean: True if any marker in the list
-            has any ids in it's children property
-        """
-        for marker in markers:
-            if marker.children:
-                return True
-
     def is_leaf(self):
         return not bool(self.children)
 

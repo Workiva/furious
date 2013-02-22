@@ -133,36 +133,6 @@ class TestMarker(unittest.TestCase):
         #leaves persisted yet
         self.assertEqual(len(leaves), 0)
 
-    def test_do_any_have_children(self):
-        """
-        Make sure the static method Marker.do_any_have_children
-        properly detects if any of a list of Markers have children.
-        do_any_have_children is for a Marker to detect a state
-        change in an idempotent manner. a child may change from
-        a leaf to an node with children if it the target function
-        returns a new Context.
-        """
-        from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
-
-        root_marker = Marker(id="fun")
-        children = []
-        for x in xrange(10):
-            children.append(
-                Marker(id=
-                       leaf_persistence_id_from_group_id(
-                       root_marker.id, x)))
-
-        root_marker.children = [marker.id for marker in children]
-
-        self.assertFalse(Marker.do_any_have_children(children))
-
-        first_child = children[0]
-        first_child.children = [leaf_persistence_id_from_group_id(
-            first_child.id, x) for x in xrange(10)]
-
-        self.assertTrue(Marker.do_any_have_children(children))
-
     def test_individual_serialization(self):
         """
         Make sure a marker with children as IDs
