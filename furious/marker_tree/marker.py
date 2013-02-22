@@ -113,6 +113,38 @@ class Marker(object):
             return persistence_module.marker_get_multi(ids)
 
     @classmethod
+    def split_into_groups(cls, tasks, markers=None, group_id=None,
+                          context_callbacks=None):
+        markers = markers or []
+        # Make two internal vertex markers.
+        # Recurse the first one with ten tasks
+        # then recurse the second with the rest.
+        first_tasks = tasks[:BATCH_SIZE]
+        second_tasks = tasks[BATCH_SIZE:]
+
+        first_group = cls(
+            id=uuid.uuid4().hex,
+            group_id=group_id,
+            callbacks=context_callbacks)
+        first_group.children = cls.make_markers_for_tasks(
+            tasks=first_tasks,
+            group_id=first_group.id,
+            context_callbacks=context_callbacks)
+
+        second_group = cls(
+            id=uuid.uuid4().hex, group_id=group_id,
+            callbacks=context_callbacks)
+        second_group.children = cls.make_markers_for_tasks(
+            second_tasks,
+            group_id=second_group.id,
+            context_callbacks=context_callbacks)
+
+        # These two will be sibling nodes.
+        markers.append(first_group)
+        markers.append(second_group)
+        return markers
+
+    @classmethod
     def make_markers_for_tasks(cls, tasks, group_id=None,
                                context_callbacks=None):
         """Builds a marker tree below a parent marker.
@@ -129,33 +161,10 @@ class Marker(object):
         markers = []
 
         if len(tasks) > BATCH_SIZE:
-            # Make two internal vertex markers.
-            # Recurse the first one with ten tasks
-            # then recurse the second with the rest.
-            first_tasks = tasks[:BATCH_SIZE]
-            second_tasks = tasks[BATCH_SIZE:]
-
-            first_group = Marker(
-                id=uuid.uuid4().hex,
+            return cls.split_into_groups(
+                tasks, markers=markers,
                 group_id=group_id,
-                callbacks=context_callbacks)
-            first_group.children = cls.make_markers_for_tasks(
-                tasks=first_tasks,
-                group_id=first_group.id,
                 context_callbacks=context_callbacks)
-
-            second_group = Marker(
-                id=uuid.uuid4().hex, group_id=group_id,
-                callbacks=context_callbacks)
-            second_group.children = cls.make_markers_for_tasks(
-                second_tasks,
-                group_id=second_group.id,
-                context_callbacks=context_callbacks)
-
-            # These two will be sibling nodes.
-            markers.append(first_group)
-            markers.append(second_group)
-            return markers
         else:
             # Make leaf markers for the tasks.
             try:
