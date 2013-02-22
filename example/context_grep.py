@@ -27,8 +27,35 @@ from furious.extras.combiners import lines_combiner
 from furious.handlers.context_job import JOB_ENDPOINT
 
 
+class DirectoryWalker:
+    """From http://effbot.org/librarybook/os-path-walk-example-3.py"""
+    # a forward iterator that traverses a directory tree
+
+    def __init__(self, directory):
+        self.stack = [directory]
+        self.files = []
+        self.index = 0
+
+    def __getitem__(self, index):
+        while 1:
+            try:
+                a_file = self.files[self.index]
+                self.index += 1
+            except IndexError:
+                # pop next directory from stack
+                self.directory = self.stack.pop()
+                self.files = os.listdir(self.directory)
+                self.index = 0
+            else:
+                # got a filename
+                fullname = os.path.join(self.directory, a_file)
+                if os.path.isdir(fullname) and not os.path.islink(fullname):
+                    self.stack.append(fullname)
+                return fullname
+
+
 class ContextGrepHandler(webapp2.RequestHandler):
-    def get(self):
+    def get(self, grouper=False):
         """
         This request handler will take a query from the query string
         of the url and launch an asynchronous process that
@@ -46,7 +73,10 @@ class ContextGrepHandler(webapp2.RequestHandler):
 
         query = self.request.get('query')
         curdir = os.getcwd()
-        ctx = context_grepp(query, curdir)
+        if grouper:
+            ctx = context_grepp_grouper(query, curdir)
+        else:
+            ctx = context_grepp(query, curdir)
         self.response.content_type = "text/json"
         self.response.out.write(json.dumps({
             'success': True,
@@ -130,6 +160,25 @@ def context_grepp(query, directory):
     from simultaneous_grepp and then starting it.
     """
     ctx = simultaneous_grepp(query, directory)
+    if ctx:
+        ctx.start()
+        return ctx
+    return None
+
+
+def context_grepp_grouper(query, directory):
+    from furious import context
+
+    ctx = context.Context(callbacks={
+        'internal_vertex_combiner': lines_combiner,
+        'leaf_combiner': lines_combiner,
+        'success': small_aggregated_results_success_callback})
+
+    for path in DirectoryWalker(directory):
+        if path.endswith('.py'):
+            ctx.add(target=grep_file, args=[query, path],
+                    callbacks={'success': log_results})
+
     if ctx:
         ctx.start()
         return ctx

@@ -16,7 +16,6 @@
 import unittest
 
 from google.appengine.ext import testbed
-from mock import patch
 
 
 class TestWideMarker(unittest.TestCase):

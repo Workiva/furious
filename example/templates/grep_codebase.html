@@ -253,7 +253,7 @@ background-color:#FFFFFF;
             showProgressBar();
             var req = Requester.getXmlHttpRequest();
             req.onreadystatechange = Requester.insertTaskComplete;
-            req.open("GET", "/context/grep/run?" + params, true);
+            req.open("GET", "run?" + params, true);
             req.setRequestHeader(
                     'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
             req.send();
