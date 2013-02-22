@@ -70,15 +70,47 @@ class Marker(object):
     def children(self, value):
         self._children = value
 
-    def is_leaf(self):
-        return not bool(self.children)
+    @classmethod
+    def get(cls, idx):
+        if hasattr(persistence_module, 'marker_get') and \
+                callable(persistence_module.marker_get):
+            return persistence_module.marker_get(idx)
 
-    def result_to_dict(self):
-        return {
-            'id': self.id,
-            'job_time': self.work_time,
-            'result': self.result
-        }
+    @classmethod
+    def from_dict(cls, marker_dict):
+        import copy
+
+        marker_options = copy.deepcopy(marker_dict)
+
+        # If there is are callbacks, reconstitute them.
+        callbacks = marker_options.pop('callbacks', None)
+        if callbacks:
+            marker_options['callbacks'] = decode_callbacks(callbacks)
+
+        marker_options['children'] = cls.children_from_dict(
+            marker_dict.get('children', []))
+
+        return cls(**marker_options)
+
+    @classmethod
+    def from_async(cls, async):
+        group_id = None
+        try:
+            # Does the async have an id with a valid group id?
+            group_id = leaf_persistence_id_to_group_id(async.id)
+        except InvalidLeafId:
+            pass
+        callbacks = async._options.get('callbacks')
+        marker = cls(id=async.id,
+                     group_id=group_id,
+                     callbacks=callbacks)
+        return marker
+
+    @classmethod
+    def get_multi(cls, ids):
+        if hasattr(persistence_module, 'marker_get_multi') and \
+                callable(persistence_module.marker_get_multi):
+            return persistence_module.marker_get_multi(ids)
 
     @classmethod
     def make_markers_for_tasks(cls, tasks, group_id=None,
@@ -161,6 +193,49 @@ class Marker(object):
 
         return root_marker
 
+
+    @classmethod
+    def children_from_dict(cls, children_dict):
+        """
+        the list of children of a marker_dict may be
+        IDs or they may be dicts representing child
+        markers
+        """
+        children = []
+        for child in children_dict:
+            if isinstance(child, basestring):
+                children.append(child)
+
+        if not children:
+            for child_dict in children_dict:
+                if isinstance(child_dict, dict):
+                    children.append(cls.from_dict(child_dict))
+
+        return children
+
+    @staticmethod
+    def do_any_have_children(markers):
+        """
+        Args:
+            markers: a list of Marker instances
+        Returns:
+            Boolean: True if any marker in the list
+            has any ids in it's children property
+        """
+        for marker in markers:
+            if marker.children:
+                return True
+
+    def is_leaf(self):
+        return not bool(self.children)
+
+    def result_to_dict(self):
+        return {
+            'id': self.id,
+            'job_time': self.work_time,
+            'result': self.result
+        }
+
     def children_to_dict(self):
         """
         The children property may contain IDs of children
@@ -210,25 +285,6 @@ class Marker(object):
 
         return children_ids
 
-    @classmethod
-    def children_from_dict(cls, children_dict):
-        """
-        the list of children of a marker_dict may be
-        IDs or they may be dicts representing child
-        markers
-        """
-        children = []
-        for child in children_dict:
-            if isinstance(child, basestring):
-                children.append(child)
-
-        if not children:
-            for child_dict in children_dict:
-                if isinstance(child_dict, dict):
-                    children.append(cls.from_dict(child_dict))
-
-        return children
-
     def get_group_id(self):
         """The group id may be stored as the group_id property
         or extracted from the id.
@@ -259,49 +315,6 @@ class Marker(object):
         options['work_time'] = self.work_time
 
         return options
-
-    @classmethod
-    def from_dict(cls, marker_dict):
-        import copy
-
-        marker_options = copy.deepcopy(marker_dict)
-
-        # If there is are callbacks, reconstitute them.
-        callbacks = marker_options.pop('callbacks', None)
-        if callbacks:
-            marker_options['callbacks'] = decode_callbacks(callbacks)
-
-        marker_options['children'] = cls.children_from_dict(
-            marker_dict.get('children', []))
-
-        return cls(**marker_options)
-
-    @classmethod
-    def from_async(cls, async):
-        group_id = None
-        try:
-            # Does the async have an id with a valid group id?
-            group_id = leaf_persistence_id_to_group_id(async.id)
-        except InvalidLeafId:
-            pass
-        callbacks = async._options.get('callbacks')
-        marker = cls(id=async.id,
-                     group_id=group_id,
-                     callbacks=callbacks)
-        return marker
-
-    @staticmethod
-    def do_any_have_children(markers):
-        """
-        Args:
-            markers: a list of Marker instances
-        Returns:
-            Boolean: True if any marker in the list
-            has any ids in it's children property
-        """
-        for marker in markers:
-            if marker.children:
-                return True
 
     def persist(self):
         """
@@ -371,18 +384,6 @@ class Marker(object):
         if hasattr(persistence_module, 'marker_persist') and \
                 callable(persistence_module.marker_persist):
             persistence_module.marker_persist(self, save_leaves)
-
-    @classmethod
-    def get(cls, idx):
-        if hasattr(persistence_module, 'marker_get') and \
-                callable(persistence_module.marker_get):
-            return persistence_module.marker_get(idx)
-
-    @classmethod
-    def get_multi(cls, ids):
-        if hasattr(persistence_module, 'marker_get_multi') and \
-                callable(persistence_module.marker_get_multi):
-            return persistence_module.marker_get_multi(ids)
 
     def get_persisted_children(self):
         if hasattr(persistence_module, 'marker_get_children') and \
