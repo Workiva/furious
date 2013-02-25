@@ -21,6 +21,8 @@ import unittest
 
 from nose.plugins.attrib import attr
 
+from mock import call
+from mock import Mock
 from mock import patch
 
 
@@ -53,11 +55,54 @@ class TestExecuteTask(unittest.TestCase):
 
 
 class TestExecuteQueue(unittest.TestCase):
-    """Ensure tasks from queues are executed.
-    """
+    """Ensure tasks from queues are executed."""
 
-    def test_execute_queue(self):
-        """ """
+    @patch('furious.test_stubs.appengine.queues._execute_task')
+    def test_execute_queue(self, _execute_task):
+        """When execute_queues is called, ensure tasks are executed, and
+        the queue is flushed to remove executed tasks.  Also, ensure True
+        is returned since messages were processed.
+        """
+
+        from furious.test_stubs.appengine.queues import _execute_queue
+
+        queue_service = Mock()
+        queue_service.GetTasks.return_value = ['task1', 'task2', 'task3']
+
+        any_processed = _execute_queue('default', queue_service)
+
+        # Expect _execute_task() to be called for each task
+        expected_call_args_list = [call('task1'), call('task2'), call('task3')]
+
+        self.assertEquals(_execute_task.call_args_list,
+                          expected_call_args_list)
+
+        # Make sure FlushQueue was called once to clear the queue after
+        # tasks were processed
+        self.assertEqual(1, queue_service.FlushQueue.call_count)
+
+        # We should have processed tasks, so verify the return value.
+        self.assertTrue(any_processed)
+
+    @patch('furious.test_stubs.appengine.queues._execute_task')
+    def test_execute_queue_no_tasks(self, _execute_task):
+        """When execute_queues is called and there are no tasks in the queue,
+        ensure _execute_tasks is not called.
+        Ensure False is returned since no messages were processed.
+        """
+
+        from furious.test_stubs.appengine.queues import _execute_queue
+
+        queue_service = Mock()
+        queue_service.GetTasks.return_value = []
+
+        any_processed = _execute_queue('default', queue_service)
+
+        # Expect _execute_task() to not be called since there are no tasks
+        self.assertFalse(_execute_task.called)
+
+        # We should not have processed any tasks, so verify the return value.
+        self.assertFalse(any_processed)
 
 
 class TestExecuteQueues(unittest.TestCase):

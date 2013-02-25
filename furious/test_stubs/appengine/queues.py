@@ -2,6 +2,8 @@
 Retrieve app engine tasks from testbed queues and run them.
 
 The purpose is to run full local integration tests with appengine testbed.
+
+Advanced app engine features such as automatic retries are not implemented.
 """
 
 import base64
@@ -60,6 +62,7 @@ def execute_queues(queues, queue_service):
         if queue_desc.get('mode') == 'pull':
             continue
 
-        any_processed |= _execute_queue(queue_desc['name'], queue_service)
+        any_processed = (any_processed or
+                         _execute_queue(queue_desc['name'], queue_service))
 
     return any_processed
