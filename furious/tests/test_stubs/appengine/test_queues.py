@@ -31,13 +31,14 @@ class TestExecuteTask(unittest.TestCase):
 
     @patch('furious.batcher.Message')
     def test_execute_task(self, Message):
-        """When a task is passed to _execute_task, make sure it is executed,
-        and the task's environment is cleaned up."""
+        """When a task is passed to _execute_task, make sure it is executed.
+        Ensure the task's environment is cleaned up.
+        """
 
         from furious.context import _local
         from furious.test_stubs.appengine.queues import _execute_task
 
-        # Create the async_options to call the dir function
+        # Create the async_options to call the target, Message()
         async_options = {'job': ('furious.batcher.Message', None, None)}
 
         body = base64.b64encode(json.dumps(async_options))
@@ -49,7 +50,36 @@ class TestExecuteTask(unittest.TestCase):
         # Make sure our function was called
         self.assertTrue(Message.called)
 
-        # Make sure cleanup worked
+        # Make sure context cleanup worked
+        self.assertFalse('REQUEST_ID_HASH' in os.environ)
+        self.assertFalse(hasattr(_local._local_context, 'registry'))
+
+    @patch('furious.batcher.MessageProcessor', autospec=True)
+    def test_execute_task_with_args_kwargs(self, MessageProcessor):
+        """When a task with args and kwargs is passed to _execute_task, make
+        sure it is executed with those parameters.
+        Ensure the task's environment is cleaned up.
+        """
+
+        from furious.context import _local
+        from furious.test_stubs.appengine.queues import _execute_task
+
+        # Create the async_options to call the target, MessageProcessor()
+        args = [1, 2]
+        kwargs = {'my_kwarg': 'my_value'}
+        async_options = {'job': ('furious.batcher.MessageProcessor',
+                                 args, kwargs)}
+
+        body = base64.b64encode(json.dumps(async_options))
+
+        task = {'body': body, 'headers': ''}
+
+        _execute_task(task)
+
+        # Make sure our function was called with the right arguments
+        MessageProcessor.assert_called_once_with(*args, **kwargs)
+
+        # Make sure context cleanup worked
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
