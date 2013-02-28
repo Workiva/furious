@@ -178,7 +178,7 @@ class Marker(object):
                     # so when the task is processed, it
                     # can write this marker
                     task.id = idx
-                    markers.append(Marker.from_async(task))
+                    markers.append(cls.from_async(task))
 
             except TypeError:
                 raise
@@ -190,12 +190,12 @@ class Marker(object):
         and build a marker tree from it's tasks.
 
         """
-        root_marker = Marker(
+        root_marker = cls(
             id=str(context.id),
             group_id=None,
             callbacks=context._options.get('callbacks'))
 
-        root_marker.children = Marker.make_markers_for_tasks(
+        root_marker.children = cls.make_markers_for_tasks(
             context._tasks,
             group_id=context.id,
             context_callbacks=context._options.get('callbacks')
@@ -544,6 +544,17 @@ class Marker(object):
                 leaves.extend(child._list_of_leaf_markers())
 
         return leaves
+
+    def _load_whole_graph(self):
+        """
+        Load the whole sub-tree of this marker.
+        """
+        children = self.children_markers()
+        for child in children:
+            if child:
+                child._load_whole_graph()
+
+        self.children = children
 
     def count_nodes(self):
         count = 1

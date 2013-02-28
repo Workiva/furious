@@ -129,15 +129,15 @@ def _marker_persist(marker, save_leaves=True):
         # Remove the result property from marker because
         # the result is not to be stored in the MarkerPersist
         # entity.
-        result = marker.result
-        marker.result = None
+        result = mp.result
+        mp.result = None
 
         put_future = mp.put_async()
         put_futures.append(put_future)
 
         # Persist possible result in a separate entity.
         if result:
-            result_entity = MarkerResult(result=result)
+            result_entity = MarkerResult(id=marker.id, result=result)
             result_put_future = result_entity.put_async()
             put_futures.append(result_put_future)
 

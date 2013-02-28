@@ -72,14 +72,36 @@ class ResultRetriever(webapp2.RequestHandler):
         """
         returns the result of the job
         """
-        root_marker = Marker.get(idx)
+        root_marker = Marker.get(idx, load_results=True)
         result = root_marker.result_to_dict()
 
         self.response.content_type = "text/json"
         self.response.write(json.dumps(result))
 
 
+class MarkerTreeStructure(webapp2.RequestHandler):
+    def get(self, idx):
+        #subclass and add authorization
+        # TODO: use hmac signed idx token for authorization
+        #TODO: use config to allow user to specify auth function
+        self.process(idx)
+
+    def process(self, idx):
+        """
+        returns the result of the job
+        """
+        root_marker = Marker.get(idx, load_results=False)
+        root_marker._load_whole_graph()
+
+        self.response.content_type = "text/json"
+        self.response.write(json.dumps(root_marker.to_dict()))
+
+
 app = webapp2.WSGIApplication([
-    Route('{0}/<idx:[^/]+>/done'.format(JOB_ENDPOINT), handler=DoneCheckHandler),
-    Route('{0}/<idx:[^/]+>/result'.format(JOB_ENDPOINT), handler=ResultRetriever),
+    Route('{0}/<idx:[^/]+>/done'.format(JOB_ENDPOINT),
+          handler=DoneCheckHandler),
+    Route('{0}/<idx:[^/]+>/result'.format(JOB_ENDPOINT),
+          handler=ResultRetriever),
+    Route('{0}/<idx:[^/]+>/graph'.format(JOB_ENDPOINT),
+          handler=MarkerTreeStructure),
 ])
