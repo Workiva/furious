@@ -17,7 +17,7 @@
 from furious.marker_tree.marker import Marker
 
 
-def handle_async_done(async):
+def handle_async_done(async, start_time=None):
     """
     Args:
         an Async instance
@@ -30,6 +30,8 @@ def handle_async_done(async):
         marker = Marker.get(async.id)
         if not marker:
             marker = Marker.from_async(async)
+        if start_time:
+            marker.start_time = start_time
         marker.done = True
         marker.result = async.result
         marker.update_done(persist_first=True)

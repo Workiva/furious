@@ -17,6 +17,8 @@
 import logging
 import uuid
 
+from datetime import datetime
+
 from furious.config import get_default_persistence_engine
 
 from furious.job_utils import decode_callbacks
@@ -53,10 +55,29 @@ class Marker(object):
         self._update_done_in_progress = False
         self._work_time = options.get('work_time')
         self._options = options
+        self._start_time = None
+        self.start_time = options.get('start_time')
 
     @property
     def id(self):
         return self._id
+
+    @property
+    def start_time(self):
+        """Return as a datetime"""
+        start_time_string = self._start_time
+        if start_time_string:
+            _start_time = datetime.strptime(
+                start_time_string, '%Y-%m-%dT%H:%M:%S.%f')
+            return _start_time
+
+    @start_time.setter
+    def start_time(self, value):
+        """Convert to string if value is a datetime"""
+        if isinstance(value, datetime):
+            self._start_time = value.strftime('%Y-%m-%dT%H:%M:%S.%f')
+        else:
+            self._start_time = value
 
     @property
     def work_time(self):
@@ -309,6 +330,7 @@ class Marker(object):
 
         options['children'] = self.children_to_dict()
         options['work_time'] = self.work_time
+        options['start_time'] = self._start_time
 
         return options
 

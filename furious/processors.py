@@ -19,6 +19,7 @@ functions.
 """
 
 from collections import namedtuple
+from datetime import datetime
 
 from .async import AbortAndRestart
 from .async import Async
@@ -38,6 +39,7 @@ class AsyncError(Exception):
 
 def run_job():
     """Takes an async object and executes its job."""
+    start_time = datetime.now()
     async = get_current_async()
     async_options = async.get_options()
 
@@ -87,13 +89,13 @@ def run_job():
                 async._executing = True
                 async.result = None
                 async._executing = False
-                handle_async_done(async)
+                handle_async_done(async, start_time=start_time)
             else:
                 processor_result.start()
         else:
             processor_result.start()
     else:
-        handle_async_done(async)
+        handle_async_done(async, start_time=start_time)
 
 
 def encode_exception(exception):

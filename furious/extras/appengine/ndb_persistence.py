@@ -47,31 +47,37 @@ class MarkerPersist(ndb.Model):
     @classmethod
     def from_marker(cls, marker):
         marker_dict = marker.to_dict()
+        marker_persisted = None
         if hasattr(marker, '_marker_persist'):
-            referenced_marker_persist = marker._marker_persist
-            referenced_marker_persist.done = marker.done
-            referenced_marker_persist.result = marker.result
-            referenced_marker_persist.group = (
+            marker_persisted = marker._marker_persist
+            marker_persisted.done = marker.done
+            marker_persisted.result = marker.result
+            marker_persisted.group = (
                 ndb.Key('MarkerPersist', marker.group_id)
                 if marker.group_id else None)
-            referenced_marker_persist.callbacks = marker_dict.get('callbacks')
-            referenced_marker_persist.children = [
+            marker_persisted.callbacks = marker_dict.get('callbacks')
+            marker_persisted.children = [
                 ndb.Key('MarkerPersist', idx) for idx in
                 marker.children_as_ids()
             ]
-            return referenced_marker_persist
 
-        return cls(
-            id=marker.id,
-            group_id=marker.group_id,
-            done=marker.done,
-            result=marker.result,
-            group=(ndb.Key('MarkerPersist', marker.group_id)
-                   if marker.group_id else None),
-            callbacks=marker_dict.get('callbacks'),
-            children=[ndb.Key('MarkerPersist', idx) for idx in
-                      marker.children_as_ids()]
-        )
+        if not marker_persisted:
+            marker_persisted = cls(
+                id=marker.id,
+                group_id=marker.group_id,
+                done=marker.done,
+                result=marker.result,
+                group=(ndb.Key('MarkerPersist', marker.group_id)
+                       if marker.group_id else None),
+                callbacks=marker_dict.get('callbacks'),
+                children=[ndb.Key('MarkerPersist', idx) for idx in
+                          marker.children_as_ids()]
+            )
+
+        if marker.start_time:
+            marker_persisted.created = marker.start_time
+
+        return marker_persisted
 
     def to_marker(self):
         from furious.marker_tree.marker import Marker
@@ -90,6 +96,7 @@ class MarkerPersist(ndb.Model):
             id=key_id,
             group_id=self.group_id,
             done=self.done,
+            start_time=self.created,
             work_time=work_time,
             result=self.result,
             callbacks=self.callbacks,
