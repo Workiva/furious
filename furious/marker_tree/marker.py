@@ -71,10 +71,11 @@ class Marker(object):
         self._children = value
 
     @classmethod
-    def get(cls, idx):
+    def get(cls, idx, load_results=False):
         if hasattr(persistence_module, 'marker_get') and \
                 callable(persistence_module.marker_get):
-            return persistence_module.marker_get(idx)
+            return persistence_module.marker_get(
+                idx, load_results=load_results)
 
     @classmethod
     def from_dict(cls, marker_dict):
@@ -201,7 +202,6 @@ class Marker(object):
         )
 
         return root_marker
-
 
     @classmethod
     def children_from_dict(cls, children_dict):
@@ -381,10 +381,11 @@ class Marker(object):
                 callable(persistence_module.marker_persist):
             persistence_module.marker_persist(self, save_leaves)
 
-    def get_persisted_children(self):
+    def get_persisted_children(self, load_results=False):
         if hasattr(persistence_module, 'marker_get_children') and \
                 callable(persistence_module.marker_get_children):
-            return persistence_module.marker_get_children(self)
+            return persistence_module.marker_get_children(
+                self, load_results=load_results)
 
     def update_done(self, persist_first=False):
         """
@@ -450,8 +451,10 @@ class Marker(object):
         elif not leaf and not self.done:
             logger.debug("not leaf and not done yet id: %s" % self.id)
             children_markers = self.get_persisted_children()
-            done_markers = [marker for marker in children_markers
-                            if marker and marker.done]
+            done_markers = []
+            for marker in children_markers:
+                if marker and marker.done:
+                    done_markers.append(marker)
             if len(done_markers) == len(self.children):
                 self.done = True
                 logger.debug("done now")
@@ -461,15 +464,22 @@ class Marker(object):
                     internal_vertex_combiner = callbacks.get(
                         'internal_vertex_combiner')
 
-                    internal_vertex_results = group_into_internal_vertex_results(
-                        done_markers, leaf_combiner)
+                    if leaf_combiner or internal_vertex_combiner:
+                        # If results are going to be worked with,
+                        # reload children markers with results attached.
+                        done_markers = self.get_persisted_children(
+                            load_results=True)
 
-                    if internal_vertex_combiner:
-                        result_of_combined_internal_vertexes = \
-                            internal_vertex_combiner([result for result in
-                                                      internal_vertex_results])
+                        internal_vertex_results = group_into_internal_vertex_results(
+                            done_markers, leaf_combiner)
 
-                        self.result = result_of_combined_internal_vertexes
+                        if internal_vertex_combiner:
+                            result_of_combined_internal_vertexes = \
+                                internal_vertex_combiner(
+                                    [result for result in
+                                     internal_vertex_results])
+
+                            self.result = result_of_combined_internal_vertexes
 
                 count_marked_as_done(self.id)
                 self.persist()
@@ -512,7 +522,10 @@ class Marker(object):
                 success_callback = callbacks.get('success')
 
             if success_callback and callable(success_callback):
-                success_callback(self.id, self.result)
+                # Load a version of Marker with results.
+                marker = Marker.get(self.id, load_results=True)
+                if marker:
+                    success_callback(marker.id, marker.result)
 
             return True
 

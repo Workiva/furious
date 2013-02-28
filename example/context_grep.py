@@ -195,6 +195,7 @@ def grep_file(query, item):
         containing the query
     """
     results = []
+    logging.info("grepping file: {0}".format(item))
     for index, line in enumerate(open(item)):
         if re.search("{0}".format(query), line):
             results.append('{0}:{1} {2}'.format(item, index + 1, line))

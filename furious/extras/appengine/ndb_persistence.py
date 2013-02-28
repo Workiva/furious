@@ -25,6 +25,13 @@ class ContextPersist(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
 
 
+class MarkerResult(ndb.Model):
+    """Represents the result portion of the Async job results
+
+    """
+    result = ndb.JsonProperty()
+
+
 class MarkerPersist(ndb.Model):
     """
     """
@@ -40,7 +47,7 @@ class MarkerPersist(ndb.Model):
     @classmethod
     def from_marker(cls, marker):
         marker_dict = marker.to_dict()
-        if hasattr(marker,'_marker_persist'):
+        if hasattr(marker, '_marker_persist'):
             referenced_marker_persist = marker._marker_persist
             referenced_marker_persist.done = marker.done
             referenced_marker_persist.result = marker.result
@@ -77,12 +84,13 @@ class MarkerPersist(ndb.Model):
         last_updated_time = round(float(self.updated.strftime('%s.%f')), 3)
 
         work_time = last_updated_time - created_time
+        key_id = (self.key.id() if self.key else None)
 
         marker = Marker(
-            id=(self.key.id() if self.key else None),
+            id=key_id,
             group_id=self.group_id,
             done=self.done,
-            work_time = work_time,
+            work_time=work_time,
             result=self.result,
             callbacks=self.callbacks,
             children=children_ids
@@ -117,8 +125,21 @@ def _marker_persist(marker, save_leaves=True):
         marker.is_leaf(), marker.id, marker.get_group_id()))
     if save_leaves or not marker.is_leaf():
         logger.debug("saved marker %s" % marker.id)
+
+        # Remove the result property from marker because
+        # the result is not to be stored in the MarkerPersist
+        # entity.
+        result = marker.result
+        marker.result = None
+
         put_future = mp.put_async()
         put_futures.append(put_future)
+
+        # Persist possible result in a separate entity.
+        if result:
+            result_entity = MarkerResult(result=result)
+            result_put_future = result_entity.put_async()
+            put_futures.append(result_put_future)
 
     return mp, put_futures
 
@@ -134,23 +155,56 @@ def marker_persist(marker, save_leaves=True):
     return
 
 
-def marker_get(idx):
+def marker_get(idx, load_results=False):
     key = ndb.Key('MarkerPersist', idx)
-    mp = key.get()
-    if mp:
-        return mp.to_marker()
+
+    if load_results:
+        result_key = ndb.Key('MarkerResult', idx)
+        marker_persisted, result = ndb.get_multi([key, result_key])
+        if result:
+            marker_persisted.result = result.result
+    else:
+        marker_persisted = key.get()
+
+    if marker_persisted:
+        return marker_persisted.to_marker()
 
 
-def marker_get_multi(ids):
+def marker_get_multi(ids, load_results=False):
     keys = [ndb.Key('MarkerPersist', idx) for idx in ids]
-    mps = ndb.get_multi(keys)
-    return [mp.to_marker() for mp in mps if mp]
+    marker_futures = ndb.get_multi_async(keys)
+
+    results_persisted = {}
+    marker_result_futures = None
+    if load_results:
+        result_keys = [ndb.Key('MarkerResult', idx) for idx in ids]
+        marker_result_futures = ndb.get_multi_async(result_keys)
+
+    if marker_result_futures:
+        Future.wait_all(marker_result_futures)
+        for future in marker_result_futures:
+            result = future.get_result()
+            if result:
+                results_persisted[result.key.id()] = result
+
+    Future.wait_all(marker_futures)
+
+    markers = []
+    for future in marker_futures:
+        marker_persisted = future.get_result()
+        if marker_persisted:
+            result = results_persisted.get(marker_persisted.key.id())
+            if result:
+                marker_persisted.result = result.result
+            markers.append(marker_persisted.to_marker())
+
+    return markers
 
 
-def marker_get_children(marker):
-    mp = MarkerPersist.from_marker(marker)
-    children = ndb.get_multi(mp.children)
-    return [child.to_marker() for child in children if child]
+def marker_get_children(marker, load_results=False):
+    children = marker_get_multi(
+        marker.children_as_ids(), load_results=load_results)
+    return children
 
 
 def store_context(idx, context_dict):
