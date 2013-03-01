@@ -157,7 +157,9 @@ class Marker(object):
         first_group.children = cls.make_markers_for_tasks(
             tasks=first_tasks,
             group_id=first_group.id,
-            context_callbacks=context_callbacks)
+            context_callbacks=context_callbacks,
+            group_size=group_size,
+            batch_size=batch_size)
 
         second_group = cls(
             id=uuid.uuid4().hex, group_id=group_id,
@@ -165,7 +167,9 @@ class Marker(object):
         second_group.children = cls.make_markers_for_tasks(
             second_tasks,
             group_id=second_group.id,
-            context_callbacks=context_callbacks)
+            context_callbacks=context_callbacks,
+            group_size=group_size,
+            batch_size=batch_size)
 
         # These two will be sibling nodes.
         markers.append(first_group)
@@ -228,19 +232,23 @@ class Marker(object):
         and build a marker tree from it's tasks.
 
         """
+        group_size=context._options.get('group_size')
+        batch_size=context._options.get('batch_size')
+
         root_marker = cls(
             id=str(context.id),
             group_id=None,
             callbacks=context._options.get('callbacks'),
-            group_size=context._options.get('group_size'),
-            batch_size=context._options.get('batch_size'))
+            group_size=group_size,
+            batch_size=batch_size)
 
+        # import gaepdb;gaepdb.set_trace()
         root_marker.children = cls.make_markers_for_tasks(
             context._tasks,
             group_id=context.id,
             context_callbacks=context._options.get('callbacks'),
-            group_size=context._options.get('group_size'),
-            batch_size=context._options.get('batch_size')
+            group_size=group_size,
+            batch_size=batch_size
         )
 
         return root_marker

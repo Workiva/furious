@@ -46,7 +46,9 @@ class WideTreeMarker(Marker):
             rest_grouped.children = cls.make_markers_for_tasks(
                 tasks=rest_grouped_tasks,
                 group_id=rest_grouped.id,
-                context_callbacks=context_callbacks)
+                context_callbacks=context_callbacks,
+                group_size=group_size,
+                batch_size=batch_size)
 
             markers.append(rest_grouped)
 
@@ -65,7 +67,9 @@ class WideTreeMarker(Marker):
             this_group.children = cls.make_markers_for_tasks(
                 tasks=task_group,
                 group_id=this_group.id,
-                context_callbacks=context_callbacks)
+                context_callbacks=context_callbacks,
+                group_size=group_size,
+                batch_size=batch_size)
             markers.append(this_group)
 
         return markers
