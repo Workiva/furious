@@ -72,9 +72,20 @@ class ContextGrepHandler(webapp2.RequestHandler):
         """
 
         query = self.request.get('query')
+        batch_size = self.request.get('batch_size')
+        group_size = self.request.get('group_size')
+
+        if batch_size and batch_size is not None:
+            batch_size = int(batch_size)
+
+        if group_size and group_size is not None:
+            group_size = int(group_size)
+
         curdir = os.getcwd()
         if grouper:
-            ctx = context_grepp_grouper(query, curdir)
+            ctx = context_grepp_grouper(query, curdir,
+                                        group_size=group_size,
+                                        batch_size=batch_size)
         else:
             ctx = context_grepp(query, curdir)
         self.response.content_type = "text/json"
@@ -166,13 +177,17 @@ def context_grepp(query, directory):
     return None
 
 
-def context_grepp_grouper(query, directory):
+def context_grepp_grouper(query, directory,
+                          group_size=None,
+                          batch_size=None):
     from furious import context
 
     ctx = context.Context(callbacks={
         'internal_vertex_combiner': lines_combiner,
         'leaf_combiner': lines_combiner,
-        'success': small_aggregated_results_success_callback})
+        'success': small_aggregated_results_success_callback},
+        group_size=group_size,
+        batch_size=batch_size)
 
     for path in DirectoryWalker(directory):
         if path.endswith('.py'):

@@ -188,6 +188,10 @@ background-color:#FFFFFF;
 <div>
     <label for="query">Query Codebase</label>
     <input id="query" name="query" value="">
+    <label for="group_size">Group Size</label>
+    <input id="group_size" name="group_size" value="10">
+    <label for="batch_size">Batch Size</label>
+    <input id="batch_size" name="batch_size" value="10">
 </div>
 <button id="submit" type="submit">Submit</button>
 </form>
@@ -248,12 +252,18 @@ background-color:#FFFFFF;
         // Make an ajax request to /context/grep/run with the query
         // as url parameter. That endpoint will insert a task to run in the
         // background.
-        var insertTask = Requester.insertTask = function(query) {
-            var params = "query=" + encodeURIComponent(query);
+        var insertTask = Requester.insertTask = function(query,
+                                                         group_size,
+                                                         batch_size) {
+            var params = [
+                "query=" + encodeURIComponent(query),
+                "group_size=" + encodeURIComponent(group_size),
+                "batch_size=" + encodeURIComponent(batch_size)
+            ];
             showProgressBar();
             var req = Requester.getXmlHttpRequest();
             req.onreadystatechange = Requester.insertTaskComplete;
-            req.open("GET", "run?" + params, true);
+            req.open("GET", "run?" + params.join("&"), true);
             req.setRequestHeader(
                     'Content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
             req.send();
@@ -388,8 +398,10 @@ background-color:#FFFFFF;
         // page and passes it to insertTask.
         var run = Requester.run = function() {
             var query = document.getElementById("query").value;
+            var group_size = document.getElementById("group_size").value;
+            var batch_size = document.getElementById("batch_size").value;
 
-            Requester.insertTask(query);
+            Requester.insertTask(query, group_size, batch_size);
 
             return this;
         };

@@ -20,11 +20,25 @@ def grouper(n, iterable, fillvalue=None):
 
 class WideTreeMarker(Marker):
     @classmethod
-    def split_into_groups(cls, tasks, markers=None, group_id=None,
-                          context_callbacks=None):
+    def split_into_groups(cls, tasks, markers=None,
+                          group_id=None,
+                          context_callbacks=None,
+                          group_size=None,
+                          batch_size=None):
+
+        if batch_size and batch_size is not None:
+            batch_size = int(batch_size)
+        else:
+            batch_size = BATCH_SIZE
+
+        if group_size and group_size is not None:
+            group_size = int(group_size)
+        else:
+            group_size = GROUP_SIZE
+
         markers = markers or []
-        if len(tasks) > GROUP_SIZE * BATCH_SIZE:
-            rest_grouped_tasks = tasks[GROUP_SIZE * BATCH_SIZE:]
+        if len(tasks) > group_size * batch_size:
+            rest_grouped_tasks = tasks[group_size * batch_size:]
             rest_grouped = cls(
                 id=uuid.uuid4().hex,
                 group_id=group_id,
@@ -36,8 +50,8 @@ class WideTreeMarker(Marker):
 
             markers.append(rest_grouped)
 
-        this_grouped_tasks = tasks[:GROUP_SIZE * BATCH_SIZE]
-        task_grouper = grouper(GROUP_SIZE, this_grouped_tasks)
+        this_grouped_tasks = tasks[:group_size * batch_size]
+        task_grouper = grouper(batch_size, this_grouped_tasks)
         for group in task_grouper:
             this_group = cls(
                 id=uuid.uuid4().hex,

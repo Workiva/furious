@@ -135,14 +135,20 @@ class Marker(object):
             return persistence_module.marker_get_multi(ids)
 
     @classmethod
-    def split_into_groups(cls, tasks, markers=None, group_id=None,
-                          context_callbacks=None):
+    def split_into_groups(cls, tasks, markers=None,
+                          group_id=None,
+                          context_callbacks=None,
+                          group_size=None,
+                          batch_size=None):
         markers = markers or []
         # Make two internal vertex markers.
         # Recurse the first one with ten tasks
         # then recurse the second with the rest.
-        first_tasks = tasks[:BATCH_SIZE]
-        second_tasks = tasks[BATCH_SIZE:]
+        if batch_size is None:
+            batch_size = BATCH_SIZE
+
+        first_tasks = tasks[:batch_size]
+        second_tasks = tasks[batch_size:]
 
         first_group = cls(
             id=uuid.uuid4().hex,
@@ -168,7 +174,9 @@ class Marker(object):
 
     @classmethod
     def make_markers_for_tasks(cls, tasks, group_id=None,
-                               context_callbacks=None):
+                               context_callbacks=None,
+                               group_size=None,
+                               batch_size=None):
         """Builds a marker tree below a parent marker.
         Assigns ids to Asyncs(tasks) to assign them to
         leaf nodes.
@@ -181,12 +189,21 @@ class Marker(object):
         Returns: List of markers.
         """
         markers = []
+        if batch_size and batch_size is not None:
+            batch_size = int(batch_size)
+        else:
+            batch_size = BATCH_SIZE
 
-        if len(tasks) > BATCH_SIZE:
+        if group_size and group_size is not None:
+            group_size = int(group_size)
+
+        if len(tasks) > batch_size:
             return cls.split_into_groups(
                 tasks, markers=markers,
                 group_id=group_id,
-                context_callbacks=context_callbacks)
+                context_callbacks=context_callbacks,
+                group_size=group_size,
+                batch_size=batch_size)
         else:
             # Make leaf markers for the tasks.
             try:
@@ -214,12 +231,16 @@ class Marker(object):
         root_marker = cls(
             id=str(context.id),
             group_id=None,
-            callbacks=context._options.get('callbacks'))
+            callbacks=context._options.get('callbacks'),
+            group_size=context._options.get('group_size'),
+            batch_size=context._options.get('batch_size'))
 
         root_marker.children = cls.make_markers_for_tasks(
             context._tasks,
             group_id=context.id,
-            context_callbacks=context._options.get('callbacks')
+            context_callbacks=context._options.get('callbacks'),
+            group_size=context._options.get('group_size'),
+            batch_size=context._options.get('batch_size')
         )
 
         return root_marker
@@ -492,8 +513,9 @@ class Marker(object):
                         done_markers = self.get_persisted_children(
                             load_results=True)
 
-                        internal_vertex_results = group_into_internal_vertex_results(
-                            done_markers, leaf_combiner)
+                        internal_vertex_results = \
+                            group_into_internal_vertex_results(
+                                done_markers, leaf_combiner)
 
                         if internal_vertex_combiner:
                             result_of_combined_internal_vertexes = \
@@ -501,7 +523,8 @@ class Marker(object):
                                     [result for result in
                                      internal_vertex_results])
 
-                            self.result = result_of_combined_internal_vertexes
+                            self.result = \
+                                result_of_combined_internal_vertexes
 
                 count_marked_as_done(self.id)
                 self.persist()
