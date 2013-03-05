@@ -29,8 +29,8 @@ from mock import patch
 class TestExecuteTask(unittest.TestCase):
     """Ensure _execute_task runs the tasks."""
 
-    @patch('furious.batcher.Message')
-    def test_execute_task(self, Message):
+    @patch('time.ctime')
+    def test_execute_task(self, ctime):
         """When a task is passed to _execute_task, make sure it is executed.
         Ensure the task's environment is cleaned up.
         """
@@ -38,8 +38,8 @@ class TestExecuteTask(unittest.TestCase):
         from furious.context import _local
         from furious.test_stubs.appengine.queues import _execute_task
 
-        # Create the async_options to call the target, Message()
-        async_options = {'job': ('furious.batcher.Message', None, None)}
+        # Create the async_options to call the target, ctime()
+        async_options = {'job': ('time.ctime', None, None)}
 
         body = base64.b64encode(json.dumps(async_options))
 
@@ -48,14 +48,14 @@ class TestExecuteTask(unittest.TestCase):
         _execute_task(task)
 
         # Make sure our function was called
-        self.assertTrue(Message.called)
+        self.assertTrue(ctime.called)
 
         # Make sure context cleanup worked
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
-    @patch('furious.batcher.MessageProcessor', autospec=True)
-    def test_execute_task_with_args_kwargs(self, MessageProcessor):
+    @patch('time.strftime', autospec=True)
+    def test_execute_task_with_args_kwargs(self, strftime):
         """When a task with args and kwargs is passed to _execute_task, make
         sure it is executed with those parameters.
         Ensure the task's environment is cleaned up.
@@ -64,10 +64,12 @@ class TestExecuteTask(unittest.TestCase):
         from furious.context import _local
         from furious.test_stubs.appengine.queues import _execute_task
 
-        # Create the async_options to call the target, MessageProcessor()
+        # Create the async_options to call the mocked target, strftime().
+        #   To test args and kwargs, our arguments to the mocked strftime
+        #   won't match the real strftime's expected parameters.
         args = [1, 2]
         kwargs = {'my_kwarg': 'my_value'}
-        async_options = {'job': ('furious.batcher.MessageProcessor',
+        async_options = {'job': ('time.strftime',
                                  args, kwargs)}
 
         body = base64.b64encode(json.dumps(async_options))
@@ -77,7 +79,7 @@ class TestExecuteTask(unittest.TestCase):
         _execute_task(task)
 
         # Make sure our function was called with the right arguments
-        MessageProcessor.assert_called_once_with(*args, **kwargs)
+        strftime.assert_called_once_with(*args, **kwargs)
 
         # Make sure context cleanup worked
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
