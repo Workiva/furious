@@ -83,45 +83,6 @@ class TestExecuteTask(unittest.TestCase):
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
-    @patch('furious.batcher.Message', autospec=True)
-    def test_execute_task_modified_environ_error(self, Message):
-        """If a task modifies the environment, it should restore the
-        original environment before existing.
-
-        When the environment is modified and not restored, ensure the
-        EnvModifiedException is raised.
-        """
-
-        from furious.context import _local
-        from furious.test_stubs.appengine.queues import _execute_task
-        from furious.test_stubs.appengine.queues import EnvModifiedException
-
-        def change_env():
-            import os
-            # Change the environment without cleaning it up.
-            # An assertion should be raised to indicate a modified environment.
-            os.environ['my_env_change'] = 'something'
-
-        Message.side_effect = change_env
-
-        # Create the async_options to call the target, Message()
-        async_options = {'job': ('furious.batcher.Message', None, None)}
-
-        body = base64.b64encode(json.dumps(async_options))
-
-        task = {'body': body, 'headers': ''}
-
-        # Call _execute_task() which modifies the environment.
-        # Assert that EnvModifiedException is raised.
-        self.assertRaises(EnvModifiedException, _execute_task, task)
-
-        # Make sure our function was called once
-        Message.assert_called_once_with()
-
-        # Make sure our own context cleanup worked
-        self.assertFalse('REQUEST_ID_HASH' in os.environ)
-        self.assertFalse(hasattr(_local._local_context, 'registry'))
-
 
 class TestExecuteQueue(unittest.TestCase):
     """Ensure tasks from queues are executed."""
