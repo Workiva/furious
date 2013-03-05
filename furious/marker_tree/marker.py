@@ -19,11 +19,15 @@ import uuid
 
 from datetime import datetime
 
+from itertools import ifilter
+from itertools_recipes import grouper
+
 from furious.config import get_default_persistence_engine
 
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
 from furious.marker_tree import BATCH_SIZE
+from furious.marker_tree import GROUP_SIZE
 
 from furious.marker_tree.exceptions import NotSafeToSave
 from furious.marker_tree.graph_analysis import count_update
@@ -140,41 +144,55 @@ class Marker(object):
                           context_callbacks=None,
                           group_size=None,
                           batch_size=None):
-        markers = markers or []
-        # Make two internal vertex markers.
-        # Recurse the first one with ten tasks
-        # then recurse the second with the rest.
-        if batch_size is None:
+
+        if batch_size and batch_size is not None:
+            batch_size = int(batch_size)
+        else:
             batch_size = BATCH_SIZE
 
-        first_tasks = tasks[:batch_size]
-        second_tasks = tasks[batch_size:]
+        if group_size and group_size is not None:
+            group_size = int(group_size)
+        else:
+            group_size = GROUP_SIZE
 
-        first_group = cls(
-            id=uuid.uuid4().hex,
-            group_id=group_id,
-            callbacks=context_callbacks)
-        first_group.children = cls.make_markers_for_tasks(
-            tasks=first_tasks,
-            group_id=first_group.id,
-            context_callbacks=context_callbacks,
-            group_size=group_size,
-            batch_size=batch_size)
+        markers = markers or []
+        if len(tasks) > group_size * batch_size:
+            rest_grouped_tasks = tasks[group_size * batch_size:]
+            rest_grouped = cls(
+                id=uuid.uuid4().hex,
+                group_id=group_id,
+                callbacks=context_callbacks)
+            rest_grouped.children = cls.make_markers_for_tasks(
+                tasks=rest_grouped_tasks,
+                group_id=rest_grouped.id,
+                context_callbacks=context_callbacks,
+                group_size=group_size,
+                batch_size=batch_size)
 
-        second_group = cls(
-            id=uuid.uuid4().hex, group_id=group_id,
-            callbacks=context_callbacks)
-        second_group.children = cls.make_markers_for_tasks(
-            second_tasks,
-            group_id=second_group.id,
-            context_callbacks=context_callbacks,
-            group_size=group_size,
-            batch_size=batch_size)
+            markers.append(rest_grouped)
 
-        # These two will be sibling nodes.
-        markers.append(first_group)
-        markers.append(second_group)
+        this_grouped_tasks = tasks[:group_size * batch_size]
+        task_grouper = grouper(batch_size, this_grouped_tasks)
+        for group in task_grouper:
+            this_group = cls(
+                id=uuid.uuid4().hex,
+                group_id=group_id,
+                callbacks=context_callbacks)
+
+            task_group = []
+            for task in ifilter(lambda task: task is not None, group):
+                task_group.append(task)
+
+            this_group.children = cls.make_markers_for_tasks(
+                tasks=task_group,
+                group_id=this_group.id,
+                context_callbacks=context_callbacks,
+                group_size=group_size,
+                batch_size=batch_size)
+            markers.append(this_group)
+
         return markers
+
 
     @classmethod
     def make_markers_for_tasks(cls, tasks, group_id=None,

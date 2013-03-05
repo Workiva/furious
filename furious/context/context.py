@@ -44,7 +44,6 @@ Usage:
 
 import uuid
 from furious.marker_tree.marker import Marker
-from furious.marker_tree.wide_tree_marker import WideTreeMarker
 
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
@@ -114,7 +113,7 @@ class Context(object):
         # construct a marker tree which assigns ids to all
         # of the Asyncs.
         if self.will_completion_run():
-            root_marker = WideTreeMarker.make_marker_tree_for_context(self)
+            root_marker = Marker.make_marker_tree_for_context(self)
 
             # Persist the marker tree.
             root_marker.persist()
