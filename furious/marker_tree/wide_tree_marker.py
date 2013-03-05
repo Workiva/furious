@@ -1,21 +1,13 @@
 import uuid
 
-from itertools import izip_longest
 from itertools import ifilter
+from itertools_recipes import grouper
 
 from furious.marker_tree import BATCH_SIZE
 
 from furious.marker_tree.marker import Marker
 
 GROUP_SIZE = 10
-
-
-def grouper(n, iterable, fillvalue=None):
-    """Collect data into fixed-length chunks or blocks
-    from http://docs.python.org/2/library/itertools.html#recipes"""
-    # grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx
-    args = [iter(iterable)] * n
-    return izip_longest(fillvalue=fillvalue, *args)
 
 
 class WideTreeMarker(Marker):
