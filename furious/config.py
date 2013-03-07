@@ -199,17 +199,15 @@ def _parse_yaml_config(config_data=None):
     # TODO: validate the yaml contents
     config = yaml.load(config_data)
 
-    # If there was a valid custom config, it will be a dict.  Otherwise, it is
-    # an error.
-    if not isinstance(config, dict):
-        if config is None:
-            raise EmptyYamlFile("The furious.yaml file is empty")
-
-        raise InvalidYamlFile("The furious.yaml file is invalid yaml")
-
-    # Apply the custom config over the default config.  This allows us to
-    # extend functionality without breaking old stuff.
-    data_map.update(config)
+    # If there was a valid custom config, it will be a dict.  Otherwise,
+    # ignore it.
+    if isinstance(config, dict):
+        # Apply the custom config over the default config.  This allows us to
+        # extend functionality without breaking old stuff.
+        data_map.update(config)
+    elif not None:
+        raise InvalidYamlFile("The furious.yaml file "
+                              "is invalid yaml")
 
     return data_map
 

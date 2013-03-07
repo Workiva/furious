@@ -71,6 +71,18 @@ def _init():
     return _local_context
 
 
+def _clear_context():
+    """Clear the context.
+
+    Create a clean uninitialized context.
+    This is not typically used. It is mainly for use in local tests when
+    running asyncs within a single process.
+    """
+
+    global _local_context
+    _local_context = threading.local()
+
+
 # NOTE: Do not import this directly.  If you MUST use this, access it
 # through get_local_context.
 _local_context = threading.local()
