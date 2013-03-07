@@ -17,9 +17,11 @@
 """These functions are used to run an Async job.  These are the "real" worker
 functions.
 """
+import logging
 
 from collections import namedtuple
 
+from .async import Abort
 from .async import AbortAndRestart
 from .async import Async
 from .context import Context
@@ -58,8 +60,11 @@ def run_job():
     try:
         async.executing = True
         async.result = function(*args, **kwargs)
+    except Abort as abort:
+        logging.info('Async job was aborted: %r', abort)
+        async.result = None
+        return
     except AbortAndRestart as restart:
-        import logging
         logging.info('Async job was aborted and restarted: %r', restart)
         async._restart()
         return
