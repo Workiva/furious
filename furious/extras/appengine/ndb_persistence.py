@@ -46,7 +46,6 @@ class MarkerPersist(ndb.Model):
 
     @classmethod
     def from_marker(cls, marker):
-        marker_dict = marker.to_dict()
         marker_persisted = None
         if hasattr(marker, '_marker_persist'):
             marker_persisted = marker._marker_persist
@@ -55,7 +54,7 @@ class MarkerPersist(ndb.Model):
             marker_persisted.group = (
                 ndb.Key('MarkerPersist', marker.group_id)
                 if marker.group_id else None)
-            marker_persisted.callbacks = marker_dict.get('callbacks')
+            marker_persisted.callbacks = marker.get_encoded_callbacks()
             marker_persisted.children = [
                 ndb.Key('MarkerPersist', idx) for idx in
                 marker.children_as_ids()
@@ -69,7 +68,7 @@ class MarkerPersist(ndb.Model):
                 result=marker.result,
                 group=(ndb.Key('MarkerPersist', marker.group_id)
                        if marker.group_id else None),
-                callbacks=marker_dict.get('callbacks'),
+                callbacks=marker.get_encoded_callbacks(),
                 children=[ndb.Key('MarkerPersist', idx) for idx in
                           marker.children_as_ids()]
             )

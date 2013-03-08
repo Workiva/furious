@@ -378,14 +378,19 @@ class Marker(object):
 
         return group_id
 
+    def get_encoded_callbacks(self):
+        callbacks = self._options.get('callbacks')
+        if callbacks:
+            return encode_callbacks(callbacks)
+
     def to_dict(self):
         import copy
         #        logger.debug("to dict %s"%self.id)
         options = copy.deepcopy(self._options)
 
-        callbacks = self._options.get('callbacks')
-        if callbacks:
-            options['callbacks'] = encode_callbacks(callbacks)
+        encoded_callbacks = self.get_encoded_callbacks()
+        if encoded_callbacks:
+            options['callbacks'] = encoded_callbacks
 
         options['children'] = self.children_to_dict()
         options['work_time'] = self.work_time
