@@ -20,7 +20,8 @@ import uuid
 from datetime import datetime
 
 from itertools import ifilter
-from itertools_recipes import grouper
+
+from furious.third_party_lib.from_itertools_recipes import grouper
 
 from furious.config import get_default_persistence_engine
 
