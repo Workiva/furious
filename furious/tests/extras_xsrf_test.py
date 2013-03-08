@@ -2,7 +2,7 @@
 
 import base64
 
-import xsrf
+from furious.extras import xsrf
 
 import unittest
 
