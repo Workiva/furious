@@ -584,7 +584,7 @@ class Marker(object):
             if parent_marker:
                 logger.debug("has parent bubble up")
                 return parent_marker.update_done()
-            logger.error("group marker %s did not load" % group_id)
+            # logger.error("group marker %s did not load" % group_id)
         else:
             logger.debug("top level reached, job complete")
             success_callback = None

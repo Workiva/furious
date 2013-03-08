@@ -17,6 +17,7 @@ import unittest
 
 from google.appengine.ext import testbed
 from mock import patch
+from furious.marker_tree.marker import Marker
 
 
 class TestMarker(unittest.TestCase):
@@ -38,7 +39,6 @@ class TestMarker(unittest.TestCase):
 
     @patch("furious.marker_tree.identity_utils.InvalidGroupId", autospec=True)
     def test_async_to_marker(self, invalid_group_id):
-        from furious.marker_tree.marker import Marker
         from furious.async import Async
 
         task = Async(target=dir)
@@ -54,7 +54,6 @@ class TestMarker(unittest.TestCase):
         or not
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(3):
@@ -79,7 +78,6 @@ class TestMarker(unittest.TestCase):
 
     def test_get_multi(self):
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="freddy")
         for x in xrange(3):
@@ -105,7 +103,6 @@ class TestMarker(unittest.TestCase):
         as expected from marker._list_of_leaf_markers()
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(3):
@@ -141,7 +138,6 @@ class TestMarker(unittest.TestCase):
         through serialization
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
         from furious.job_utils import encode_callbacks
         from furious.tests.marker_tree import dummy_success_callback
 
@@ -182,7 +178,6 @@ class TestMarker(unittest.TestCase):
         all it's children intact as Markers
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="jolly")
         for x in xrange(3):
@@ -211,7 +206,6 @@ class TestMarker(unittest.TestCase):
         when they have an independent id, but passed the parent
         ID as a group_id
         """
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(2):
@@ -227,7 +221,6 @@ class TestMarker(unittest.TestCase):
         when their id was created by prefixing with parent id
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="polly")
         for x in xrange(3):
@@ -245,7 +238,6 @@ class TestMarker(unittest.TestCase):
         children properties contains only IDs
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="peanut")
         for x in xrange(3):
@@ -283,7 +275,6 @@ class TestMarker(unittest.TestCase):
         """
         from furious.context.context import Context
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
         from furious.marker_tree.exceptions import NotSafeToSave
 
         a_context = Context(id="zebra")
@@ -303,7 +294,6 @@ class TestMarker(unittest.TestCase):
         of a marker tree graph.
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
 
         root_marker = Marker(id="cracker")
         for x in xrange(2):
@@ -334,7 +324,6 @@ class TestMarker(unittest.TestCase):
         marker
         """
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
         from furious.marker_tree.exceptions import NotSafeToSave
 
         root_marker = Marker(id="heart")
@@ -385,7 +374,6 @@ class TestMarker(unittest.TestCase):
         """
         mock_count_update.return_value = None
         from furious.marker_tree.identity_utils import leaf_persistence_id_from_group_id
-        from furious.marker_tree.marker import Marker
         from furious.tests.marker_tree import dummy_success_callback
         from furious.tests.marker_tree import dummy_internal_vertex_combiner
         from furious.tests.marker_tree import dummy_leaf_combiner
@@ -447,3 +435,21 @@ class TestMarker(unittest.TestCase):
                     #one for each non-leaf node
                     self.assertEqual(mock_internal_vertex_combiner.call_count, 3)
                     self.assertEqual(mock_leaf_combiner.call_count, 2)
+
+    def test_load_whole_graph(self):
+        root_marker = Marker(id="delve")
+        for x in xrange(2):
+            root_marker.children.append(Marker(
+                id=str(x),
+                group_id=root_marker.id
+            ))
+
+        root_marker._persist_whole_graph()
+
+        re_root_marker = Marker.get(root_marker.id)
+
+        re_root_marker._load_whole_graph()
+
+        self.assertEqual(len(re_root_marker.children), 2)
+        self.assertTrue(hasattr(re_root_marker.children[0], 'id'))
+        self.assertTrue(hasattr(re_root_marker.children[1], 'id'))
