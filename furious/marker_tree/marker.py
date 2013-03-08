@@ -251,8 +251,20 @@ class Marker(object):
         and build a marker tree from it's tasks.
 
         """
-        group_size=context._options.get('group_size')
-        batch_size=context._options.get('batch_size')
+        group_size = context._options.get('group_size')
+        """When the number of tasks is greater than the
+        batch size, the tasks are split into group_size
+        number of batches. If any are left over, a new
+        internal vertex marker will be created and the
+        left over tasks will be handed to it to split up.
+        """
+
+        batch_size = context._options.get('batch_size')
+        """Each task will have a maximum batch_size minus
+        one of sibling tasks. When a task is complete,
+        the update_done process will check it's siblings
+        for completion.
+        """
 
         root_marker = cls(
             id=str(context.id),
@@ -261,7 +273,6 @@ class Marker(object):
             group_size=group_size,
             batch_size=batch_size)
 
-        # import gaepdb;gaepdb.set_trace()
         root_marker.children = cls.make_markers_for_tasks(
             context._tasks,
             group_id=context.id,
