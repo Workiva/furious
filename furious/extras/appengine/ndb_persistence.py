@@ -21,19 +21,22 @@ logger = logging.getLogger('marker_tree')
 
 
 class ContextPersist(ndb.Model):
+    """Used as the model to store a Context in the
+    app engine datastore using the ndb api.
+    """
     data = ndb.JsonProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
 
 
 class MarkerResult(ndb.Model):
     """Represents the result portion of the Async job results
-
     """
     result = ndb.JsonProperty()
 
 
 class MarkerPersist(ndb.Model):
-    """
+    """Used to persist a Marker entity into the app
+    engine datastore.
     """
     group_id = ndb.StringProperty(indexed=False)
     group = ndb.KeyProperty(indexed=False)
@@ -46,6 +49,16 @@ class MarkerPersist(ndb.Model):
 
     @classmethod
     def from_marker(cls, marker):
+        """Instantiate a MarkerPersist directly from a
+        Marker object. If the marker had been instantiated
+        from a markerPersist.to_marker it would have a
+        _marker_persist attribute in order to retain
+        the original created datetime.
+
+        :param marker: :class: `furious.marker_tree.Marker`
+
+        :return: :class: `MarkerPersist`
+        """
         marker_persisted = None
         if hasattr(marker, '_marker_persist'):
             marker_persisted = marker._marker_persist
@@ -79,6 +92,13 @@ class MarkerPersist(ndb.Model):
         return marker_persisted
 
     def to_marker(self):
+        """Instantiate a Marker from a MarkerPersist.
+        Setting the _marker_persist attribute to self
+        in order to attach the original created
+        datetime.
+
+        :return: :class: `furious.marker_tree.Marker`
+        """
         from furious.marker_tree.marker import Marker
         children_ids = []
         for key in self.children:
@@ -112,6 +132,17 @@ def _marker_persist(marker, save_leaves=True):
     _marker_persist is recursive, persisting all child markers
     asynchronously. It collects the put futures as it goes.
     marker_persist waits for the put futures to finish.
+
+    Results of an Async are saved to a separate MarkerResult
+    entity, Allowing anyone to check the status without the
+    overhead of the result data.
+
+    :param marker: :class: `furious.marker_tree.Marker`.
+    :param save_leaves: :class: `bool` whether to save
+    this or children markers if they are leaves(no children).
+
+    :return: :class: `MarkerPersist` and :class: `list` of
+    :class: `ndb.Future` objects
     """
     from furious.marker_tree.marker import Marker
 
@@ -151,9 +182,15 @@ def _marker_persist(marker, save_leaves=True):
 
 
 def marker_persist(marker, save_leaves=True):
-    """
-    ndb marker persist strategy
-    this is called by a root marker
+    """ndb marker persist strategy
+    this is called by a root marker.
+    Persists all the markers to the datastore using the
+    recursive _marker_persist and then waits for all
+    the resulting futures to finish.
+
+    :param marker: :class: `furious.marker_tree.Marker`.
+    :param save_leaves: :class: `bool` whether to save
+    this or children markers if they are leaves(no children).
     """
     mp, put_futures = _marker_persist(marker, save_leaves)
     Future.wait_all(put_futures)
@@ -162,12 +199,24 @@ def marker_persist(marker, save_leaves=True):
 
 
 def marker_get(idx, load_results=False):
+    """Load a Marker from the datastore by it's id
+    and optionally load the result data.
+
+    :param idx: :class: `str` representing the id of an ndb.Key.
+    :param load_results: :class: `bool` whether to load result data
+    from the datastore.
+
+    :return: :class: `furious.marker_tree.Marker`
+    """
     key = ndb.Key('MarkerPersist', idx)
 
     if load_results:
         result_key = ndb.Key('MarkerResult', idx)
+        # get both at the same time.
         marker_persisted, result = ndb.get_multi([key, result_key])
         if result:
+            # Set the result data to the result attribute
+            # of the marker_persisted.
             marker_persisted.result = result.result
     else:
         marker_persisted = key.get()
@@ -177,15 +226,29 @@ def marker_get(idx, load_results=False):
 
 
 def marker_get_multi(ids, load_results=False):
+    """Asynchronously load markers.
+
+    :param ids: :class: `list` representing the id of an ndb.Key.
+    :param load_results: :class: `bool` whether to load result data
+    from the datastore.
+
+    :return: :class: `list` of :class: `furious.marker_tree.Marker`
+    """
+    # Create a list of MarkerPersist keys base on the ids.
     keys = [ndb.Key('MarkerPersist', idx) for idx in ids]
+
+    # Request the MarkerPersists Asynchronously.
     marker_futures = ndb.get_multi_async(keys)
 
+    # Request the MarkerResults Asynchronously.
     results_persisted = {}
     marker_result_futures = None
     if load_results:
         result_keys = [ndb.Key('MarkerResult', idx) for idx in ids]
         marker_result_futures = ndb.get_multi_async(result_keys)
 
+    # With all MarkerResult's requested, iterate the futures
+    # retrieving the result and build a dictionary keyed on id.
     if marker_result_futures:
         Future.wait_all(marker_result_futures)
         for future in marker_result_futures:
@@ -193,31 +256,58 @@ def marker_get_multi(ids, load_results=False):
             if result:
                 results_persisted[result.key.id()] = result
 
+    # Wait for all the marker_futures to finish
     Future.wait_all(marker_futures)
 
+    # Build a list of Markers and if there are results,
+    # include them in the Marker.
     markers = []
     for future in marker_futures:
         marker_persisted = future.get_result()
         if marker_persisted:
+
+            # If there is a result for this marker id, set it to
+            # the marker_persisted result attribute.
             result = results_persisted.get(marker_persisted.key.id())
             if result:
                 marker_persisted.result = result.result
+
+            # Convert entity to a Marker and add to the markers list.
             markers.append(marker_persisted.to_marker())
 
     return markers
 
 
 def marker_get_children(marker, load_results=False):
+    """Loads all the children of a Marker.
+
+    :param marker: :class: `furious.marker_tree.Marker`
+    :param load_results: :class: `bool` whether to load result data
+    from the datastore.
+
+    :return: :class: `list` of :class: `furious.marker_tree.Marker`
+    """
     children = marker_get_multi(
         marker.children_as_ids(), load_results=load_results)
     return children
 
 
 def store_context(idx, context_dict):
+    """Store a Context in the datastore in a ContextPersist
+    entity.
+
+    :param idx: :class: `str` used as the id of key of a ContextPersist.
+    :param context_dict: `dict` representing a Context.
+    """
     cp = ContextPersist(id=idx, data=context_dict)
     cp.put()
 
 
 def load_context(idx):
+    """Load a Context from a ContextPersist
+    entity in the datastore.
+
+    :param idx: :class: `str` the id of key of a ContextPersist.
+    """
     cp = ContextPersist.get_by_id(idx)
     return cp.data
