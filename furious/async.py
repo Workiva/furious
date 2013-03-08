@@ -243,7 +243,7 @@ class Async(object):
         silently fail.
         """
 
-        if self._check_and_update_depth():
+        if self._check_recursion_level():
             import logging
 
             logging.warning('Async %s execution has reached max_depth and is '
@@ -324,7 +324,7 @@ class Async(object):
 
         return self.start()
 
-    def _check_and_update_depth(self):
+    def _check_recursion_level(self):
         """Check to see if we've exceeded the max recursion depth.
 
         Returns True if current depth > max depth.
