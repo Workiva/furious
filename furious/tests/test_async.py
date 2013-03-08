@@ -94,12 +94,21 @@ class TestAsync(unittest.TestCase):
     """Make sure Async produces correct Task objects."""
 
     def setUp(self):
+        import os
+        import uuid
         from furious.context import _local
+
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
         local_context = _local.get_local_context()
         local_context._executing_async_context = None
 
         super(TestAsync, self).setUp()
+
+    def tearDown(self):
+        import os
+
+        del os.environ['REQUEST_ID_HASH']
 
     def test_none_function(self):
         """Ensure passing None as function raises."""
@@ -518,14 +527,11 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(123, job.result)
         self.assertTrue(job.executed)
 
-    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_transient_error(self, queue_mock, mock_depth):
+    def test_start_hits_transient_error(self, queue_mock):
         """Ensure the task retries if a transient error is hit."""
         from google.appengine.api.taskqueue import TransientError
         from furious.async import Async
-
-        mock_depth.return_value = False
 
         def add(task, *args, **kwargs):
             def add_second(task, *args, **kwargs):
@@ -542,16 +548,11 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(2, queue_mock.return_value.add.call_count)
 
-    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_task_already_exists_error_error(self,
-                                                        queue_mock,
-                                                        mock_depth):
+    def test_start_hits_task_already_exists_error_error(self, queue_mock):
         """Ensure the task returns if a task already exists error is hit."""
         from google.appengine.api.taskqueue import TaskAlreadyExistsError
         from furious.async import Async
-
-        mock_depth.return_value = False
 
         queue_mock.return_value.add.side_effect = TaskAlreadyExistsError()
 
@@ -561,16 +562,11 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
-    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_tombstoned_task_error_error(self,
-                                                    queue_mock,
-                                                    mock_depth):
+    def test_start_hits_tombstoned_task_error_error(self, queue_mock):
         """Ensure the task returns if a tombstoned task error is hit."""
         from google.appengine.api.taskqueue import TombstonedTaskError
         from furious.async import Async
-
-        mock_depth.return_value = False
 
         queue_mock.return_value.add.side_effect = TombstonedTaskError()
 
@@ -580,13 +576,10 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
-    @patch('furious.async.Async._check_and_update_depth')
     @patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_runs_successfully(self, queue_mock, mock_depth):
+    def test_start_runs_successfully(self, queue_mock):
         """Ensure the Task is inserted into the specified queue."""
         from furious.async import Async
-
-        mock_depth.return_value = False
 
         async_job = Async("something", queue='my_queue')
         async_job.start()
@@ -646,21 +639,21 @@ class TestAsync(unittest.TestCase):
 
         self.assertFalse(to_task.called)
 
-    def test_check_and_update_depth_defaults(self):
+    def test_check_recursion_level_defaults(self):
         """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
         from furious.async import Async
         from furious.async import MAX_DEPTH
 
         async_job = Async("something")
 
-        result = async_job._check_and_update_depth()
+        result = async_job._check_recursion_level()
 
         self.assertFalse(result)
         options = async_job.get_options()['_recursion']
         self.assertEqual(1, options['current'])
         self.assertEqual(MAX_DEPTH, options['max'])
 
-    def test_check_and_update_depth_execution_context(self):
+    def test_check_recursion_level_execution_context(self):
         """Ensure that when there is an existing Async that the correct values
         are pulled and incremented from there and not defaults.
         """
@@ -674,14 +667,14 @@ class TestAsync(unittest.TestCase):
         result = None
 
         with execution_context_from_async(context_async):
-            result = new_async._check_and_update_depth()
+            result = new_async._check_recursion_level()
 
         self.assertFalse(result)
         options = new_async.get_options()['_recursion']
         self.assertEqual(43, options['current'])
         self.assertEqual(77, options['max'])
 
-    def test_check_and_update_depth_overflow(self):
+    def test_check_recursion_level_overflow(self):
         """Ensures that the result is True when max_depth_reached."""
         from furious.async import Async
         from furious.async import MAX_DEPTH
@@ -689,7 +682,7 @@ class TestAsync(unittest.TestCase):
         async_job = Async("something", _recursion={'current': MAX_DEPTH + 1,
                                                    'max': MAX_DEPTH})
 
-        result = async_job._check_and_update_depth()
+        result = async_job._check_recursion_level()
 
         self.assertTrue(result)
         options = async_job.get_options()['_recursion']
