@@ -45,7 +45,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
 
         from furious.tests.marker_tree import dummy_success_callback
 
-        context = Context()
+        context = Context(group_size=1)
 
         for arg in xrange(23):
             context.add(target=dummy_success_callback,
@@ -55,9 +55,27 @@ class TestMarkerTreeBuilding(unittest.TestCase):
 
         root_marker = Marker.make_marker_tree_for_context(context)
 
-        root_marker.persist()
         # Plus one, because of the empty context.
         self.assertEqual(root_marker.count_nodes(), tree_graph_growth(23))
+
+    def test_non_default_group_size(self):
+        from furious.context import _local
+        from furious.context.context import Context
+        from furious.marker_tree.marker import Marker
+
+        from furious.tests.marker_tree import dummy_success_callback
+
+        context = Context(group_size=11, batch_size=5)
+
+        for arg in xrange(55):
+            context.add(target=dummy_success_callback,
+                        args=[arg])
+
+        _local.get_local_context().registry.append(context)
+
+        root_marker = Marker.make_marker_tree_for_context(context)
+
+        self.assertEqual(len(root_marker.children), 11)
 
     def test_count_nodes(self):
         """Ensure Marker.count_nodes
@@ -69,7 +87,7 @@ class TestMarkerTreeBuilding(unittest.TestCase):
 
         from furious.tests.marker_tree import dummy_success_callback
 
-        context = Context()
+        context = Context(group_size=1)
 
         context.add(target=dummy_success_callback,
                     args=[1])
@@ -94,7 +112,8 @@ class TestMarkerTreeBuilding(unittest.TestCase):
 
         update_done_mock.return_value = True
 
-        with Context(callbacks={'success': example_callback_success}) as ctx:
+        with Context(group_size=1, callbacks={
+                'success': example_callback_success}) as ctx:
             job = ctx.add(example_function, args=[1, 2])
 
         with _ExecutionContext(job):
@@ -113,8 +132,9 @@ class TestMarkerTreeBuilding(unittest.TestCase):
         from furious.extras.combiners import lines_combiner
         from furious.extras.callbacks import small_aggregated_results_success_callback
 
-        with Context(callbacks={'internal_vertex_combiner': lines_combiner,
-                                'success': small_aggregated_results_success_callback}) as ctx:
+        with Context(callbacks={
+                'internal_vertex_combiner': lines_combiner,
+                'success': small_aggregated_results_success_callback}) as ctx:
             job = ctx.add(pass_args_function, args=[1, 2])
 
         with _ExecutionContext(job):
