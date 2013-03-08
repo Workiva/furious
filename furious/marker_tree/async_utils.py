@@ -18,13 +18,12 @@ from furious.marker_tree.marker import Marker
 
 
 def handle_async_done(async, start_time=None):
-    """
-    Args:
-        an Async instance
-
-    This will mark and async as done and will
+    """This will mark and async as done and will
     begin the process to see if all the other asyncs
     in it's context, if it has one, are done
+
+    :param async: :class: `furious.async.Async`
+    :param start_time: :class: `datetime.datetime`
     """
     if async.id:
         marker = Marker.get(async.id)

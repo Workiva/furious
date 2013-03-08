@@ -250,6 +250,13 @@ class Marker(object):
         """Constructs a root marker for the context
         and build a marker tree from it's tasks.
 
+        Mutates Async tasks of the Context, assigning
+        and id.
+
+        :param context: :class: `furious.context.Context`
+
+        :return: :class: `Marker` a marker who's children
+        represent all the Async tasks.
         """
         group_size = context._options.get('group_size')
         """When the number of tasks is greater than the
@@ -289,6 +296,10 @@ class Marker(object):
         the list of children of a marker_dict may be
         IDs or they may be dicts representing child
         markers
+
+        :param children_dict: :class: `list` of :class: `dict`
+
+        :return: :class: `list` of :class: `Marker`
         """
         children = []
         for child in children_dict:
@@ -303,6 +314,9 @@ class Marker(object):
         return children
 
     def is_leaf(self):
+        """
+        :return: :class: `bool` if this is a leaf node of a marker tree.
+        """
         return not bool(self.children)
 
     def result_to_dict(self):
@@ -475,12 +489,11 @@ class Marker(object):
 
     def update_done(self, persist_first=False):
         """
-        Args:
-            persist_first: save any changes before bubbling
-            up the tree. Used after a leaf task has been
-            set as done.
-        Returns:
-            Boolean: True if done
+        :param persist_first: :class: `bool` save any changes
+        before bubbling up the tree. Used after a leaf task has been
+        set as done.
+
+        :return: :class: `bool` True if done
 
         illustration of a way results are handled
         Marker tree
@@ -622,7 +635,9 @@ class Marker(object):
         Recursively builds a list of all the leaf markers here or below
         this tree, sub-tree or leaf.
         It will retrieve child markers from the persistence layer
-        if not already loaded
+        if not already loaded.
+
+        :return: :class: `list` of :class: `Marker`
         """
         leaves = []
         if self.is_leaf():

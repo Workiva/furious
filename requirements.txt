@@ -3,4 +3,3 @@ rednose
 mock
 coverage
 NoseGunit
-itertools-recipes

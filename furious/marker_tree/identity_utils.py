@@ -43,8 +43,7 @@ def random_alpha_numeric():
 
 def ordered_random_ids(number_of_ids):
     """
-
-    :param number_of_ids:
+    :param number_of_ids: :class: `int`
     :return: ordered list of random strings with order index as suffix
     """
     ids = set()
@@ -58,12 +57,12 @@ def ordered_random_ids(number_of_ids):
 
 def leaf_persistence_id_from_group_id(group_id, index):
     """
-    Args:
-        group_id: the id of an internal node(internal vertex)
-        index: a string that uniquely identifies this node among
-        it's sibling nodes.
-    Returns:
-        A string that is a comma separated join of the two args
+    :param group_id: :class: `str` the id of an internal
+    node(internal vertex)
+    :param index: :class: `str` uniquely identifies this
+    node among it's sibling nodes.
+
+    :return: :class: `str` a comma separated join of the two args
     """
     if not isinstance(group_id, basestring):
         raise InvalidGroupId("Not a valid group_id, expected "
@@ -73,13 +72,12 @@ def leaf_persistence_id_from_group_id(group_id, index):
 
 def leaf_persistence_id_to_group_id(persistence_id):
     """
-    Args:
-        persistence_id: a string of a node's id
-    Returns:
-        A string representing the group id of a node.
-    Raises:
-        InvalidLeafId if the id cannot be split by a comma
-        or if the id is not a string
+    :param persistence_id: :class: `str` of a node's id
+
+    :return: :class: `str` representing the group id of a node.
+
+    :raises: :class: `InvalidLeafId` if the id cannot be
+    split by a comma or if the id is not a string.
     """
     try:
         parts = persistence_id.split(',')
