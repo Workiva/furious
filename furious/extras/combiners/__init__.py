@@ -17,10 +17,9 @@
 
 def lines_combiner(results):
     """
-    args:
-        results
-    returns:
-        joins all the results together into a string
+    :param results: :class: `list`
+
+    :return: :class: `str` joins all the results together into a string
         if one of the results is None, "" will be used instead
     """
     return reduce(lambda x, y: x + "".join(y) if isinstance(y, list)

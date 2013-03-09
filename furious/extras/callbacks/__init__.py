@@ -20,9 +20,9 @@ import logging
 
 def small_aggregated_results_success_callback(idx, result):
     """
-    args:
-        id: the job id
-        result: the combined output of all the Async functions
+    :param idx: :class: `str` the job id
+
+    :result: the combined output of all the Async functions
 
     A Context success callback is passed the id of the job
     and the result of the job(the combined output of all the functions).

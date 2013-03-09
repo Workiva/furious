@@ -24,11 +24,11 @@ JOB_ENDPOINT = '/_context_job'
 
 
 def get_status(idx):
-    """Helper function that gets the status of a job
-    Args:
-        idx: the id of a Context job
-    Returns:
-        a dictionary indicating the status of the job
+    """Helper function that gets the status of a job.
+
+    :param idx: :class: `str` the id of a Context job
+
+    :return: :class: `dict` indicating the status of the job
     """
     status = {
         'progress': 0,
@@ -53,7 +53,7 @@ class DoneCheckHandler(webapp2.RequestHandler):
 
     def process(self, idx):
         """
-        returns a value if the job is done
+        :return: a value if the job is done
         """
         status = get_status(idx)
 
@@ -70,7 +70,7 @@ class ResultRetriever(webapp2.RequestHandler):
 
     def process(self, idx):
         """
-        returns the result of the job
+        :return: the result of the job
         """
         root_marker = Marker.get(idx, load_results=True)
         result = root_marker.result_to_dict()
@@ -88,7 +88,7 @@ class MarkerTreeStructure(webapp2.RequestHandler):
 
     def process(self, idx):
         """
-        returns the result of the job
+        :return: the result of the job
         """
         root_marker = Marker.get(idx, load_results=False)
         root_marker._load_whole_graph()
