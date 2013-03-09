@@ -14,10 +14,7 @@
 # limitations under the License.
 #
 
-"""A very basic async context example.
-
-This example will create a context that adds an Async manually to the context.
-It then adds 5 Async jobs through the shorthand style.
+"""A complex async context example.
 """
 
 import logging

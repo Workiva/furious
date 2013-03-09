@@ -97,19 +97,18 @@ class GrepViewHandler(webapp2.RequestHandler):
 
 def simultaneous_grepp(query, directory):
     """
-    args:
-        query: a string
-        directory: a directory path
-    returns:
-        A Context instance: one Async task for each
-        item in the directory
-        if the item is a file it adds an
-        Async that will run grep_file on it
+    :param query: :class: `str`
+    :param directory: a directory path
 
-        if the item is a directory it adds an
+    :return: :class: `furious.context.Context`
+        one Async task for each item in the directory
+        if the item is a file it adds an
+        Async that will run grep_file on it.
+
+        If the item is a directory it adds an
         Async that will run simultaneous_grepp
         which, when processed will start the same asynchronous process
-        on that directory
+        on that directory.
     """
     from furious import context
 
@@ -136,11 +135,10 @@ def simultaneous_grepp(query, directory):
 
 def context_grepp(query, directory):
     """
-    args:
-        query: a string
-        directory: a directory path
-    returns:
-        the job id
+    :param query: :class: `str`
+    :param directory: :class: `str` a directory path
+
+    :return: :class: `str` the job id
 
     this kicks off the whole process get the job context
     from simultaneous_grepp and then starting it.
@@ -177,12 +175,11 @@ def context_grepp_grouper(query, directory,
 
 def grep_file(query, item):
     """
-    args:
-        query: a string
-        item: a file path
-    returns:
-        a list containing a line for every line in the file
-        containing the query
+    :param query: :class: `str`
+    :pram item: :class: `str` a file path
+
+    :return: :class: `list` a list containing a
+        line for every line in the file containing the query.
     """
     results = []
     logging.info("grepping file: {0}".format(item))
