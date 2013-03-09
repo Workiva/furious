@@ -62,15 +62,17 @@ def tree_graph_growth(n):
     """
     :param n: :class: `int`
 
-    :return: :class: `int` An integer representing the number
-    of graph nodes will be used to split up n Asyncs
+    :return: :class: `int`
+        An integer representing the number
+        of graph nodes will be used to split up n Asyncs
 
-    for n == 16: this is what the graph structure would be
-    o------------------------
-          \                  \
-    ------o-----------   ----o-----
-    \ \ \ \ \ \ \ \ \ \  \ \ \ \ \ \
-    o o o o o o o o o o  o o o o o o
+    For n == 16: This is what the graph structure would be
+    ::
+      o------------------------                             |
+            \                  \                            |
+      ------o-----------   ----o-----                       |
+      \ \ \ \ \ \ \ \ \ \   \ \ \ \ \ \                     |
+      o o o o o o o o o o    o o o o o o                    |
 
     >>> [tree_graph_growth(n) for n in range(0,100,10)]
     [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
@@ -80,25 +82,27 @@ def tree_graph_growth(n):
 
 def initial_save_growth(n):
     """
-
     :param n: :class: `int`
 
     :return: :class: `int` An integer representing the number of
-    graph nodes that will be
-    saved to the persistence layer when the Context is started.
-    There is no need to save the nodes of the Asyncs themselves,
-    only the internal part of the graph.
+        graph nodes that will be
+        saved to the persistence layer when the Context is started.
+        There is no need to save the nodes of the Asyncs themselves,
+        only the internal part of the graph.
 
-    for n == 16: this is what the graph structure would be
+    For n == 16: this is what the graph structure would be
     but we don't need to initially save the nodes of each Async(x)
     only the internal nodes(o). Each leaf node will be persisted
     later when the Async task completes because the id is attached
     to the task payload.
-    o------------------------
-          \                  \
-    ------o-----------   ----o-----
-    \ \ \ \ \ \ \ \ \ \  \ \ \ \ \ \
-    x x x x x x x x x x  x x x x x x
+    ::
+      o------------------------                             |
+            \                  \                            |
+      ------o-----------   ----o-----                       |
+      \ \ \ \ \ \ \ \ \ \   \ \ \ \ \ \                     |
+      x x x x x x x x x x    x x x x x x                    |
+
+
 
     This is the growth function of the number internal vertexes and root.
     It splits up the tasks into groups of 10 or less
@@ -108,6 +112,7 @@ def initial_save_growth(n):
     marker as a done and bubble up the done event which loads
     the marker of their group_id and runs it's own update_done
     process
+
     Before(save initial markers for all the vertexes):
     >>> [tree_graph_growth(n) for n in range(0,100,10)]
     [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
@@ -115,7 +120,5 @@ def initial_save_growth(n):
     After(save only root and internal vertexes):
     >>> [initial_save_growth(n) for n in range(0,100,10)]
     [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
-
-
     """
     return max(((round_down(n) + round_up(n % BATCH_SIZE)) / BATCH_SIZE) * 2 - 1, 1)

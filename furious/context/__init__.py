@@ -18,8 +18,7 @@
 Furious context may be used to group a collection of Async tasks together.
 
 Usage:
-
-
+::
     with context.new() as current_context:
         # An explicitly constructed Async object may be passed in.
         async_job = Async(some_function,

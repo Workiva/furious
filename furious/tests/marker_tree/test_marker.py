@@ -354,15 +354,15 @@ class TestMarker(unittest.TestCase):
         runs an update_done, the processes will bubble
         up to the root marker and it's update done will be called.
         How many times is Marker.update_done called?
-
-           2
-           \
-         ------
-         \     \
-         3      3
-        ----   ----
-        \ \ \  \ \ \
-        1 1 1  1 1 1
+        ::
+               2                                            |
+               \                                            |
+             ------                                         |
+             \     \                                        |
+             3      3                                       |
+            ----   ----                                     |
+            \ \ \  \ \ \                                    |
+            1 1 1  1 1 1                                    |
 
         Each leaf node calls itself once.
 

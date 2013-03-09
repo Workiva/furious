@@ -22,8 +22,7 @@ found in this package to instantiate contexts.
 
 
 Usage:
-
-
+::
     with Context() as current_context:
         # An explicitly constructed Async object may be passed in.
         async_job = Async(some_function,

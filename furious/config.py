@@ -58,15 +58,14 @@ class MissingYamlFile(Exception):
 def module_import(module_path):
     """Imports the module indicated in name
 
-    Args:
-        module_path: string representing a module path such as
+    :param module_path: :class: `str` representing a module path such as
         'furious.config' or 'furious.extras.appengine.ndb_persistence'
-    Returns:
-        the module matching name of the last component, ie: for
-        'furious.extras.appengine.ndb_persistence' it returns a
+
+    :return: :class: `module` module matching name of the last component,
+        ie: for 'furious.extras.appengine.ndb_persistence' it returns a
         reference to ndb_persistence
-    Raises:
-        BadModulePathError if the module is not found
+
+    :raises: :class: `BadModulePathError` if the module is not found
     """
     try:
         # Import whole module path.
@@ -90,13 +89,14 @@ def module_import(module_path):
 
 def get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
     """Get a known persistence module or one where name is a module path
-    Args:
-        name: name of persistence module
-        known_modules: dictionary of module names and module paths,
-            ie: {'ndb':'furious.extras.appengine.ndb_persistence'}
-    Returns:
-        module of the module path matching the name in known_modules
-        or the module path that is name
+
+    :param name: :class: `str` name of persistence module.
+
+    :param known_modules: :class: `dict` module names and module paths,
+        ie: {'ndb':'furious.extras.appengine.ndb_persistence'}
+
+    :return: :class: `module` module of the module path matching
+        the name in known_modules or the module path that is name
     """
     module_path = known_modules.get(name) or name
     module = module_import(module_path=module_path)
@@ -116,11 +116,11 @@ def find_furious_yaml(config_file=__file__):
     Begins with the location of this file then checks the
     working directory if not found
 
-    Args:
-        config_file: location of this file, override for
-        testing
-    Returns:
-        the path of furious.yaml or None if not found
+    :param config_file: :class: `str` location of this file,
+        override for testing
+
+    :return: :class: `str` path of furious.yaml or None
+        if not found
     """
     checked = set()
     yaml = _find_furious_yaml(os.path.dirname(config_file), checked)
@@ -138,12 +138,12 @@ def _find_furious_yaml(start, checked):
     to reason about and so the same directories do not get
     rechecked
 
-    Args:
-        start: the path to start looking in and work upward from
-        checked: the set of already checked directories
+    :param start: :class: `str` the path to start looking in
+        and work upward from checked: the set of already
+        checked directories
 
-    Returns:
-        the path of the furious.yaml file or None if it is not found
+    :return: :class: `str` the path of the furious.yaml
+        file or None if it is not found
     """
     directory = start
     while directory not in checked:
@@ -160,8 +160,7 @@ def default_config():
     """The default configuration allows furious to work
     even without a user furious.yaml
 
-    Returns:
-        dictionary of defaults used by various parts of furious
+    :return: :class: `dict` of defaults used by various parts of furious
     """
     return {'secret_key':
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
@@ -184,8 +183,8 @@ def _parse_yaml_config(config_data=None):
     """
     Gets the configuration from the found furious.yaml
     file and parses the data.
-    Returns:
-        a dictionary parsed from the yaml file
+
+    :return: :class: `dict` parsed from the yaml file
     """
     data_map = default_config()
 

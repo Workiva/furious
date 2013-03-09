@@ -23,7 +23,7 @@ NOTE: Direct usage of this is only needed in very special cases.  Yours
 probably is not one of those special cases.
 
 Usage:
-
+::
     with execution_context_from_async(async) as execution_context:
         run_job()
 

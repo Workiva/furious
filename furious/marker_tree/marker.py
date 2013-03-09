@@ -204,12 +204,13 @@ class Marker(object):
         Assigns ids to Asyncs(tasks) to assign them to
         leaf nodes.
 
-        Args:
-            tasks: List of Asyncs.
-            group_id: Id of the parent marker node.
-            context_callbacks: callbacks to be called when
+        :param tasks: :class: `list` of :class: `Async`
+        :param group_id: :class: `str` Id of the parent marker node.
+        :param context_callbacks: :class: `function` callbacks
+            to be called when
             a group of tasks are complete.
-        Returns: List of markers.
+
+        :return: :class: `list` of :class: `Marker`
         """
         markers = []
         if batch_size and batch_size is not None:
@@ -256,22 +257,24 @@ class Marker(object):
         :param context: :class: `furious.context.Context`
 
         :return: :class: `Marker` a marker who's children
-        represent all the Async tasks.
+            represent all the Async tasks.
+
+
+        .. note:: group_size: When the number of tasks is greater
+            than the batch size, the tasks are split into
+            group_size number of batches. If any are left over,
+            a new internal vertex marker will be created and the
+            left over tasks will be handed to it to split up.
+
+        .. note:: batch_size: Each task will have a maximum batch_size
+            minus one of sibling tasks. When a task is complete,
+            the update_done process will check it's siblings
+            for completion.
+
         """
         group_size = context._options.get('group_size')
-        """When the number of tasks is greater than the
-        batch size, the tasks are split into group_size
-        number of batches. If any are left over, a new
-        internal vertex marker will be created and the
-        left over tasks will be handed to it to split up.
-        """
 
         batch_size = context._options.get('batch_size')
-        """Each task will have a maximum batch_size minus
-        one of sibling tasks. When a task is complete,
-        the update_done process will check it's siblings
-        for completion.
-        """
 
         root_marker = cls(
             id=str(context.id),
@@ -292,8 +295,7 @@ class Marker(object):
 
     @classmethod
     def children_from_dict(cls, children_dict):
-        """
-        the list of children of a marker_dict may be
+        """The list of children of a marker_dict may be
         IDs or they may be dicts representing child
         markers
 
@@ -497,37 +499,39 @@ class Marker(object):
 
         illustration of a way results are handled
         Marker tree
-            o
-            \
-        o-----------o
-        \           \
-        --------   -----
-        \ \ \ \ \  \ \ \ \
-        o o o o o   o o o o
-              \
-              ---
-              \ \ \
-              o o o
-
-        ================
+        ::
+                o                                       |
+                \                                       |
+            o-----------o                               |
+            \           \                               |
+            --------   -----                            |
+            \ \ \ \ \  \ \ \ \                          |
+            o o o o o   o o o o                         |
+                  \                                     |
+                  ---                                   |
+                  \ \ \                                 |
+                  o o o                                 |
+        ----
         ints are the order of task results
-            o
-            \
-        o-----------o
-        \           \
-        --------   -------
-        \ \ \ \ \  \ \ \  \
-        0 1 2 o 6  7 8 9  10
-              \
-              ---
-              \ \ \
-              3 4 5
+        ::
+                o                                       |
+                \                                       |
+            o-----------o                               |
+            \           \                               |
+            --------   -------                          |
+            \ \ \ \ \  \ \ \  \                         |
+            0 1 2 o 6  7 8 9  10                        |
+                  \                                     |
+                  ---                                   |
+                  \ \ \                                 |
+                  3 4 5                                 |
 
         the leaf combiner would combine each contiguous
         group of leaf results
         and the internal vertex combiner will
         combine each group
-        [[[0,1,2],[[3,4,5]],[6]],[[7,8,9,10]]]
+        ::
+            [[[0,1,2],[[3,4,5]],[6]],[[7,8,9,10]]]
         """
         count_update(self.id)
         self._update_done_in_progress = True

@@ -17,7 +17,7 @@
 """Core async task wrapper.  This module contains the `Async` class, which is
 used to create asynchronous jobs, and a `defaults` decorator you may use to
 specify default settings for a particular async task.  To use,
-
+::
     # Create a task.
     work = Async(
         target="function.to.run",
@@ -31,7 +31,7 @@ specify default settings for a particular async task.  To use,
     work.start()
 
 *or*, set default arguments for a function:
-
+::
     @defaults(task_args={"appengine": 1, "task": "kwargs"}, queue="yourqueue")
     def run_me(*args, **kwargs):
         pass
@@ -47,7 +47,7 @@ specify default settings for a particular async task.  To use,
     work.start()
 
 You may also update options after instantiation:
-
+::
     # Create a task.
     work = Async(
         target="function.to.run",

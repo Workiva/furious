@@ -17,11 +17,11 @@
 
 def first_iv_markers(markers):
     """
-    :param markers: :class: `list` of :class: `Marker` starting with
-    a non-leaf marker
+    :param markers: :class: `list` of :class: `Marker`
+        starting with a non-leaf marker
 
     :return: :class: `list` of :class: `Marker` the first contiguous
-    list of non-leaf markers
+        list of non-leaf markers
     """
     first_ivs = []
     for marker in markers:
@@ -37,12 +37,12 @@ def group_into_internal_vertex_results(markers, leaf_combiner,
     """
     :param markers: :class: `list` of :class: `Marker`
     :param leaf_combiner: :class: `function` taking a
-    list of leaf markers and return one result.
+        list of leaf markers and return one result.
     :param grouped_results: :class: `list` of results
-    of the combiner results and non-leaf results
+        of the combiner results and non-leaf results
 
     :return: :class: `list` results of the combiner
-    results and non-leaf results
+        results and non-leaf results
     """
     grouped_results = grouped_results or []
     leaf_markers = []
