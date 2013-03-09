@@ -251,8 +251,8 @@ class Marker(object):
         """Constructs a root marker for the context
         and build a marker tree from it's tasks.
 
-        Mutates Async tasks of the Context, assigning
-        and id.
+        .. note:: Mutates Async tasks of the Context, assigning
+            an id.
 
         :param context: :class: `furious.context.Context`
 
