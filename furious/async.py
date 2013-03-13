@@ -332,22 +332,30 @@ class Async(object):
         When that is False, it updates this Async with the incremented depth
         and the max depth.
         """
-
-        from .context._local import get_local_context
+        from furious.context import get_current_async
+        from furious.context import NotInContextError
 
         recursion_options = self.get_options().get('_recursion', {})
         current_depth = recursion_options.get('current', 0)
         max_depth = recursion_options.get('max', MAX_DEPTH)
 
-        execution_context = get_local_context()._executing_async_context
+        try:
+            current_async_options = get_current_async().get_options()
+            current_recursion_info = \
+                current_async_options.get('_recursion', {})
 
-        if execution_context:
-            # We're in an existing Async chain
+            # Update current_depth
+            current_depth = \
+                current_recursion_info.get('current', current_depth)
 
-            wrapping_options = execution_context.async.get_options()
-            wrapping_recursion = wrapping_options.get('_recursion', {})
-            current_depth = wrapping_recursion.get('current', current_depth)
-            max_depth = wrapping_recursion.get('max', max_depth)
+            # Preserve custom max_depth if set
+            if max_depth == MAX_DEPTH:
+                max_depth = current_recursion_info.get('max', max_depth)
+
+        except NotInContextError:
+            # We've already got a current_depth and max_depth from above; do
+            # nothing.
+            pass
 
         if current_depth > max_depth:
             return True
