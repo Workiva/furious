@@ -629,15 +629,14 @@ class TestAsync(unittest.TestCase):
     @patch('furious.async.Async.to_task')
     def test_start_max_depth_reached(self, to_task):
         """Ensure that when max recursion depth is reached start is a no-op."""
+        from furious.async import Abort
         from furious.async import Async
         from furious.async import MAX_DEPTH
 
         async_job = Async("something", _recursion={'current': MAX_DEPTH + 1,
                                                    'max': MAX_DEPTH})
 
-        async_job.start()
-
-        self.assertFalse(to_task.called)
+        self.assertRaises(Abort, async_job.start,)
 
     def test_check_recursion_level_defaults(self):
         """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
@@ -646,9 +645,8 @@ class TestAsync(unittest.TestCase):
 
         async_job = Async("something")
 
-        result = async_job._check_recursion_level()
+        async_job._check_recursion_level()
 
-        self.assertFalse(result)
         options = async_job.get_options()['_recursion']
         self.assertEqual(1, options['current'])
         self.assertEqual(MAX_DEPTH, options['max'])
@@ -664,12 +662,9 @@ class TestAsync(unittest.TestCase):
                                                        'max': 77})
         new_async = Async("something_else")
 
-        result = None
-
         with execution_context_from_async(context_async):
-            result = new_async._check_recursion_level()
+            new_async._check_recursion_level()
 
-        self.assertFalse(result)
         options = new_async.get_options()['_recursion']
         self.assertEqual(43, options['current'])
         self.assertEqual(77, options['max'])
@@ -686,27 +681,24 @@ class TestAsync(unittest.TestCase):
                                                        'max': 77})
         new_async = Async("something_else", _recursion={'max': 89})
 
-        result = None
-
         with execution_context_from_async(context_async):
-            result = new_async._check_recursion_level()
+            new_async._check_recursion_level()
 
-        self.assertFalse(result)
         options = new_async.get_options()['_recursion']
         self.assertEqual(43, options['current'])
         self.assertEqual(89, options['max'])
 
     def test_check_recursion_level_overflow(self):
         """Ensures that the result is True when max_depth_reached."""
+        from furious.async import Abort
         from furious.async import Async
         from furious.async import MAX_DEPTH
 
         async_job = Async("something", _recursion={'current': MAX_DEPTH + 1,
                                                    'max': MAX_DEPTH})
 
-        result = async_job._check_recursion_level()
+        self.assertRaises(Abort, async_job._check_recursion_level)
 
-        self.assertTrue(result)
         options = async_job.get_options()['_recursion']
         self.assertEqual(MAX_DEPTH + 1, options['current'])
 

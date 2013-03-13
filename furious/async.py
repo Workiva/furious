@@ -243,12 +243,7 @@ class Async(object):
         silently fail.
         """
 
-        if self._check_recursion_level():
-            import logging
-
-            logging.warning('Async %s execution has reached max_depth and is '
-                            'ceasing execution.' % self._function_path)
-            return
+        self._check_recursion_level()
 
         from google.appengine.api import taskqueue
 
@@ -358,13 +353,11 @@ class Async(object):
             pass
 
         if current_depth > max_depth:
-            return True
+            raise Abort('Max recursion depth reached. Aborting Async Chain.')
 
         # Increment and store
         self.update_options(_recursion={'current': current_depth + 1,
                                         'max': max_depth})
-
-        return False
 
 
 def defaults(**options):
