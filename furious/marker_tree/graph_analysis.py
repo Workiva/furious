@@ -68,11 +68,11 @@ def tree_graph_growth(n):
 
     For n == 16: This is what the graph structure would be
     ::
-      o------------------------                             |
-            \                  \                            |
-      ------o-----------   ----o-----                       |
-      \ \ \ \ \ \ \ \ \ \   \ \ \ \ \ \                     |
-      o o o o o o o o o o    o o o o o o                    |
+      o------------------------
+            \                  \\
+      ------o-----------   ----o-----
+      \ \ \ \ \ \ \ \ \ \   \ \ \ \ \ \\
+      o o o o o o o o o o    o o o o o o
 
     >>> [tree_graph_growth(n) for n in range(0,100,10)]
     [1, 11, 23, 35, 47, 59, 71, 83, 95, 107]
@@ -96,11 +96,11 @@ def initial_save_growth(n):
     later when the Async task completes because the id is attached
     to the task payload.
     ::
-      o------------------------                             |
-            \                  \                            |
-      ------o-----------   ----o-----                       |
-      \ \ \ \ \ \ \ \ \ \   \ \ \ \ \ \                     |
-      x x x x x x x x x x    x x x x x x                    |
+      o------------------------
+            \                  \\
+      ------o-----------   ----o-----
+      \ \ \ \ \ \ \ \ \ \   \ \ \ \ \ \\
+      x x x x x x x x x x    x x x x x x
 
 
 

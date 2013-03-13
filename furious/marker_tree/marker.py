@@ -500,31 +500,31 @@ class Marker(object):
         illustration of a way results are handled
         Marker tree
         ::
-                o                                       |
-                \                                       |
-            o-----------o                               |
-            \           \                               |
-            --------   -----                            |
-            \ \ \ \ \  \ \ \ \                          |
-            o o o o o   o o o o                         |
-                  \                                     |
-                  ---                                   |
-                  \ \ \                                 |
-                  o o o                                 |
+                o
+                \\
+            o-----------o
+            \           \\
+            --------   -----
+            \ \ \ \ \  \ \ \ \\
+            o o o o o   o o o o
+                  \\
+                  ---
+                  \ \ \\
+                  o o o
         ----
         ints are the order of task results
         ::
-                o                                       |
-                \                                       |
-            o-----------o                               |
-            \           \                               |
-            --------   -------                          |
-            \ \ \ \ \  \ \ \  \                         |
-            0 1 2 o 6  7 8 9  10                        |
-                  \                                     |
-                  ---                                   |
-                  \ \ \                                 |
-                  3 4 5                                 |
+                o
+                \\
+            o-----------o
+            \           \\
+            --------   -------
+            \ \ \ \ \  \ \ \  \\
+            0 1 2 o 6  7 8 9  10
+                  \\
+                  ---
+                  \ \ \\
+                  3 4 5
 
         the leaf combiner would combine each contiguous
         group of leaf results
