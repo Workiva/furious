@@ -1,7 +1,7 @@
 build/*
 source/*
 !source/conf.py
-!source/index.rst
-!source/design*
+!source/index.txt
+!source/design*.txt
 !source/_static/*
 !source/_templates/*
