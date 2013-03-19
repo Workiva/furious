@@ -1,0 +1,7 @@
+build/*
+source/*
+!source/conf.py
+!source/index.rst
+!source/design*
+!source/_static/*
+!source/_templates/*

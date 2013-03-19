@@ -1,2 +1,7 @@
 .coverage
 .noseids
+\#*\#
+.idea
+gaepdb.py
+*.xml
+furious.yaml
