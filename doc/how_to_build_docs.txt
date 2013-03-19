@@ -1,5 +1,7 @@
-Environmental variable GAE_ROOT must be set to
+You must have a .pth file in your path which includes
 the path of your google_appengine sdk
+
+pip install -r doc/requirements.txt
 
 http://sphinx-doc.org/invocation.html#invocation-apidoc
 Auto build doc source from project source

@@ -20,32 +20,12 @@ import os
 #sys.path.insert(0, os.path.abspath('.'))
 
 
-class GAE_ROOTNotSetException(Exception):
-    """Environmental variable GAE_ROOT must be set to
-    the path of your google_appengine sdk
-    """
-    pass
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('.'))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath('.'))), 'lib'))
-GAE_ROOT = os.environ.get('GAE_HOME')
-if GAE_ROOT is None:
-    raise GAE_ROOTNotSetException("Environmental variable GAE_ROOT must be set to "
-                                  "the path of your google_appengine sdk")
-TEST_LIBRARY_PATHS = [
-        GAE_ROOT,
-        os.path.join(GAE_ROOT, 'lib', 'cherrypy'),
-        os.path.join(GAE_ROOT, 'lib', 'fancy_urllib'),
-        os.path.join(GAE_ROOT, 'lib', 'yaml-3.10'),
-        os.path.join(GAE_ROOT, 'lib', 'antlr3'),
-        os.path.join(GAE_ROOT, 'lib', 'concurrent'),
-        os.path.join(GAE_ROOT, 'lib', 'ipaddr'),
-        os.path.join(GAE_ROOT, 'lib', 'jinja2-2.6'),
-        os.path.join(GAE_ROOT, 'lib', 'webob-1.2.3'),
-        os.path.join(GAE_ROOT, 'lib', 'webapp2-2.5.1'),
-        os.path.join(GAE_ROOT, 'lib', 'mox'),
-]
-sys.path.extend(TEST_LIBRARY_PATHS)
+
+import dev_appserver
+
+sys.path.extend(dev_appserver.EXTRA_PATHS)
 
 # -- General configuration -----------------------------------------------------
 
