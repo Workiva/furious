@@ -4,5 +4,11 @@
 .idea
 gaepdb.py
 *.xml
-furious.yaml
-doc/*
+# for sphinx documentation
+doc/build/*
+doc/source/*
+!doc/source/conf.py
+!doc/source/index.txt
+!doc/source/design*.txt
+!doc/source/_static/*
+!doc/source/_templates/*

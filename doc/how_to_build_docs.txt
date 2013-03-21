@@ -1,0 +1,25 @@
+You must have a .pth file in your path which includes
+the path of your google_appengine sdk
+
+pip install -r doc/requirements.txt
+
+http://sphinx-doc.org/invocation.html#invocation-apidoc
+Auto build doc source from project source
+with cwd the doc directory:
+sphinx-apidoc -T -s txt -o source ../furious
+sphinx-apidoc -T -s txt -o source ../example
+
+to force rebuild the rsts, include -f.
+    sphinx-apidoc -T -f -s txt -o source ../furious
+    sphinx-apidoc -T -f -s txt -o source ../example
+
+
+http://sphinx-doc.org/invocation.html
+Build docs from source:
+make html
+
+Sometimes the docs don't update and
+you need to remove doc/build/doctrees
+rm -Rf build/doctrees
+
+

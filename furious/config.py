@@ -196,7 +196,7 @@ def _parse_yaml_config(config_data=None):
         return data_map
 
     # TODO: validate the yaml contents
-    config = yaml.load(config_data)
+    config = yaml.safe_load(config_data)
 
     # If there was a valid custom config, it will be a dict.  Otherwise,
     # ignore it.
