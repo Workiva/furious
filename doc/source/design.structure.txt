@@ -1,0 +1,89 @@
+Proposal of Interface and Requirements for Persistence
+====================================
+
+**************************
+Abstract
+**************************
+The Furious framework needs a persistence layer to enable a
+callback when a group of tasks have all completed. These are the
+functions the persistence layer implements. Some are optional
+functions to implement logic optimized to a particular persistence
+technology. The framework implements the logic which works
+with any key/value storage system, which will be used if the
+persistence layer has not implemented custom logic.
+
+**************************
+Specification
+**************************
+
+Marker and Marker Graph Storage
+-------------------------------------
+
+``marker_persist(marker, save_leaves=True)``
+    :param marker: :class: `Marker`
+    :param save_leaves: :class: `bool` If True, save marker or any children
+        markers which are leaves.
+
+``marker_get(idx, load_results=False)``
+    :param idx: :class: `str`
+    :param load_results: :class: `bool` If True, the result
+        property of the returned marker will be set to the
+        value of the marker result property when the marker
+        was persisted with marker_persist, otherwise it will
+        be None.
+
+    :return: :class: `Marker`
+
+``marker_get_multi(ids, load_results=False)``
+    This is the plural version of marker_get.
+    :param ids: :class: `list` of `str`
+    :param load_results: :class: `bool` refer to same property
+    of marker_get.
+
+    :return: :class: `list` of `Marker`
+
+Context Storage
+-------------------------------------
+
+``store_context(idx, context_dict)``
+    :param idx: :class: `str`
+    :param context_dict: :class: `dict`
+
+``load_context(idx)``
+    :param idx: :class: `str`
+
+    :return: :class: `dict` matching the `dict` that was passed into
+        store_context with the same idx.
+
+Operational Storage
+-------------------------------------
+Implementation optional
+
+``mark_reached(marker_id, key)``
+    :param marker_id: :class: `str` id of marker.
+
+    :param key: :class: `str` name of point in logic.
+
+``reached_by_another_request(marker_id, key)``
+    :param marker_id: :class: `str` id of marker
+    :param key: :class: `str` name of point in logic.
+
+    :return: :class: `bool` True if another request has called
+        ``mark_reached`` for this marker_id and key.
+
+
+Logical Functions Requiring Storage
+-------------------------------------
+Implementation optional
+
+``filter_known_done(ids)``
+    :param ids: :class: `list` of :class: `str` id of a markers.
+
+    :return: :class: `list` of `str` :class: id of a markers which are
+        not known to be done.
+
+``all_done(ids)``
+    Dependant on ``filter_known_done``.
+    :param ids: :class: `list` of `str` id of a marker.
+
+    :return: :class: `bool` True if all the marker tasks are complete.
