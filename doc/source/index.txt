@@ -1,0 +1,9 @@
+Furious Project
+===============
+
+.. toctree::
+   :maxdepth: 7
+
+   example
+   furious
+   design
