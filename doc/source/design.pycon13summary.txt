@@ -1,0 +1,19 @@
+Discussion Summary
+=============================================
+
+*******************************
+Comments
+*******************************
+
+    * Too tightly coupled to a specific implementation.
+    * Should be more flat.
+        * Counter point: Level of flatness is configurable by argument.
+    * In Context._handle_tasks if will_completion_run implementation of logic
+      should be done in an external function. I believe, because context does
+      not need to know how it's done, and it will be more flexible.
+    * Should start on an Admin
+        * is there a way to track progress without slowing down
+          the job's progress?
+
+
+
