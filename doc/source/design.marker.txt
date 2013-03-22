@@ -1,0 +1,16 @@
+Marker
+========================================================
+
+
+**************************
+Abstract
+**************************
+
+A Marker is a node on a tree graph representing Async tasks, Contexts
+and the internal vertexes connecting them. One of the major reasons
+for using the abstraction of a Marker is that a node of the graph which
+is an Async can replace itself with a Context which itself has children
+Async tasks, thus enabling fan-out after the root Context has inserted
+tasks into the task queue. Asyncs are always leaf nodes. Contexts can
+be either a root node or an internal vertex.
+
