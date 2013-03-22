@@ -1,5 +1,7 @@
 handlers:
+- url: /_context_job.*
+  script: furious.handlers.context_job.app
+
 - url: /_ah/queue/async.*
   script: furious.handlers.webapp.app
   login: admin
-

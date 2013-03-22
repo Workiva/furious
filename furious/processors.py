@@ -20,12 +20,15 @@ functions.
 import logging
 
 from collections import namedtuple
+from datetime import datetime
 
 from .async import Abort
 from .async import AbortAndRestart
 from .async import Async
 from .context import Context
 from .context import get_current_async
+from furious.context import _local
+from furious.marker_tree.async_utils import handle_async_done
 from .job_utils import function_path_to_reference
 
 
@@ -38,6 +41,7 @@ class AsyncError(Exception):
 
 def run_job():
     """Takes an async object and executes its job."""
+    start_time = datetime.now()
     async = get_current_async()
     async_options = async.get_options()
 
@@ -75,7 +79,28 @@ def run_job():
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
-        processor_result.start()
+
+        # Use async's id so the context's
+        # success callback gets hit when the this
+        # next async is done.
+        processor_result.id = async.id
+
+        if isinstance(processor_result, Context):
+            _local.get_local_context().registry.append(processor_result)
+            # If the context contained no tasks go ahead and
+            # mark this node as done and bubble up.
+            if not processor_result.will_completion_run():
+                # Clear the empty Context from the async result.
+                async._executing = True
+                async.result = None
+                async._executing = False
+                handle_async_done(async, start_time=start_time)
+            else:
+                processor_result.start()
+        else:
+            processor_result.start()
+    else:
+        handle_async_done(async, start_time=start_time)
 
 
 def encode_exception(exception):

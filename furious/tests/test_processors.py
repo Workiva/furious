@@ -192,6 +192,47 @@ class TestRunJob(unittest.TestCase):
 
         returned_async.start.assert_called_once_with()
 
+    @patch("furious.marker_tree.async_utils.handle_async_done", autospec=True)
+    def test_skip_empty_context_result(self, mock_handle_async_done):
+        """Ensure run_job will not call start on an Context object, with
+         no tasks, as a result of the Async target function."""
+        from furious.async import Async
+        from furious.context import Context
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        returned_context = Mock(spec=Context, _tasks=[])
+
+        work = Async(target=_fake_context_returning_target,
+                     args=[returned_context])
+
+        with _ExecutionContext(work):
+            with patch("furious.marker_tree.async_utils.handle_async_done",
+                       autospec=True) as mock2_handle_async_done:
+                run_job()
+                mock2_handle_async_done.assert_called_once_with(work)
+
+        self.assertEqual(returned_context._handle_tasks.called, False)
+
+    def test_starts_context_result(self):
+        """Ensure run_job will call start on an Context object, with
+         tasks, as a result of the Async target function."""
+        from furious.async import Async
+        from furious.context import Context
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+
+        returned_context = Mock(spec=Context, _tasks=[
+            Async(target=dir, args=[1])])
+
+        work = Async(target=_fake_context_returning_target,
+                     args=[returned_context])
+
+        with _ExecutionContext(work):
+            run_job()
+
+        returned_context.start.assert_called_once_with()
+
     def test_starts_callback_returned_async(self):
         """Ensure run_job calls returned Async objects."""
         from furious.async import Async
@@ -273,6 +314,10 @@ class TestRunJob(unittest.TestCase):
 
 def _fake_async_returning_target(async_to_return):
     return async_to_return
+
+
+def _fake_context_returning_target(context_to_return):
+    return context_to_return
 
 
 def _fake_result_returning_callback():

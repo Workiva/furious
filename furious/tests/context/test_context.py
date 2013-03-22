@@ -76,6 +76,13 @@ class TestContext(unittest.TestCase):
 
         self.assertTrue(Context().id)
 
+    def test_context_sets_id(self):
+        from furious.context import Context
+
+        ctx = Context()
+        ctx.id = 5
+        self.assertEqual(ctx.id, 5)
+
     def test_context_gets_assigned_id(self):
         """Ensure a new Context keeps its assigned id."""
         from furious.context import Context
@@ -227,7 +234,7 @@ class TestContext(unittest.TestCase):
                 'success': ("furious.tests.context.test_context."
                             "TestContext.test_to_dict_with_callbacks"),
                 'failure': "failure_function",
-                'exec': {'job': ('dir', None, None)}
+                'exec': {'id': None, 'job': ('dir', None, None)}
             }
         })
 
@@ -281,7 +288,7 @@ class TestContext(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         self.assertEqual(check_callbacks, callbacks)
-        self.assertEqual({'job': ('id', None, None)}, exec_callback.to_dict())
+        self.assertEqual({'job': ('id', None, None),'id': None}, exec_callback.to_dict())
 
     def test_reconstitution(self):
         """Ensure to_dict(job.from_dict()) returns the same thing."""
@@ -334,6 +341,54 @@ class TestContext(unittest.TestCase):
 
         persistence_engine.load_context.assert_called_once_with('ABC123')
         self.assertEqual('ABC123', context.id)
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_context_fails_to_start_twice(self, queue_add_mock):
+        from furious.context import Context
+        from furious.context.context import ContextAlreadyStartedError
+        ctx = Context()
+        ctx.add('test', args=[1, 2])
+        ctx.start()
+        self.assertRaises(ContextAlreadyStartedError, ctx.add,
+                          'test', args=[1, 2])
+        self.assertRaises(ContextAlreadyStartedError, ctx.start)
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_will_completion_run(self, queue_add_mock):
+        """Ensure context.will_completion_run correctly identifies
+        the conditions under which completion callbacks will be
+        called or task completion events will bubble up to the top.
+
+        """
+        from furious.context import Context
+        from furious.extras.callbacks import small_aggregated_results_success_callback
+        from furious.extras.combiners import lines_combiner
+
+        context_callbacks = {
+            'success': small_aggregated_results_success_callback,
+            'internal_vertex_combiner': lines_combiner,
+            'leaf_combiner': lines_combiner
+        }
+
+        # No tasks, even with callbacks, does not complete.
+        ctx = Context(callbacks=context_callbacks)
+        self.assertFalse(ctx.will_completion_run())
+
+        # No callbacks, does not complete
+        ctx = Context()
+        ctx.add('test', args=[1, 2])
+        self.assertFalse(ctx.will_completion_run())
+
+        # Context is a sub-context, but not given
+        # callbacks, does not complete.
+        ctx = Context(id="big_job,sub_context",)
+        ctx.add('test', args=[1, 2])
+        self.assertFalse(ctx.will_completion_run())
+
+        # Callbacks set, completion runs.
+        ctx = Context(callbacks=context_callbacks)
+        ctx.add('test', args=[1, 2])
+        self.assertTrue(ctx.will_completion_run())
 
 
 class TestInsertTasks(unittest.TestCase):

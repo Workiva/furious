@@ -17,7 +17,7 @@
 """Core async task wrapper.  This module contains the `Async` class, which is
 used to create asynchronous jobs, and a `defaults` decorator you may use to
 specify default settings for a particular async task.  To use,
-
+::
     # Create a task.
     work = Async(
         target="function.to.run",
@@ -31,7 +31,7 @@ specify default settings for a particular async task.  To use,
     work.start()
 
 *or*, set default arguments for a function:
-
+::
     @defaults(task_args={"appengine": 1, "task": "kwargs"}, queue="yourqueue")
     def run_me(*args, **kwargs):
         pass
@@ -47,7 +47,7 @@ specify default settings for a particular async task.  To use,
     work.start()
 
 You may also update options after instantiation:
-
+::
     # Create a task.
     work = Async(
         target="function.to.run",
@@ -117,6 +117,7 @@ class Async(object):
         # Make sure nothing is snuck in.
         _check_options(options)
 
+        self._id = options.get('id')
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
@@ -127,6 +128,15 @@ class Async(object):
         self._executed = False
 
         self._result = None
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
+        self._options['id'] = value
 
     @property
     def executed(self):
@@ -273,6 +283,9 @@ class Async(object):
         callbacks = self._options.get('callbacks')
         if callbacks:
             options['callbacks'] = encode_callbacks(callbacks)
+
+        #persistence layer may have assigned an id
+        options['id'] = self.id
 
         return options
 

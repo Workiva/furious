@@ -22,8 +22,7 @@ found in this package to instantiate contexts.
 
 
 Usage:
-
-
+::
     with Context() as current_context:
         # An explicitly constructed Async object may be passed in.
         async_job = Async(some_function,
@@ -43,6 +42,7 @@ Usage:
 """
 
 import uuid
+from furious.marker_tree.marker import Marker
 
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
@@ -65,11 +65,11 @@ class Context(object):
     def __init__(self, **options):
         self._tasks = []
 
-        id = options.get('id')
-        if not id:
-            id = uuid.uuid4().hex
+        idx = options.get('id')
+        if not idx:
+            idx = uuid.uuid4().hex
         self._tasks_inserted = False
-        self._id = id
+        self._id = idx
 
         self._options = options
 
@@ -83,6 +83,10 @@ class Context(object):
     def id(self):
         return self._id
 
+    @id.setter
+    def id(self, value):
+        self._id = value
+
     def __enter__(self):
         return self
 
@@ -92,11 +96,26 @@ class Context(object):
 
         return False
 
+    def will_completion_run(self):
+        if self._tasks:
+            if self._options.get('callbacks'):
+                return True
+        return False
+
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
             raise ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
+
+        # If the user needs context callbacks called,
+        # construct a marker tree which assigns ids to all
+        # of the Asyncs.
+        if self.will_completion_run():
+            root_marker = Marker.make_marker_tree_for_context(self)
+
+            # Persist the marker tree.
+            root_marker.persist()
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():

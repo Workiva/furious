@@ -1,0 +1,9 @@
+design
+===============
+
+Subpackages
+-----------
+
+.. toctree::
+
+    design.structure

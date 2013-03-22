@@ -21,7 +21,7 @@ object.
 NOTE: This should not typically be used directly by developers.
 
 Usage:
-
+::
     # Grab a refernce to the local context object.
     local_context = local.get_local_context()
 
