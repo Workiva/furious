@@ -72,6 +72,7 @@ class ResultRetriever(webapp2.RequestHandler):
         """
         :return: the result of the job
         """
+        #move these two to separate function
         root_marker = Marker.get(idx, load_results=True)
         result = root_marker.result_to_dict()
 
