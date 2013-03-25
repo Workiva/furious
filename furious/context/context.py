@@ -42,7 +42,6 @@ Usage:
 """
 
 import uuid
-from furious.marker_tree.marker import Marker
 
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
@@ -102,6 +101,14 @@ class Context(object):
                 return True
         return False
 
+    def setup_completion(self):
+        # construct a marker tree which assigns ids to all
+        # of the Asyncs.
+        from furious.marker_tree.marker import Marker
+        root_marker = Marker.make_marker_tree_for_context(self)
+        # Persist the marker tree.
+        root_marker.persist()
+
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
@@ -109,13 +116,9 @@ class Context(object):
                 "This Context has already had its tasks inserted.")
 
         # If the user needs context callbacks called,
-        # construct a marker tree which assigns ids to all
-        # of the Asyncs.
-        if self.will_completion_run():
-            root_marker = Marker.make_marker_tree_for_context(self)
 
-            # Persist the marker tree.
-            root_marker.persist()
+        if self.will_completion_run():
+            self.setup_completion()
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
