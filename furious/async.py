@@ -244,14 +244,6 @@ class Async(object):
         If a TaskAlreadyExistsError or TombstonedTaskError is hit the task will
         silently fail.
         """
-
-        # Decrement current_depth to account for double increment
-        recursion_options = self.get_options()['_recursion']
-        current_depth = recursion_options['current']
-        max_depth = recursion_options['max']
-        self.update_options(_recursion={'current': current_depth - 1,
-                                        'max': max_depth})
-
         from google.appengine.api import taskqueue
 
         task = self.to_task()
@@ -271,6 +263,13 @@ class Async(object):
     def to_dict(self):
         """Return this async job as a dict suitable for json encoding."""
         import copy
+
+        # Decrement current_depth to account for double increment
+        recursion_options = self.get_options()['_recursion']
+        current_depth = recursion_options['current']
+        max_depth = recursion_options['max']
+        self.update_options(_recursion={'current': current_depth - 1,
+                                        'max': max_depth})
 
         options = copy.deepcopy(self._options)
 

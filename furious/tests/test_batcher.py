@@ -194,6 +194,21 @@ class MessageTestCase(unittest.TestCase):
 
 class MessageProcessorTestCase(unittest.TestCase):
 
+    def setUp(self):
+        super(MessageProcessorTestCase, self).setUp()
+
+        import os
+        import uuid
+
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def tearDown(self):
+        super(MessageProcessorTestCase, self).tearDown()
+
+        import os
+
+        del os.environ['REQUEST_ID_HASH']
+
     @patch('furious.batcher.time')
     @patch('furious.batcher.memcache')
     def test_to_task_with_no_name_passed_in(self, memcache, time):
@@ -311,6 +326,10 @@ class MessageProcessorTestCase(unittest.TestCase):
                     'countdown': 30,
                     'name': 'processor-processor-current-batch-3'
                 },
+                '_recursion': {
+                    'current': 0,
+                    'max': 100
+                }
             }),
             'countdown': 30,
             'name': 'processor-processor-current-batch-3'
