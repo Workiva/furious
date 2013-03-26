@@ -122,6 +122,8 @@ class Async(object):
 
         self.update_options(**options)
 
+        self._update_recursion_level()
+
         self._execution_context = None
 
         self._executing = False
@@ -243,7 +245,12 @@ class Async(object):
         silently fail.
         """
 
-        self._check_recursion_level()
+        # Decrement current_depth to account for double increment
+        recursion_options = self.get_options()['_recursion']
+        current_depth = recursion_options['current']
+        max_depth = recursion_options['max']
+        self.update_options(_recursion={'current': current_depth - 1,
+                                        'max': max_depth})
 
         from google.appengine.api import taskqueue
 
@@ -319,13 +326,9 @@ class Async(object):
 
         return self.start()
 
-    def _check_recursion_level(self):
-        """Check to see if we've exceeded the max recursion depth.
-
-        Returns True if current depth > max depth.
-
-        When that is False, it updates this Async with the incremented depth
-        and the max depth.
+    def _update_recursion_level(self):
+        """Increment current_depth based on either defaults or enclosing
+        Async.
         """
         from furious.context import get_current_async
         from furious.context import NotInContextError
@@ -351,9 +354,6 @@ class Async(object):
             # We've already got a current_depth and max_depth from above; do
             # nothing.
             pass
-
-        if current_depth > max_depth:
-            raise Abort('Max recursion depth reached. Aborting Async Chain.')
 
         # Increment and store
         self.update_options(_recursion={'current': current_depth + 1,

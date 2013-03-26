@@ -19,8 +19,6 @@ functions.
 """
 import logging
 
-import logging
-
 from collections import namedtuple
 
 from .async import Abort
@@ -59,6 +57,7 @@ def run_job():
 
     try:
         async.executing = True
+        check_depth(async)
         async.result = function(*args, **kwargs)
     except Abort as abort:
         logging.info('Async job was aborted: %r', abort)
@@ -122,4 +121,16 @@ def _execute_callback(async, callback):
         return callback.start()
 
     return callback()
+
+
+def check_depth(async):
+    """Check recursion depth and raise Abort if too deep."""
+    from furious.async import MAX_DEPTH
+
+    recursion_options = async.get_options().get('_recursion', {})
+    current_depth = recursion_options.get('current', 0)
+    max_depth = recursion_options.get('max', MAX_DEPTH)
+
+    if current_depth > max_depth:
+        raise Abort('Max recursion depth reached. Aborting Async Chain.')
 
