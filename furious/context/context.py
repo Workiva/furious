@@ -227,9 +227,10 @@ def _insert_tasks(tasks, queue, transactional=False):
 
     try:
         taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
-    except (taskqueue.TransientError,
+    except (taskqueue.BadTaskStateError,
             taskqueue.TaskAlreadyExistsError,
-            taskqueue.TombstonedTaskError):
+            taskqueue.TombstonedTaskError,
+            taskqueue.TransientError):
         count = len(tasks)
         if count <= 1:
             return
