@@ -93,10 +93,11 @@ def function_path_to_reference(function_path):
         module = sys.modules[module_path]
     else:
         try:
-            module = __import__(name=module_path, fromlist=[function_name])
+            module = __import__(name=module_path,
+                                fromlist=[str(function_name)])
         except ImportError:
             module_path, class_name = module_path.rsplit('.', 1)
-            module = __import__(name=module_path, fromlist=[class_name])
+            module = __import__(name=module_path, fromlist=[str(class_name)])
             module = getattr(module, class_name)
 
     try:
