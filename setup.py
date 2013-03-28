@@ -1,4 +1,4 @@
-from distutils.core import setup
+from distutils.core import setup, find_packages
 
 setup(
     name='furious',
@@ -9,9 +9,7 @@ setup(
     author='Robert Kluin',
     author_email='robert.kluin@webfilings.com',
     url='http://github.com/WebFilings/furious',
-    packages=[
-        'furious',
-    ],
+    packages=find_packages(),
     classifiers=[
         'Development Status :: 2 - Alpha',
         'Environment :: Web Environment',
