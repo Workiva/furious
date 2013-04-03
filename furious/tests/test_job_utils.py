@@ -219,41 +219,16 @@ class TestFunctionPathToReference(unittest.TestCase):
             function_path_to_reference, "email.parser.NonExistentThing")
 
     def test_casts_unicode_name_to_str(self):
-        """Ensure when the module_path is unicode, that it's cast to str to
-        prevent __import__ from throwing TypeError.
+        """Ensure unicode module_paths do not cause an error."""
+        from furious.job_utils import function_path_to_reference
+
+        function_path_to_reference(u'time.time')
+
+    def test_import_class_methods_handles_unicode_path(self):
+        """Ensure when the module_path is unicode, the class method handler
+        does not raise an error.
         """
         from furious.job_utils import function_path_to_reference
 
-        with patch('__builtin__.__import__') as mock_import:
-            function_path_to_reference(unicode('im.a.unicode'))
-
-            _, arg_dict = mock_import.call_args
-
-            for item in arg_dict['fromlist']:
-                self.assertIsInstance(item, str)
-
-    def test_import_in_except_block_casts_to_str(self):
-        """Ensure when the module_path is unicode, and the first import raises
-        a ImportError, the second import in the except block casts fromlist to
-        a str.
-        """
-        from mock import Mock
-        from furious.job_utils import function_path_to_reference
-
-        with patch('__builtin__.__import__') as mock_import:
-            def side_effect(*args, **kwargs):
-                def side_effect2(*args, **kwargs):
-                    return Mock()
-
-                mock_import.side_effect = side_effect2
-                raise ImportError()
-
-            mock_import.side_effect = side_effect
-
-            function_path_to_reference(unicode('im.not.a.string'))
-
-            _, arg_dict = mock_import.call_args
-
-            for item in arg_dict['fromlist']:
-                self.assertIsInstance(item, str)
+        function_path_to_reference('datetime.date.today')
 
