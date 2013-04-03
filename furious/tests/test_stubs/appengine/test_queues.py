@@ -26,17 +26,17 @@ from mock import Mock
 from mock import patch
 
 
-class TestExecuteTask(unittest.TestCase):
-    """Ensure _execute_task runs the tasks."""
+class TestRunTask(unittest.TestCase):
+    """Ensure _run_task runs the tasks."""
 
     @patch('time.ctime')
-    def test_execute_task(self, ctime):
-        """When a task is passed to _execute_task, make sure it is executed.
+    def test_run_task(self, ctime):
+        """When a task is passed to _run_task, make sure it is run.
         Ensure the task's environment is cleaned up.
         """
 
         from furious.context import _local
-        from furious.test_stubs.appengine.queues import _execute_task
+        from furious.test_stubs.appengine.queues import _run_task
 
         # Create the async_options to call the target, ctime()
         async_options = {'job': ('time.ctime', None, None)}
@@ -45,7 +45,7 @@ class TestExecuteTask(unittest.TestCase):
 
         task = {'body': body, 'headers': ''}
 
-        _execute_task(task)
+        _run_task(task)
 
         # Make sure our function was called
         self.assertTrue(ctime.called)
@@ -55,14 +55,14 @@ class TestExecuteTask(unittest.TestCase):
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
     @patch('time.strftime', autospec=True)
-    def test_execute_task_with_args_kwargs(self, strftime):
-        """When a task with args and kwargs is passed to _execute_task, make
-        sure it is executed with those parameters.
+    def test_run_task_with_args_kwargs(self, strftime):
+        """When a task with args and kwargs is passed to _run_task, make
+        sure it is run with those parameters.
         Ensure the task's environment is cleaned up.
         """
 
         from furious.context import _local
-        from furious.test_stubs.appengine.queues import _execute_task
+        from furious.test_stubs.appengine.queues import _run_task
 
         # Create the async_options to call the mocked target, strftime().
         #   To test args and kwargs, our arguments to the mocked strftime
@@ -76,7 +76,7 @@ class TestExecuteTask(unittest.TestCase):
 
         task = {'body': body, 'headers': ''}
 
-        _execute_task(task)
+        _run_task(task)
 
         # Make sure our function was called with the right arguments
         strftime.assert_called_once_with(*args, **kwargs)
@@ -86,69 +86,67 @@ class TestExecuteTask(unittest.TestCase):
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
 
-class TestExecuteQueue(unittest.TestCase):
-    """Ensure tasks from queues are executed."""
+class TestRunQueue(unittest.TestCase):
+    """Ensure tasks from queues are run."""
 
-    @patch('furious.test_stubs.appengine.queues._execute_task')
-    def test_execute_queue(self, _execute_task):
-        """When execute_queues is called, ensure tasks are executed, and
-        the queue is flushed to remove executed tasks.  Also, ensure True
+    @patch('furious.test_stubs.appengine.queues._run_task')
+    def test_run_queue(self, _run_task):
+        """When run() is called, ensure tasks are run, and
+        the queue is flushed to remove run tasks.  Also, ensure True
         is returned since messages were processed.
         """
 
-        from furious.test_stubs.appengine.queues import _execute_queue
+        from furious.test_stubs.appengine.queues import run_queue
 
         queue_service = Mock()
         queue_service.GetTasks.return_value = ['task1', 'task2', 'task3']
 
-        any_processed = _execute_queue('default', queue_service)
+        num_processed = run_queue(queue_service, 'default')
 
-        # Expect _execute_task() to be called for each task
+        # Expect _run_task() to be called for each task
         expected_call_args_list = [call('task1'), call('task2'), call('task3')]
 
-        self.assertEquals(_execute_task.call_args_list,
+        self.assertEquals(_run_task.call_args_list,
                           expected_call_args_list)
 
         # Make sure FlushQueue was called once to clear the queue after
         # tasks were processed
         self.assertEqual(1, queue_service.FlushQueue.call_count)
 
-        # We should have processed tasks, so verify the return value.
-        self.assertTrue(any_processed)
+        # We should have processed tasks, so verify the num processed.
+        self.assertEqual(3, num_processed)
 
-    @patch('furious.test_stubs.appengine.queues._execute_task')
-    def test_execute_queue_no_tasks(self, _execute_task):
-        """When execute_queues is called and there are no tasks in the queue,
-        ensure _execute_tasks is not called.
+    @patch('furious.test_stubs.appengine.queues._run_task')
+    def test_run_queue_no_tasks(self, _run_task):
+        """When run() is called and there are no tasks in the queue,
+        ensure _run_task is not called.
         Ensure False is returned since no messages were processed.
         """
 
-        from furious.test_stubs.appengine.queues import _execute_queue
+        from furious.test_stubs.appengine.queues import run_queue
 
         queue_service = Mock()
         queue_service.GetTasks.return_value = []
 
-        any_processed = _execute_queue('default', queue_service)
+        num_processed = run_queue(queue_service, 'default')
 
-        # Expect _execute_task() to not be called since there are no tasks
-        self.assertFalse(_execute_task.called)
+        # Expect _run_task() to not be called since there are no tasks
+        self.assertFalse(_run_task.called)
 
-        # We should not have processed any tasks, so verify the return value.
-        self.assertFalse(any_processed)
+        # We should not have processed any tasks, so verify 0 processed.
+        self.assertEqual(0, num_processed)
 
 
-class TestExecuteQueues(unittest.TestCase):
-    """Ensure tasks from queues are executed."""
+class TestRunQueues(unittest.TestCase):
+    """Ensure tasks from queues are run."""
 
-    @patch('furious.test_stubs.appengine.queues._execute_queue')
-    def test_execute_queues(self, _execute_queue):
-        """Ensure all push queues are processed by execute_queues.
+    @patch('furious.test_stubs.appengine.queues.run_queue')
+    def test_run(self, run_queue):
+        """Ensure all push queues are processed by run().
         Ensure pull queues are skipped.
         """
 
-        from furious.test_stubs.appengine.queues import execute_queues
-
-        queue_service = Mock()
+        from furious.test_stubs.appengine.queues import run
 
         queue_descs = [
             {'name': 'default', 'mode': 'push', 'bucket_size': 100},
@@ -156,96 +154,139 @@ class TestExecuteQueues(unittest.TestCase):
             {'name': 'another-pull', 'mode': 'pull', 'bucket_size': 5},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        # Simulate that messages are processed from each push queue.
-        _execute_queue.return_value = True
+        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
 
-        any_processed = execute_queues(queue_descs, queue_service)
+        # Simulate that messages are processed from each push queue.
+        num_in_default = 2
+        num_in_my = 1
+        # The two zeros are num remaining in the 2nd iteration for each queue.
+        run_queue.side_effect = [num_in_default, num_in_my, 0, 0]
+
+        run_result = run(queue_service)
 
         # Expected 'default' and 'my_queue' to be the only queues processed
         # since others are pull queues.
-        expected_call_args_list = [call('default', queue_service),
-                                   call('my_queue', queue_service)]
+        expected_call_args_list = [call(queue_service, 'default'),
+                                   call(queue_service, 'my_queue'),
+                                   call(queue_service, 'default'),
+                                   call(queue_service, 'my_queue')]
 
-        # Ensure _execute_queue processes the push queues.
-        self.assertEqual(_execute_queue.call_args_list,
+        # Ensure run_queue processes the push queues.
+        self.assertEqual(run_queue.call_args_list,
                          expected_call_args_list)
 
-        # Make sure that True was returned since messages were processed.
-        self.assertTrue(any_processed)
+        # Make sure 2 is returned as the number of messages processed.
+        self.assertEqual(num_in_default + num_in_my,
+                         run_result['tasks_processed'])
+        self.assertEqual(2, run_result['iterations'])
 
-    @patch('furious.test_stubs.appengine.queues._execute_queue')
-    def test_execute_queues_no_messages(self, _execute_queue):
+    @patch('furious.test_stubs.appengine.queues.run_queue')
+    def test_run_no_messages(self, run_queue):
         """Ensure the return value is False when no messages are processed from
         the queues.
-        Ensure all push queues are processed by execute_queues.
+        Ensure all push queues are processed by run().
         Ensure pull queues are skipped.
         """
 
-        from furious.test_stubs.appengine.queues import execute_queues
-
-        queue_service = Mock()
+        from furious.test_stubs.appengine.queues import run
 
         queue_descs = [
             {'name': 'default', 'mode': 'push', 'bucket_size': 100},
             {'name': 'default-pull', 'mode': 'pull', 'bucket_size': 5},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        # Simulate that there are no messages processed.
-        _execute_queue.return_value = False
+        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
 
-        any_processed = execute_queues(queue_descs, queue_service)
+        # Simulate that there are no messages processed from any queue.
+        run_queue.return_value = 0
+
+        run_result = run(queue_service)
 
         # Expect 'default' and 'my_queue' to be processed since the other one
         # is a pull queue.
-        expected_call_args_list = [call('default', queue_service),
-                                   call('my_queue', queue_service)]
+        expected_call_args_list = [call(queue_service, 'default'),
+                                   call(queue_service, 'my_queue')]
 
-        # Ensure _execute_queue processes tries to process the push queues.
-        self.assertEqual(_execute_queue.call_args_list,
+        # Ensure run_queue processes tries to process the push queues.
+        self.assertEqual(run_queue.call_args_list,
                          expected_call_args_list)
 
-        # Make sure that False was returned since messages were not processed.
-        self.assertFalse(any_processed)
+        # Make sure that 0 is the number of messages processed.
+        self.assertEqual(0, run_result['tasks_processed'])
+        self.assertEqual(1, run_result['iterations'])
 
-    @patch('furious.test_stubs.appengine.queues._execute_queue')
-    def test_execute_queues_some_queues_with_messages(self, _execute_queue):
-        """Ensure that the any_processed return flag is True when the first
-        queue processes messages and the next queue does not.
-        Ensure all push queues are processed by execute_queues.
+    @patch('furious.test_stubs.appengine.queues.run_queue')
+    def test_run_some_queues_with_messages(self, run_queue):
+        """Ensure that the tasks_processed in the return dict is 5 when the
+        first queue processes 5 messages and the next queue processes 0.
+        Ensure all push queues are processed by run().
         Ensure pull queues are skipped.
         """
 
-        from furious.test_stubs.appengine.queues import execute_queues
-
-        queue_service = Mock()
+        from furious.test_stubs.appengine.queues import run
 
         queue_descs = [
             {'name': 'default', 'mode': 'push', 'bucket_size': 100},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
+        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+
         # Simulate that messages were processed from the first push queue,
         # but not the second.
-        _execute_queue.side_effect = [True, False]
+        run_queue.side_effect = [5, 0, 0, 0]
 
-        any_processed = execute_queues(queue_descs, queue_service)
+        run_result = run(queue_service)
 
         # Expected 'default' and 'my_queue' to be processed.
-        expected_call_args_list = [call('default', queue_service),
-                                   call('my_queue', queue_service)]
+        # They are processed twice each since messages were processed the
+        # first iteration.
+        expected_call_args_list = [call(queue_service, 'default'),
+                                   call(queue_service, 'my_queue'),
+                                   call(queue_service, 'default'),
+                                   call(queue_service, 'my_queue')]
 
-        # Ensure _execute_queue processes the push queues.
-        self.assertEqual(_execute_queue.call_args_list,
+        # Ensure run_queue processes the push queues.
+        self.assertEqual(run_queue.call_args_list,
                          expected_call_args_list)
 
-        # Make sure that True was returned since messages were processed.
-        self.assertTrue(any_processed)
+        # Make sure that 5 was returned as the number of messages processed.
+        self.assertEqual(5, run_result['tasks_processed'])
+        self.assertEqual(2, run_result['iterations'])
 
 
 @attr('slow')
-class TestExecuteQueuesIntegration(unittest.TestCase):
-    """Ensure tasks from queues are executed.
+class TestRunQueuesIntegration(unittest.TestCase):
+    """Ensure tasks from queues are run.
     """
 
-    def test_execute_queues(self):
+    def setUp(self):
+        from google.appengine.ext import testbed
+
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub(root_path="")
+        self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+
+        self.taskqueue_service = self.testbed.get_stub(
+            testbed.TASKQUEUE_SERVICE_NAME)
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+    @patch('time.ctime')
+    def test_run(self, ctime):
         """ """
 
+        from furious.async import Async
+        from furious.test_stubs.appengine.queues import run as run_queues
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        # Run the tasks in the queue
+        run_queues(self.taskqueue_service)
+
+        self.assertEqual(2, ctime.call_count)
