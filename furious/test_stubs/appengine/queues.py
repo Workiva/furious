@@ -27,16 +27,17 @@ Examples:
 # See integration test for more detailed taskq service setup.
 taskq_service = testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
 
+
 # Run all tasks in all queues until they are empty.
-result = run(taskq_service)
+run(taskq_service)
 
 
 # Run all tasks in all queues until empty or until 5 iterations is reached.
-result = run(taskq_service, max_iterations=5)
+run(taskq_service, max_iterations=5)
 
 
 # Run all tasks from selected queues until they are empty.
-result = run(taskq_service, ["queue1", "queue2"])
+run(taskq_service, ["queue1", "queue2"])
 
 
 # Setup state for running multiple times.
