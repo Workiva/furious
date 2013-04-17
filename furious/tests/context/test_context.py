@@ -394,3 +394,52 @@ class TestInsertTasks(unittest.TestCase):
         _insert_tasks(('A', 1, 'B'), 'AbCd')
         self.assertEqual(5, queue_add_mock.call_count)
 
+
+class TestTaskBatcher(unittest.TestCase):
+
+    def test_no_tasks(self):
+        """Ensure that when to tasks are passed in, no tasks are returned."""
+        from furious.context.context import _task_batcher
+
+        self.assertEqual([], [batch for batch in _task_batcher([])])
+
+    def test_one_task(self):
+        """Ensure that when one task is passed in, only one batch is returned
+        with one task in it.
+        """
+        from furious.context.context import _task_batcher
+
+        tasks = [Mock()]
+
+        result = [batch for batch in _task_batcher(tasks)]
+
+        self.assertEqual(1, len(result))
+        self.assertEqual(1, len(result[0]))
+
+    def test_less_than_100_tasks(self):
+        """Ensure that when less than 100 tasks are passed in, only one batch
+        is returned with all the tasks in it.
+        """
+        from furious.context.context import _task_batcher
+
+        tasks = [Mock() for _ in xrange(99)]
+
+        result = [batch for batch in _task_batcher(tasks)]
+
+        self.assertEqual(1, len(result))
+        self.assertEqual(len(tasks), len(result[0]))
+
+    def test_more_than_100_tasks(self):
+        """Ensure that when less than 100 tasks are passed in, only one batch
+        is returned with all the tasks in it.
+        """
+        from furious.context.context import _task_batcher
+
+        tasks = [Mock() for _ in xrange(101)]
+
+        result = [batch for batch in _task_batcher(tasks)]
+
+        self.assertEqual(2, len(result))
+        self.assertEqual(100, len(result[0]))
+        self.assertEqual(1, len(result[1]))
+
