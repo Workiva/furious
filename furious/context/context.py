@@ -100,7 +100,8 @@ class Context(object):
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
-            self._insert_tasks(tasks, queue=queue)
+            for batch in _task_batcher(tasks):
+                self._insert_tasks(batch, queue=queue)
 
         self._tasks_inserted = True
 
@@ -136,7 +137,7 @@ class Context(object):
         return target
 
     def start(self):
-        """Insert this Context's tasks executing."""
+        """Insert this Context's tasks so they start executing."""
         if self._tasks:
             self._handle_tasks()
 
@@ -236,4 +237,14 @@ def _insert_tasks(tasks, queue, transactional=False):
 
         _insert_tasks(tasks[:count / 2], queue, transactional)
         _insert_tasks(tasks[count / 2:], queue, transactional)
+
+
+def _task_batcher(tasks):
+    """Batches large task lists into groups of 100 so that they can all be
+    inserted.
+    """
+    from itertools import izip_longest
+
+    args = [iter(tasks)] * 100
+    return ([task for task in group if task] for group in izip_longest(*args))
 
