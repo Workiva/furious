@@ -117,19 +117,20 @@ def run(taskq_service, queue_names=None, max_iterations=None):
 def pullqueue_names_from_taskq_service(taskq_service):
     """Returns push queue names from the taskqueue service."""
 
-    queue_descs = taskq_service.GetQueues()
+    queue_descriptions = taskq_service.GetQueues()
 
-    return [queue_desc['name']
-            for queue_desc in queue_descs
-            if 'pull' != queue_desc['mode']]
+    return [description['name']
+            for description in queue_descriptions
+            if 'pull' != description['mode']]
 
 
-class Runner:
+class Runner(object):
     """A class to help run pull queues.
 
     Allows parameters such as taskq_service and queue_names be specified at
     __init__ instead of in each run() call.
     """
+    # TODO: WRITE UNIT TESTS FOR ME.
 
     def __init__(self, taskq_service, queue_names=None):
         """Store taskq_service and optionally queue_name list for reuse."""
@@ -196,6 +197,8 @@ def execute_queues(queues, queue_service):
 
     Run individual tasks in push queues.
     """
+    import logging
+    logging.warning('This method is deprecated, switch to ')
 
     num_processed = False
 
