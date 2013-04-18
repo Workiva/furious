@@ -56,6 +56,7 @@ from furious.context._local import _clear_context
 from furious.handlers import process_async_task
 
 
+__all__ = ['run', 'run_queue', 'Runner', 'pullqueue_names_from_taskq_service']
 
 
 def run_queue(taskq_service, queue_name):
@@ -76,23 +77,6 @@ def run_queue(taskq_service, queue_name):
         _execute_task(task)
 
         num_processed += 1
-
-    return num_processed
-
-
-def _run(taskq_service, queue_names):
-    """Run individual tasks in push queues.
-
-    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
-    :param queue_names: :class: `list` of queue name strings
-    """
-
-    num_processed = 0
-
-    # Process each queue
-    # TODO: Round robin instead of one queue at a time.
-    for queue_name in queue_names:
-        num_processed += run_queue(taskq_service, queue_name)
 
     return num_processed
 
@@ -184,6 +168,25 @@ def _execute_task(task):
     # Cleanup context since we will be executing more tasks in this process.
     _clear_context()
     del os.environ['REQUEST_ID_HASH']
+
+
+def _run(taskq_service, queue_names):
+    """Run individual tasks in push queues.
+
+    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_names: :class: `list` of queue name strings
+    """
+
+    num_processed = 0
+
+    # Process each queue
+    # TODO: Round robin instead of one queue at a time.
+    for queue_name in queue_names:
+        num_processed += run_queue(taskq_service, queue_name)
+
+    return num_processed
+
+
 ### Deprecated ###
 
 def execute_queues(queues, queue_service):
