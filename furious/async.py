@@ -168,7 +168,12 @@ class Async(object):
 
     @property
     def _function_path(self):
-        return self._options['job'][0]
+        return self.job[0]
+
+    @property
+    def job(self):
+        """job is stored as a (function path, args, kwargs) tuple."""
+        return self._options['job']
 
     def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
