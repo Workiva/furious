@@ -223,9 +223,9 @@ class TestFunctionPathToReference(unittest.TestCase):
         from furious.job_utils import function_path_to_reference
 
         imported = function_path_to_reference(
-            u'pystache.loader')
+            u'markdown.extensions.tables')
 
-        from pystache import loader
+        from markdown.extensions import tables
 
-        self.assertIs(loader, imported)
+        self.assertIs(tables, imported)
 
