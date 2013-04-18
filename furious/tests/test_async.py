@@ -114,7 +114,7 @@ class TestAsync(unittest.TestCase):
         job = ("test", [1, 2, 3], {'a': 1, 'b': 2, 'c': 3})
         async_job = Async(*job)
 
-        self.assertEqual(job, async_job._options['job'])
+        self.assertEqual(job, async_job.job)
 
     def test_no_args_or_kwargs(self):
         """Ensure no args and no kwargs generate a well-formed job tuple."""
@@ -124,7 +124,7 @@ class TestAsync(unittest.TestCase):
         async_job = Async(function)
 
         self.assertEqual(function, async_job._function_path)
-        self.assertEqual((function, None, None), async_job._options['job'])
+        self.assertEqual((function, None, None), async_job.job)
 
     def test_args_with_no_kwargs(self):
         """Ensure args and no kwargs generate a well-formed job tuple."""
@@ -133,7 +133,7 @@ class TestAsync(unittest.TestCase):
         job = ("test", (1, 2, 3))
         async_job = Async(*job)
 
-        self.assertEqual(job + (None,), async_job._options['job'])
+        self.assertEqual(job + (None,), async_job.job)
 
     def test_no_args_with_kwargs(self):
         """Ensure no args with kwargs generate a well-formed job tuple."""
@@ -142,7 +142,7 @@ class TestAsync(unittest.TestCase):
         job = ("test", None, {'a': 1, 'b': 'c', 'alpha': True})
         async_job = Async(*job)
 
-        self.assertEqual(job, async_job._options['job'])
+        self.assertEqual(job, async_job.job)
 
     def test_gets_callable_path(self):
         """Ensure the job tuple contains the callable path."""
@@ -157,7 +157,7 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(
             ('furious.tests.test_async.some_function',) + job_args,
-            async_job._options['job'])
+            async_job.job)
 
     def test_none_args_and_kwargs(self):
         """Ensure args and kwargs may be None."""
@@ -166,7 +166,7 @@ class TestAsync(unittest.TestCase):
         job = ("something", None, None,)
         async_job = Async(*job)
 
-        self.assertEqual(job, async_job._options['job'])
+        self.assertEqual(job, async_job.job)
 
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
