@@ -4,12 +4,12 @@ python:
 
 # Setup the GAE SDK.
 before_script:
-  - wget http://googleappengine.googlecode.com/files/google_appengine_1.7.4.zip -nv
-  - unzip -q google_appengine_1.7.4.zip
+  - wget http://googleappengine.googlecode.com/files/google_appengine_1.7.7.zip -nv
+  - unzip -q google_appengine_1.7.7.zip
 
 # command to install dependencies
 install: "pip install -r requirements.txt --use-mirrors"
 
 # command to run tests
-script: nosetests --gae-lib-path=./google_appengine
+script: nosetests --gae-lib-path=./google_appengine --with-coverage
 
