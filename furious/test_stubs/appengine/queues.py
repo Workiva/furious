@@ -56,21 +56,6 @@ from furious.context._local import _clear_context
 from furious.handlers import process_async_task
 
 
-def _run_task(task):
-    """Extract the body and header from the task and process it."""
-
-    # Ensure each test looks like it is in a new request.
-    os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
-
-    # Decode the body and process the task.
-    body = base64.b64decode(task['body'])
-    return_code, func_path = process_async_task(task['headers'], body)
-
-    # TODO: Possibly do more with return_codes.
-
-    # Cleanup context since we will be executing more tasks in this process.
-    _clear_context()
-    del os.environ['REQUEST_ID_HASH']
 
 
 def run_queue(taskq_service, queue_name):
@@ -88,7 +73,7 @@ def run_queue(taskq_service, queue_name):
     num_processed = 0
 
     for task in tasks:
-        _run_task(task)
+        _execute_task(task)
 
         num_processed += 1
 
@@ -184,6 +169,21 @@ class Runner:
         return run_queue(self.taskq_service, queue_name)
 
 
+def _execute_task(task):
+    """Extract the body and header from the task and process it."""
+
+    # Ensure each test looks like it is in a new request.
+    os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    # Decode the body and process the task.
+    body = base64.b64decode(task['body'])
+    return_code, func_path = process_async_task(task['headers'], body)
+
+    # TODO: Possibly do more with return_codes.
+
+    # Cleanup context since we will be executing more tasks in this process.
+    _clear_context()
+    del os.environ['REQUEST_ID_HASH']
 ### Deprecated ###
 
 def execute_queues(queues, queue_service):

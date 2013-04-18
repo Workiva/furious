@@ -26,17 +26,17 @@ from mock import Mock
 from mock import patch
 
 
-class TestRunTask(unittest.TestCase):
-    """Ensure _run_task runs the tasks."""
+class TestExecuteTask(unittest.TestCase):
+    """Ensure _execute_task runs the tasks."""
 
     @patch('time.ctime')
     def test_run_task(self, ctime):
-        """When a task is passed to _run_task, make sure it is run.
+        """When a task is passed to _execute_task, make sure it is run.
         Ensure the task's environment is cleaned up.
         """
 
         from furious.context import _local
-        from furious.test_stubs.appengine.queues import _run_task
+        from furious.test_stubs.appengine.queues import _execute_task
 
         # Create the async_options to call the target, ctime()
         async_options = {'job': ('time.ctime', None, None)}
@@ -45,7 +45,7 @@ class TestRunTask(unittest.TestCase):
 
         task = {'body': body, 'headers': ''}
 
-        _run_task(task)
+        _execute_task(task)
 
         # Make sure our function was called
         self.assertTrue(ctime.called)
@@ -56,13 +56,13 @@ class TestRunTask(unittest.TestCase):
 
     @patch('time.strftime', autospec=True)
     def test_run_task_with_args_kwargs(self, strftime):
-        """When a task with args and kwargs is passed to _run_task, make
+        """When a task with args and kwargs is passed to _execute_task, make
         sure it is run with those parameters.
         Ensure the task's environment is cleaned up.
         """
 
         from furious.context import _local
-        from furious.test_stubs.appengine.queues import _run_task
+        from furious.test_stubs.appengine.queues import _execute_task
 
         # Create the async_options to call the mocked target, strftime().
         #   To test args and kwargs, our arguments to the mocked strftime
@@ -76,7 +76,7 @@ class TestRunTask(unittest.TestCase):
 
         task = {'body': body, 'headers': ''}
 
-        _run_task(task)
+        _execute_task(task)
 
         # Make sure our function was called with the right arguments
         strftime.assert_called_once_with(*args, **kwargs)
@@ -89,8 +89,8 @@ class TestRunTask(unittest.TestCase):
 class TestRunQueue(unittest.TestCase):
     """Ensure tasks from queues are run."""
 
-    @patch('furious.test_stubs.appengine.queues._run_task')
-    def test_run_queue(self, _run_task):
+    @patch('furious.test_stubs.appengine.queues._execute_task')
+    def test_run_queue(self, _execute_task):
         """When run() is called, ensure tasks are run, and
         the queue is flushed to remove run tasks.  Also, ensure True
         is returned since messages were processed.
@@ -103,10 +103,10 @@ class TestRunQueue(unittest.TestCase):
 
         num_processed = run_queue(queue_service, 'default')
 
-        # Expect _run_task() to be called for each task
+        # Expect _execute_task() to be called for each task
         expected_call_args_list = [call('task1'), call('task2'), call('task3')]
 
-        self.assertEquals(_run_task.call_args_list,
+        self.assertEquals(_execute_task.call_args_list,
                           expected_call_args_list)
 
         # Make sure FlushQueue was called once to clear the queue after
@@ -116,10 +116,10 @@ class TestRunQueue(unittest.TestCase):
         # We should have processed tasks, so verify the num processed.
         self.assertEqual(3, num_processed)
 
-    @patch('furious.test_stubs.appengine.queues._run_task')
-    def test_run_queue_no_tasks(self, _run_task):
+    @patch('furious.test_stubs.appengine.queues._execute_task')
+    def test_run_queue_no_tasks(self, _execute_task):
         """When run() is called and there are no tasks in the queue,
-        ensure _run_task is not called.
+        ensure _execute_task is not called.
         Ensure False is returned since no messages were processed.
         """
 
@@ -130,8 +130,8 @@ class TestRunQueue(unittest.TestCase):
 
         num_processed = run_queue(queue_service, 'default')
 
-        # Expect _run_task() to not be called since there are no tasks
-        self.assertFalse(_run_task.called)
+        # Expect _execute_task() to not be called since there are no tasks
+        self.assertFalse(_execute_task.called)
 
         # We should not have processed any tasks, so verify 0 processed.
         self.assertEqual(0, num_processed)
@@ -172,8 +172,7 @@ class TestRunQueues(unittest.TestCase):
                                    call(queue_service, 'my_queue')]
 
         # Ensure run_queue processes the push queues.
-        self.assertEqual(run_queue.call_args_list,
-                         expected_call_args_list)
+        self.assertEqual(run_queue.call_args_list, expected_call_args_list)
 
         # Make sure 2 is returned as the number of messages processed.
         self.assertEqual(num_in_default + num_in_my,
