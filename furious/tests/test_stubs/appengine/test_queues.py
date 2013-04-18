@@ -154,7 +154,8 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'another-pull', 'mode': 'pull', 'bucket_size': 5},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        queue_service = Mock()
+        queue_service.GetQueues.side_effect = [queue_descs]
 
         # Simulate that messages are processed from each push queue.
         num_in_default = 2
@@ -194,7 +195,8 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'default-pull', 'mode': 'pull', 'bucket_size': 5},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        queue_service = Mock()
+        queue_service.GetQueues.side_effect = [queue_descs]
 
         # Simulate that there are no messages processed from any queue.
         run_queue.return_value = 0
