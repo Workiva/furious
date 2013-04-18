@@ -222,13 +222,10 @@ class TestFunctionPathToReference(unittest.TestCase):
         """Ensure unicode module_paths do not cause an error."""
         from furious.job_utils import function_path_to_reference
 
-        function_path_to_reference(u'time.time')
+        imported = function_path_to_reference(
+            u'pystache.loader')
 
-    def test_import_class_methods_handles_unicode_path(self):
-        """Ensure when the module_path is unicode, the class method handler
-        does not raise an error.
-        """
-        from furious.job_utils import function_path_to_reference
+        from pystache import loader
 
-        function_path_to_reference('datetime.date.today')
+        self.assertIs(loader, imported)
 
