@@ -70,6 +70,13 @@ def get_function_path_and_options(function):
 
 def function_path_to_reference(function_path):
     """Convert a function path reference to a reference."""
+
+    # By default JSON decodes strings as unicode. The Python __import__ does
+    # not like that choice. So we'll just cast all function paths to a string.
+    # NOTE: that there is no corresponding unit test for the classmethod
+    # version of this problem
+    function_path = str(function_path)
+
     if '.' not in function_path:
         try:
             return globals()["__builtins__"][function_path]
@@ -93,9 +100,11 @@ def function_path_to_reference(function_path):
         module = sys.modules[module_path]
     else:
         try:
-            module = __import__(name=module_path, fromlist=[function_name])
+            module = __import__(name=module_path,
+                                fromlist=[function_name])
         except ImportError:
             module_path, class_name = module_path.rsplit('.', 1)
+
             module = __import__(name=module_path, fromlist=[class_name])
             module = getattr(module, class_name)
 
