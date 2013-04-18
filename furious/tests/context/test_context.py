@@ -401,7 +401,7 @@ class TestTaskBatcher(unittest.TestCase):
         """Ensure that when to tasks are passed in, no tasks are returned."""
         from furious.context.context import _task_batcher
 
-        self.assertEqual([], [batch for batch in _task_batcher([])])
+        self.assertEqual([], list(_task_batcher([])))
 
     def test_one_task(self):
         """Ensure that when one task is passed in, only one batch is returned
@@ -409,9 +409,9 @@ class TestTaskBatcher(unittest.TestCase):
         """
         from furious.context.context import _task_batcher
 
-        tasks = [Mock()]
+        tasks = [1]
 
-        result = [batch for batch in _task_batcher(tasks)]
+        result = list(_task_batcher(tasks))
 
         self.assertEqual(1, len(result))
         self.assertEqual(1, len(result[0]))
@@ -422,9 +422,9 @@ class TestTaskBatcher(unittest.TestCase):
         """
         from furious.context.context import _task_batcher
 
-        tasks = [Mock() for _ in xrange(99)]
+        tasks = 'a' * 99
 
-        result = [batch for batch in _task_batcher(tasks)]
+        result = list(_task_batcher(tasks))
 
         self.assertEqual(1, len(result))
         self.assertEqual(len(tasks), len(result[0]))
@@ -435,9 +435,9 @@ class TestTaskBatcher(unittest.TestCase):
         """
         from furious.context.context import _task_batcher
 
-        tasks = [Mock() for _ in xrange(101)]
+        tasks = 'a' * 101
 
-        result = [batch for batch in _task_batcher(tasks)]
+        result = list(_task_batcher(tasks))
 
         self.assertEqual(2, len(result))
         self.assertEqual(100, len(result[0]))
