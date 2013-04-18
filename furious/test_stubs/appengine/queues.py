@@ -130,7 +130,7 @@ def run(taskq_service, queue_names=None, max_iterations=None):
 
     iterations = 0
     tasks_processed = 0
-    processed = 1
+    processed = True
 
     # Don't check iteration count if max_iterations is None.
     dont_check_iterations = (max_iterations is None)
