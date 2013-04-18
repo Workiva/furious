@@ -137,7 +137,7 @@ class Context(object):
         return target
 
     def start(self):
-        """Insert this Context's tasks executing."""
+        """Insert this Context's tasks so they start executing."""
         if self._tasks:
             self._handle_tasks()
 
