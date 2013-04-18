@@ -218,3 +218,17 @@ class TestFunctionPathToReference(unittest.TestCase):
             BadFunctionPathError, "Unable to find function",
             function_path_to_reference, "email.parser.NonExistentThing")
 
+    def test_casts_unicode_name_to_str(self):
+        """Ensure unicode module_paths do not cause an error."""
+        from furious.job_utils import function_path_to_reference
+
+        function_path_to_reference(u'time.time')
+
+    def test_import_class_methods_handles_unicode_path(self):
+        """Ensure when the module_path is unicode, the class method handler
+        does not raise an error.
+        """
+        from furious.job_utils import function_path_to_reference
+
+        function_path_to_reference('datetime.date.today')
+
