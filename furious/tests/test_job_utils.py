@@ -222,10 +222,10 @@ class TestFunctionPathToReference(unittest.TestCase):
         """Ensure unicode module_paths do not cause an error."""
         from furious.job_utils import function_path_to_reference
 
-        imported = function_path_to_reference(
-            u'markdown.extensions.tables')
+        imported_module = function_path_to_reference(
+            u'furious.tests.dummy_module.dumb')
 
-        from markdown.extensions import tables
+        from furious.tests.dummy_module import dumb
 
-        self.assertIs(tables, imported)
+        self.assertIs(dumb, imported_module)
 

@@ -3,3 +3,4 @@ rednose
 mock
 coverage
 NoseGunit
+nose-exclude
