@@ -1,9 +1,11 @@
+.DS_Store
 .coverage
 .noseids
 \#*\#
 .idea
 gaepdb.py
 *.xml
+*.pyc
 # for sphinx documentation
 doc/build/*
 doc/source/*
