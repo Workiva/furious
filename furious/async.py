@@ -111,6 +111,10 @@ class AbortAndRestart(Exception):
     """This Async needs to be aborted immediately and restarted."""
 
 
+class AsyncRecursionError(Abort):
+    """This Async has hit the max recursion depth, it should be aborted."""
+
+
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
