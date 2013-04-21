@@ -186,6 +186,16 @@ class Async(object):
         recursion_options = self._options.get('_recursion')
         return recursion_options.get('current', 0)
 
+    def check_recursion_depth(self):
+        """Check recursion depth, return XYZ."""
+        from furious.async import MAX_DEPTH
+
+        recursion_options = self._options.get('_recursion', {})
+        max_depth = recursion_options.get('max', MAX_DEPTH)
+
+        if self.recursion_depth > max_depth:
+            raise AsyncRecursionError('Max recursion depth reached.')
+
     def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
         target_path, options = get_function_path_and_options(target)
@@ -239,6 +249,8 @@ class Async(object):
         from google.appengine.api.taskqueue import Task
 
         self._increment_recursion_level()
+        self.check_recursion_depth()
+
         url = "%s/%s" % (ASYNC_ENDPOINT, self._function_path)
 
         kwargs = {
