@@ -180,6 +180,12 @@ class Async(object):
         """job is stored as a (function path, args, kwargs) tuple."""
         return self._options['job']
 
+    @property
+    def recursion_depth(self):
+        """Get the current recursion depth."""
+        recursion_options = self._options.get('_recursion')
+        return recursion_options.get('current', 0)
+
     def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
         target_path, options = get_function_path_and_options(target)
