@@ -126,8 +126,6 @@ class Async(object):
 
         self.update_options(**options)
 
-        self._update_recursion_level()
-
         self._execution_context = None
 
         self._executing = False
