@@ -232,6 +232,7 @@ class Async(object):
         """Return a task object representing this async job."""
         from google.appengine.api.taskqueue import Task
 
+        self._increment_recursion_level()
         url = "%s/%s" % (ASYNC_ENDPOINT, self._function_path)
 
         kwargs = {
@@ -270,13 +271,6 @@ class Async(object):
     def to_dict(self):
         """Return this async job as a dict suitable for json encoding."""
         import copy
-
-        # Decrement current_depth to account for double increment
-        recursion_options = self.get_options()['_recursion']
-        current_depth = recursion_options['current']
-        max_depth = recursion_options['max']
-        self.update_options(_recursion={'current': current_depth - 1,
-                                        'max': max_depth})
 
         options = copy.deepcopy(self._options)
 
@@ -332,34 +326,14 @@ class Async(object):
 
         return self.start()
 
-    def _update_recursion_level(self):
-        """Increment current_depth based on either defaults or enclosing
+    def _increment_recursion_level(self):
+        """Increment current_depth based on either defaults or the enclosing
         Async.
         """
-        from furious.context import get_current_async
-        from furious.context import NotInContextError
 
-        recursion_options = self.get_options().get('_recursion', {})
+        recursion_options = self._options.get('_recursion', {})
         current_depth = recursion_options.get('current', 0)
         max_depth = recursion_options.get('max', MAX_DEPTH)
-
-        try:
-            current_async_options = get_current_async().get_options()
-            current_recursion_info = \
-                current_async_options.get('_recursion', {})
-
-            # Update current_depth
-            current_depth = \
-                current_recursion_info.get('current', current_depth)
-
-            # Preserve custom max_depth if set
-            if max_depth == MAX_DEPTH:
-                max_depth = current_recursion_info.get('max', max_depth)
-
-        except NotInContextError:
-            # We've already got a current_depth and max_depth from above; do
-            # nothing.
-            pass
 
         # Increment and store
         self.update_options(_recursion={'current': current_depth + 1,
