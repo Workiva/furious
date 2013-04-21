@@ -236,6 +236,16 @@ class Async(object):
                 self.recursion_depth > max_depth):
             raise AsyncRecursionError('Max recursion depth reached.')
 
+    def check_recursion_depth(self):
+        """Check recursion depth, return XYZ."""
+        from furious.async import MAX_DEPTH
+
+        recursion_options = self._options.get('_recursion', {})
+        max_depth = recursion_options.get('max', MAX_DEPTH)
+
+        if self.recursion_depth > max_depth:
+            raise AsyncRecursionError('Max recursion depth reached.')
+
     def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
         target_path, options = get_function_path_and_options(target)
