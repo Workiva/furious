@@ -649,15 +649,15 @@ class TestAsync(unittest.TestCase):
 
         async_job = Async("something")
 
-        async_job._update_recursion_level()
+        async_job._increment_recursion_level()
 
         options = async_job.get_options()['_recursion']
-        self.assertEqual(2, options['current'])
+        self.assertEqual(1, options['current'])
         self.assertEqual(MAX_DEPTH, options['max'])
 
     def test_check_recursion_level_execution_context(self):
         """Ensure that when there is an existing Async that the correct values
-        are pulled and incremented from there and not defaults.
+        are pulled and incremented from there, not the defaults.
         """
         from furious.async import Async
         from furious.context import execution_context_from_async
@@ -667,10 +667,11 @@ class TestAsync(unittest.TestCase):
         new_async = Async("something_else")
 
         with execution_context_from_async(context_async):
-            new_async._update_recursion_level()
+            new_async._increment_recursion_level()
+
+        self.assertEqual(43, new_async.recursion_depth)
 
         options = new_async.get_options()['_recursion']
-        self.assertEqual(44, options['current'])
         self.assertEqual(77, options['max'])
 
     def test_check_recursion_level_overridden_interior_max(self):
@@ -683,12 +684,13 @@ class TestAsync(unittest.TestCase):
 
         context_async = Async("something", _recursion={'current': 42,
                                                        'max': 77})
+
         new_async = Async("something_else", _recursion={'max': 89})
 
         with execution_context_from_async(context_async):
-            new_async._update_recursion_level()
+            new_async._increment_recursion_level()
 
         options = new_async.get_options()['_recursion']
-        self.assertEqual(44, options['current'])
+        self.assertEqual(43, options['current'])
         self.assertEqual(89, options['max'])
 
