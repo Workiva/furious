@@ -182,9 +182,11 @@ class Async(object):
 
     @property
     def recursion_depth(self):
-        """Get the current recursion depth."""
-        recursion_options = self._options.get('_recursion')
-        return recursion_options.get('current', 0)
+        """Get the current recursion depth.  `None` indicates uninitialized
+        recursion info.
+        """
+        recursion_options = self._options.get('_recursion', {})
+        return recursion_options.get('current', None)
 
     def check_recursion_depth(self):
         """Check recursion depth, return XYZ."""
