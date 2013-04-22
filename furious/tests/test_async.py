@@ -199,7 +199,7 @@ class TestAsync(unittest.TestCase):
         job = Async(some_function)
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -220,7 +220,7 @@ class TestAsync(unittest.TestCase):
         options['other'] = 'abc'
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -258,7 +258,7 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ("nonexistant", None, None)
 
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -277,7 +277,7 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ("nonexistant", None, None)
 
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
