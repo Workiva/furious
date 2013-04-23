@@ -52,7 +52,7 @@ def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
 
 def _get_configured_module(option_name, known_modules=None):
     """Get the module specified by the value of option_name. The value of the
-    cofiguration option will be used to load the module by name from the known
+    configuration option will be used to load the module by name from the known
     module list or treated as a path if not found in known_modules.
     Args:
         option_name: name of persistence module
