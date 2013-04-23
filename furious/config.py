@@ -46,26 +46,32 @@ class MissingYamlFile(Exception):
 
 
 def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
-    config = get_config()
-    return _get_persistence_module(config['persistence'],
-                                   known_modules=known_modules)
+    """Return the default persistence engine set in furious.yaml."""
+    return _get_configured_module('persistence', known_modules=known_modules)
 
 
-def _get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
-    """Get a known persistence module or one where name is a module path
+def _get_configured_module(option_name, known_modules=None):
+    """Get the module specified by the value of option_name. The value of the
+    cofiguration option will be used to load the module by name from the known
+    module list or treated as a path if not found in known_modules.
     Args:
-        name: name of persistence module
+        option_name: name of persistence module
         known_modules: dictionary of module names and module paths,
             ie: {'ndb':'furious.extras.appengine.ndb_persistence'}
     Returns:
         module of the module path matching the name in known_modules
-        or the module path that is name
     """
     from furious.job_utils import path_to_reference
 
-    module_path = known_modules.get(name) or name
-    module = path_to_reference(module_path)
-    return module
+    config = get_config()
+    option_value = config[option_name]
+
+    # If no known_modules were give, make it an empty dict.
+    if not known_modules:
+        known_modules = {}
+
+    module_path = known_modules.get(option_value) or option_value
+    return path_to_reference(module_path)
 
 
 def find_furious_yaml(config_file=__file__):

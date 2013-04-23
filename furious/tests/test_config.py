@@ -82,14 +82,30 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertRaises(InvalidYamlFile, _parse_yaml_config, example_yaml)
 
-    def test_get_persistence_module(self):
-        """Ensure the chosen persistence module will load a module."""
-        from furious.config import _get_persistence_module
+    def test_get_configured_module_by_path(self):
+        """Ensure _get_configured_module loads options by path."""
+        from furious.config import _get_configured_module
         from furious import config
 
-        module = _get_persistence_module('furious.config')
+        config.get_config()['test_option'] = 'furious.config'
+
+        module = _get_configured_module('test_option')
 
         self.assertEqual(module, config)
+
+    def test_get_configured_module_by_name(self):
+        """Ensure _get_configured_module loads options by name."""
+        from furious.config import _get_configured_module
+        from furious import async
+        from furious import config
+
+        known_modules = {'cfg': 'furious.async'}
+
+        config.get_config()['other_option'] = 'cfg'
+
+        module = _get_configured_module('other_option', known_modules)
+
+        self.assertEqual(module, async)
 
     def test_get_config_empty_yaml(self):
         """Ensure an empty furious.yaml will produce a default config."""
