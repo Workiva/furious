@@ -68,13 +68,13 @@ def get_function_path_and_options(function):
     raise BadFunctionPathError("Must provide a function path or reference.")
 
 
-def function_path_to_reference(function_path):
+def path_to_reference(function_path):
     """Convert a function path reference to a reference."""
 
     # By default JSON decodes strings as unicode. The Python __import__ does
     # not like that choice. So we'll just cast all function paths to a string.
     # NOTE: that there is no corresponding unit test for the classmethod
-    # version of this problem
+    # version of this problem.  It only impacts importing modules.
     function_path = str(function_path)
 
     if '.' not in function_path:
@@ -144,7 +144,7 @@ def decode_callbacks(encoded_callbacks):
         if isinstance(callback, dict):
             callback = Async.from_dict(callback)
         else:
-            callback = function_path_to_reference(callback)
+            callback = path_to_reference(callback)
 
         callbacks[event] = callback
 
