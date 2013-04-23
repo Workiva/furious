@@ -27,25 +27,6 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertEqual(contents, "persistence: ndb\n")
 
-    def test_module_import_missing_module(self):
-        """Ensure module_import raises an exception when the specified module
-        does not exist.
-        """
-        from furious.config import BadModulePathError
-        from furious.config import module_import
-
-        self.assertRaises(BadModulePathError,
-                          module_import, 'furious.extras.not_here')
-
-    def test_module_import(self):
-        """Ensure module_import returns a reference to the expected module."""
-        from furious.config import module_import
-        from furious import config
-
-        module = module_import('furious.config')
-
-        self.assertEqual(module, config)
-
     @patch('os.path.exists', autospec=True)
     def test_not_find_yaml(self, mock_exists):
         """Ensure when no furious.yaml exists, no file is found."""
