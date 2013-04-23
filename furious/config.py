@@ -45,7 +45,13 @@ class MissingYamlFile(Exception):
     """furious.yaml cannot be found."""
 
 
-def get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
+def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
+    config = get_config()
+    return _get_persistence_module(config['persistence'],
+                                   known_modules=known_modules)
+
+
+def _get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
     """Get a known persistence module or one where name is a module path
     Args:
         name: name of persistence module
@@ -60,12 +66,6 @@ def get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
     module_path = known_modules.get(name) or name
     module = path_to_reference(module_path)
     return module
-
-
-def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
-    config = get_config()
-    return get_persistence_module(config['persistence'],
-                                  known_modules=known_modules)
 
 
 def find_furious_yaml(config_file=__file__):

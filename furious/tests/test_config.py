@@ -84,10 +84,10 @@ class TestConfigurationLoading(unittest.TestCase):
 
     def test_get_persistence_module(self):
         """Ensure the chosen persistence module will load a module."""
-        from furious.config import get_persistence_module
+        from furious.config import _get_persistence_module
         from furious import config
 
-        module = get_persistence_module('furious.config')
+        module = _get_persistence_module('furious.config')
 
         self.assertEqual(module, config)
 
