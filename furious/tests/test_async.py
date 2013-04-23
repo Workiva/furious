@@ -131,7 +131,7 @@ class TestAsync(unittest.TestCase):
         job = ("test", [1, 2, 3], {'a': 1, 'b': 2, 'c': 3})
         async_job = Async(*job)
 
-        self.assertEqual(job, async_job._options['job'])
+        self.assertEqual(job, async_job.job)
 
     def test_no_args_or_kwargs(self):
         """Ensure no args and no kwargs generate a well-formed job tuple."""
@@ -141,7 +141,7 @@ class TestAsync(unittest.TestCase):
         async_job = Async(function)
 
         self.assertEqual(function, async_job._function_path)
-        self.assertEqual((function, None, None), async_job._options['job'])
+        self.assertEqual((function, None, None), async_job.job)
 
     def test_args_with_no_kwargs(self):
         """Ensure args and no kwargs generate a well-formed job tuple."""
@@ -150,7 +150,7 @@ class TestAsync(unittest.TestCase):
         job = ("test", (1, 2, 3))
         async_job = Async(*job)
 
-        self.assertEqual(job + (None,), async_job._options['job'])
+        self.assertEqual(job + (None,), async_job.job)
 
     def test_no_args_with_kwargs(self):
         """Ensure no args with kwargs generate a well-formed job tuple."""
@@ -159,7 +159,7 @@ class TestAsync(unittest.TestCase):
         job = ("test", None, {'a': 1, 'b': 'c', 'alpha': True})
         async_job = Async(*job)
 
-        self.assertEqual(job, async_job._options['job'])
+        self.assertEqual(job, async_job.job)
 
     def test_gets_callable_path(self):
         """Ensure the job tuple contains the callable path."""
@@ -174,7 +174,7 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(
             ('furious.tests.test_async.some_function',) + job_args,
-            async_job._options['job'])
+            async_job.job)
 
     def test_none_args_and_kwargs(self):
         """Ensure args and kwargs may be None."""
@@ -183,7 +183,7 @@ class TestAsync(unittest.TestCase):
         job = ("something", None, None,)
         async_job = Async(*job)
 
-        self.assertEqual(job, async_job._options['job'])
+        self.assertEqual(job, async_job.job)
 
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
@@ -199,7 +199,7 @@ class TestAsync(unittest.TestCase):
         job = Async(some_function)
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -220,7 +220,7 @@ class TestAsync(unittest.TestCase):
         options['other'] = 'abc'
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -258,7 +258,7 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ("nonexistant", None, None)
 
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -277,7 +277,7 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ("nonexistant", None, None)
 
-        options['_recursion'] = {'current': 1, 'max': 100}
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -649,15 +649,15 @@ class TestAsync(unittest.TestCase):
 
         async_job = Async("something")
 
-        async_job._update_recursion_level()
+        async_job._increment_recursion_level()
 
         options = async_job.get_options()['_recursion']
-        self.assertEqual(2, options['current'])
+        self.assertEqual(1, options['current'])
         self.assertEqual(MAX_DEPTH, options['max'])
 
     def test_check_recursion_level_execution_context(self):
         """Ensure that when there is an existing Async that the correct values
-        are pulled and incremented from there and not defaults.
+        are pulled and incremented from there, not the defaults.
         """
         from furious.async import Async
         from furious.context import execution_context_from_async
@@ -667,10 +667,11 @@ class TestAsync(unittest.TestCase):
         new_async = Async("something_else")
 
         with execution_context_from_async(context_async):
-            new_async._update_recursion_level()
+            new_async._increment_recursion_level()
+
+        self.assertEqual(43, new_async.recursion_depth)
 
         options = new_async.get_options()['_recursion']
-        self.assertEqual(44, options['current'])
         self.assertEqual(77, options['max'])
 
     def test_check_recursion_level_overridden_interior_max(self):
@@ -683,12 +684,13 @@ class TestAsync(unittest.TestCase):
 
         context_async = Async("something", _recursion={'current': 42,
                                                        'max': 77})
+
         new_async = Async("something_else", _recursion={'max': 89})
 
         with execution_context_from_async(context_async):
-            new_async._update_recursion_level()
+            new_async._increment_recursion_level()
 
         options = new_async.get_options()['_recursion']
-        self.assertEqual(44, options['current'])
+        self.assertEqual(43, options['current'])
         self.assertEqual(89, options['max'])
 

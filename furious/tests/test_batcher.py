@@ -327,7 +327,7 @@ class MessageProcessorTestCase(unittest.TestCase):
                     'name': 'processor-processor-current-batch-3'
                 },
                 '_recursion': {
-                    'current': 0,
+                    'current': 1,
                     'max': 100
                 }
             }),
