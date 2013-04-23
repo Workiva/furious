@@ -43,37 +43,6 @@ class EmptyYamlFile(Exception):
 
 class MissingYamlFile(Exception):
     """furious.yaml cannot be found."""
-def module_import(module_path):
-    """Imports the module indicated in name
-
-    Args:
-        module_path: string representing a module path such as
-        'furious.config' or 'furious.extras.appengine.ndb_persistence'
-    Returns:
-        the module matching name of the last component, ie: for
-        'furious.extras.appengine.ndb_persistence' it returns a
-        reference to ndb_persistence
-    Raises:
-        BadModulePathError if the module is not found
-    """
-    try:
-        # Import whole module path.
-        module = __import__(module_path)
-
-        # Split into components: ['furious',
-        # 'extras','appengine','ndb_persistence'].
-        components = module_path.split('.')
-
-        # Starting at the second component, set module to a
-        # a reference to that component. at the end
-        # module with be the last component. In this case:
-        # ndb_persistence
-        for component in components[1:]:
-            module = getattr(module, component)
-        return module
-    except ImportError:
-        raise BadModulePathError(
-            'Unable to find module "%s".' % (module_path,))
 
 
 def get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
@@ -86,8 +55,10 @@ def get_persistence_module(name, known_modules=PERSISTENCE_MODULES):
         module of the module path matching the name in known_modules
         or the module path that is name
     """
+    from furious.job_utils import path_to_reference
+
     module_path = known_modules.get(name) or name
-    module = module_import(module_path=module_path)
+    module = path_to_reference(module_path)
     return module
 
 
