@@ -68,33 +68,33 @@ def get_function_path_and_options(function):
     raise BadFunctionPathError("Must provide a function path or reference.")
 
 
-def path_to_reference(function_path):
+def path_to_reference(path):
     """Convert a function path reference to a reference."""
 
     # By default JSON decodes strings as unicode. The Python __import__ does
     # not like that choice. So we'll just cast all function paths to a string.
     # NOTE: that there is no corresponding unit test for the classmethod
     # version of this problem.  It only impacts importing modules.
-    function_path = str(function_path)
+    path = str(path)
 
-    if '.' not in function_path:
+    if '.' not in path:
         try:
-            return globals()["__builtins__"][function_path]
+            return globals()["__builtins__"][path]
         except KeyError:
             try:
-                return getattr(globals()["__builtins__"], function_path)
+                return getattr(globals()["__builtins__"], path)
             except AttributeError:
                 pass
 
         try:
-            return globals()[function_path]
+            return globals()[path]
         except KeyError:
             pass
 
         raise BadFunctionPathError(
-            'Unable to find function "%s".' % (function_path,))
+            'Unable to find function "%s".' % (path,))
 
-    module_path, function_name = function_path.rsplit('.', 1)
+    module_path, function_name = path.rsplit('.', 1)
 
     if module_path in sys.modules:
         module = sys.modules[module_path]
@@ -112,7 +112,7 @@ def path_to_reference(function_path):
         return getattr(module, function_name)
     except AttributeError:
         raise BadFunctionPathError(
-            'Unable to find function "%s".' % (function_path,))
+            'Unable to find function "%s".' % (path,))
 
 
 def encode_callbacks(callbacks):
