@@ -15,10 +15,8 @@
 #
 import logging
 import os
-from StringIO import StringIO
 
 import yaml
-
 
 FURIOUS_YAML_NAMES = ['furious.yaml', 'furious.yml']
 
@@ -32,29 +30,19 @@ class BadModulePathError(Exception):
 
 
 class InvalidPersistenceModuleName(Exception):
-    """
-    There is no persistence strategy by that name
-    """
+    """There is no persistence strategy by that name."""
 
 
 class InvalidYamlFile(Exception):
-    """
-    The furious.yaml file is invalid yaml
-    """
+    """The furious.yaml file is invalid yaml."""
 
 
 class EmptyYamlFile(Exception):
-    """
-    The furious.yaml file is empty
-    """
+    """The furious.yaml file is empty."""
 
 
 class MissingYamlFile(Exception):
-    """
-    furious.yaml cannot be found
-    """
-
-
+    """furious.yaml cannot be found."""
 def module_import(module_path):
     """Imports the module indicated in name
 
