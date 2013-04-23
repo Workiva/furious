@@ -26,7 +26,7 @@ from .async import AbortAndRestart
 from .async import Async
 from .context import Context
 from .context import get_current_async
-from .job_utils import function_path_to_reference
+from .job_utils import path_to_reference
 
 
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
@@ -53,7 +53,7 @@ def run_job():
     if kwargs is None:
         kwargs = {}
 
-    function = function_path_to_reference(function_path)
+    function = path_to_reference(function_path)
 
     try:
         async.executing = True

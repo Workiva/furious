@@ -46,7 +46,7 @@ import uuid
 
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
-from ..job_utils import function_path_to_reference
+from ..job_utils import path_to_reference
 from ..job_utils import get_function_path_and_options
 
 
@@ -195,12 +195,11 @@ class Context(object):
 
         insert_tasks = context_options.pop('insert_tasks', None)
         if insert_tasks:
-            context_options['insert_tasks'] = function_path_to_reference(
-                insert_tasks)
+            context_options['insert_tasks'] = path_to_reference(insert_tasks)
 
         persistence_engine = context_options.pop('persistence_engine', None)
         if persistence_engine:
-            context_options['persistence_engine'] = function_path_to_reference(
+            context_options['persistence_engine'] = path_to_reference(
                 persistence_engine)
 
         # If there are callbacks, reconstitute them.

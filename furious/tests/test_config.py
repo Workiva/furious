@@ -27,25 +27,6 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertEqual(contents, "persistence: ndb\n")
 
-    def test_module_import_missing_module(self):
-        """Ensure module_import raises an exception when the specified module
-        does not exist.
-        """
-        from furious.config import BadModulePathError
-        from furious.config import module_import
-
-        self.assertRaises(BadModulePathError,
-                          module_import, 'furious.extras.not_here')
-
-    def test_module_import(self):
-        """Ensure module_import returns a reference to the expected module."""
-        from furious.config import module_import
-        from furious import config
-
-        module = module_import('furious.config')
-
-        self.assertEqual(module, config)
-
     @patch('os.path.exists', autospec=True)
     def test_not_find_yaml(self, mock_exists):
         """Ensure when no furious.yaml exists, no file is found."""
@@ -101,14 +82,30 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertRaises(InvalidYamlFile, _parse_yaml_config, example_yaml)
 
-    def test_get_persistence_module(self):
-        """Ensure the chosen persistence module will load a module."""
-        from furious.config import get_persistence_module
+    def test_get_configured_module_by_path(self):
+        """Ensure _get_configured_module loads options by path."""
+        from furious.config import _get_configured_module
         from furious import config
 
-        module = get_persistence_module('furious.config')
+        config.get_config()['test_option'] = 'furious.config'
+
+        module = _get_configured_module('test_option')
 
         self.assertEqual(module, config)
+
+    def test_get_configured_module_by_name(self):
+        """Ensure _get_configured_module loads options by name."""
+        from furious.config import _get_configured_module
+        from furious import async
+        from furious import config
+
+        known_modules = {'cfg': 'furious.async'}
+
+        config.get_config()['other_option'] = 'cfg'
+
+        module = _get_configured_module('other_option', known_modules)
+
+        self.assertEqual(module, async)
 
     def test_get_config_empty_yaml(self):
         """Ensure an empty furious.yaml will produce a default config."""
