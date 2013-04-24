@@ -21,7 +21,7 @@ Functions to help with encoding and decoding job information.
 import sys
 
 
-class BadFunctionPathError(Exception):
+class BadObjectPathError(Exception):
     """Invalid function path."""
 
 
@@ -45,7 +45,7 @@ def get_function_path_and_options(function):
         # This is a function name in str form.
         import re
         if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', function):
-            raise BadFunctionPathError(
+            raise BadObjectPathError(
                 'Invalid function path, must meet Python\'s identifier '
                 'requirements, passed value was "%s".', function)
         return function, options
@@ -63,9 +63,9 @@ def get_function_path_and_options(function):
             if function.__module__ == '__builtin__':
                 return function.__name__, options
 
-        raise BadFunctionPathError("Unable to determine path to callable.")
+        raise BadObjectPathError("Unable to determine path to callable.")
 
-    raise BadFunctionPathError("Must provide a function path or reference.")
+    raise BadObjectPathError("Must provide a reference path or reference.")
 
 
 def path_to_reference(path):
@@ -91,7 +91,7 @@ def path_to_reference(path):
         except KeyError:
             pass
 
-        raise BadFunctionPathError(
+        raise BadObjectPathError(
             'Unable to find function "%s".' % (path,))
 
     module_path, function_name = path.rsplit('.', 1)
@@ -111,7 +111,7 @@ def path_to_reference(path):
     try:
         return getattr(module, function_name)
     except AttributeError:
-        raise BadFunctionPathError(
+        raise BadObjectPathError(
             'Unable to find function "%s".' % (path,))
 
 

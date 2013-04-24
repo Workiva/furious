@@ -46,26 +46,26 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
 
     def test_bad_function_path(self):
         """Ensure get_function_path_and_options function raises
-        BadFunctionPathError when given a bad path.
+        BadObjectPathError when given a bad path.
         """
-        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import BadObjectPathError
         from furious.job_utils import get_function_path_and_options
 
         bad_names = ['', '0abc', 'test.0abc', 'test.ab-cd',
                      'bad%ness', '.nogood']
         for bad_name in bad_names:
             self.assertRaises(
-                BadFunctionPathError, get_function_path_and_options, bad_name)
+                BadObjectPathError, get_function_path_and_options, bad_name)
 
     def test_none_as_function_path(self):
-        """Ensure get_function_path_and_options raises BadFunctionPathError
+        """Ensure get_function_path_and_options raises BadObjectPathError
         on missing path.
         """
-        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import BadObjectPathError
         from furious.job_utils import get_function_path_and_options
 
         self.assertRaises(
-            BadFunctionPathError, get_function_path_and_options, None)
+            BadObjectPathError, get_function_path_and_options, None)
 
     def test_gets_callable_path(self):
         """Ensure check job function returns the path of a callable."""
@@ -151,8 +151,8 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         self.assertEqual(default_options, options)
 
     def test_damaged_method_raises(self):
-        """Ensure a broken mehtod raises BadFunctionPathError."""
-        from furious.job_utils import BadFunctionPathError
+        """Ensure a broken mehtod raises BadObjectPathError."""
+        from furious.job_utils import BadObjectPathError
         from furious.job_utils import get_function_path_and_options
 
         class FakeFunk(object):
@@ -162,7 +162,7 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         some_method = FakeFunk()
 
         self.assertRaisesRegexp(
-            BadFunctionPathError, "Unable to determine path to callable.",
+            BadObjectPathError, "Unable to determine path to callable.",
             get_function_path_and_options, some_method)
 
 
@@ -193,10 +193,10 @@ class TestPathToReference(unittest.TestCase):
     def test_raises_on_bogus_builtin(self):
         """Ensure bad "builins" raise an exception."""
         from furious.job_utils import path_to_reference
-        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import BadObjectPathError
 
         self.assertRaisesRegexp(
-            BadFunctionPathError, "Unable to find function",
+            BadObjectPathError, "Unable to find function",
             path_to_reference, "something_made_up")
 
     @patch('email.parser.Parser')
@@ -211,10 +211,10 @@ class TestPathToReference(unittest.TestCase):
     def test_raises_on_bogus_std_imported(self):
         """Ensure run_job raises an exception on bogus standard import."""
         from furious.job_utils import path_to_reference
-        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import BadObjectPathError
 
         self.assertRaisesRegexp(
-            BadFunctionPathError, "Unable to find function",
+            BadObjectPathError, "Unable to find function",
             path_to_reference, "email.parser.NonExistentThing")
 
     def test_casts_unicode_name_to_str(self):

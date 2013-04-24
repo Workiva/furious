@@ -96,16 +96,16 @@ class TestAsync(unittest.TestCase):
     def test_none_function(self):
         """Ensure passing None as function raises."""
         from furious.async import Async
-        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import BadObjectPathError
 
-        self.assertRaises(BadFunctionPathError, Async, None)
+        self.assertRaises(BadObjectPathError, Async, None)
 
     def test_empty_function_path(self):
         """Ensure passing None as function raises."""
         from furious.async import Async
-        from furious.job_utils import BadFunctionPathError
+        from furious.job_utils import BadObjectPathError
 
-        self.assertRaises(BadFunctionPathError, Async, '')
+        self.assertRaises(BadObjectPathError, Async, '')
 
     def test_job_params(self):
         """Ensure good args and kwargs generate a well-formed job tuple."""
