@@ -40,36 +40,50 @@ def get_function_path_and_options(function):
     """
     # Try to pop the options off whatever they passed in.
     options = getattr(function, '_async_options', None)
+    return reference_to_path(function), options
 
-    if isinstance(function, basestring):
-        # This is a function name in str form.
+
+def reference_to_path(reference):
+    """Convert a reference to a Python object to a string path."""
+    # Try to pop the options off whatever they passed in.
+    if isinstance(reference, basestring):
+        # This is an object path name in str form.
         import re
-        if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', function):
+        if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', reference):
             raise BadObjectPathError(
-                'Invalid function path, must meet Python\'s identifier '
-                'requirements, passed value was "%s".', function)
-        return function, options
+                'Invalid reference path, must meet Python\'s identifier '
+                'requirements, passed value was "%s".', reference)
+        return reference
 
-    if callable(function):
-        # Try to figure out the path to the function.
+    if callable(reference):
+        # This is a function, or a callable class.
+        # Try to figure out the path to the reference.
         try:
-            parts = [function.__module__]
-            if hasattr(function, 'im_class'):
-                parts.append(function.im_class.__name__)
-            parts.append(function.func_name)
+            parts = [reference.__module__]
+            if hasattr(reference, 'im_class'):
+                parts.append(reference.im_class.__name__)
+            parts.append(reference.func_name)
 
-            return ('.'.join(parts), options)
+            return '.'.join(parts)
         except AttributeError:
-            if function.__module__ == '__builtin__':
-                return function.__name__, options
+            if reference.__module__ == '__builtin__':
+                return reference.__name__
 
         raise BadObjectPathError("Unable to determine path to callable.")
+
+    elif hasattr(reference, '__module__'):
+        # This is a class.
+        return '.'.join((reference.__module__, reference.__name__))
+
+    elif hasattr(reference, '__package__'):
+        # This is probably a module.
+        return reference.__name__
 
     raise BadObjectPathError("Must provide a reference path or reference.")
 
 
 def path_to_reference(path):
-    """Convert a function path reference to a reference."""
+    """Convert an object path reference to a reference."""
 
     # By default JSON decodes strings as unicode. The Python __import__ does
     # not like that choice. So we'll just cast all function paths to a string.
@@ -96,17 +110,14 @@ def path_to_reference(path):
 
     module_path, function_name = path.rsplit('.', 1)
 
-    if module_path in sys.modules:
-        module = sys.modules[module_path]
-    else:
-        try:
-            module = __import__(name=module_path,
-                                fromlist=[function_name])
-        except ImportError:
-            module_path, class_name = module_path.rsplit('.', 1)
+    try:
+        module = __import__(name=module_path,
+                            fromlist=[function_name])
+    except ImportError:
+        module_path, class_name = module_path.rsplit('.', 1)
 
-            module = __import__(name=module_path, fromlist=[class_name])
-            module = getattr(module, class_name)
+        module = __import__(name=module_path, fromlist=[class_name])
+        module = getattr(module, class_name)
 
     try:
         return getattr(module, function_name)
