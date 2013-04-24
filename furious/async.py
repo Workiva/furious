@@ -262,6 +262,12 @@ class Async(object):
 
         # TODO: Return a "result" object.
 
+    def __deepcopy__(self, *args):
+        """In order to support callbacks being Async objects, we need to
+        support being deep copied.
+        """
+        return self
+
     def to_dict(self):
         """Return this async job as a dict suitable for json encoding."""
         import copy
@@ -320,6 +326,7 @@ class Async(object):
 
         return self.start()
 
+        return
 
 def defaults(**options):
     """Set default Async options on the function decorated.

@@ -325,6 +325,15 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual({}, job.get_task_args())
 
+    def test_deepcopy(self):
+        """Make sure you can deepcopy an Async."""
+        import copy
+
+        from furious.async import Async
+
+        job = Async(dir)
+        copy.deepcopy(job)
+
     def test_to_dict(self):
         """Ensure to_dict returns a dictionary representation of the Async."""
         from furious.async import Async
