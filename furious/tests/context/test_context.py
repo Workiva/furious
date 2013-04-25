@@ -227,7 +227,8 @@ class TestContext(unittest.TestCase):
                 'success': ("furious.tests.context.test_context."
                             "TestContext.test_to_dict_with_callbacks"),
                 'failure': "failure_function",
-                'exec': {'job': ('dir', None, None)}
+                'exec': {'job': ('dir', None, None),
+                         '_recursion': {'current': 0, 'max': 100}}
             }
         })
 
@@ -280,8 +281,11 @@ class TestContext(unittest.TestCase):
         callbacks = context._options.get('callbacks')
         exec_callback = callbacks.pop('exec')
 
+        correct_dict = {'job': ('id', None, None),
+                        '_recursion': {'current': 0, 'max': 100}}
+
         self.assertEqual(check_callbacks, callbacks)
-        self.assertEqual({'job': ('id', None, None)}, exec_callback.to_dict())
+        self.assertEqual(correct_dict, exec_callback.to_dict())
 
     def test_reconstitution(self):
         """Ensure to_dict(job.from_dict()) returns the same thing."""

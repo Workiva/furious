@@ -93,6 +93,23 @@ class TestDefaultsDecorator(unittest.TestCase):
 class TestAsync(unittest.TestCase):
     """Make sure Async produces correct Task objects."""
 
+    def setUp(self):
+        import os
+        import uuid
+        from furious.context import _local
+
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+        local_context = _local.get_local_context()
+        local_context._executing_async_context = None
+
+        super(TestAsync, self).setUp()
+
+    def tearDown(self):
+        import os
+
+        del os.environ['REQUEST_ID_HASH']
+
     def test_none_function(self):
         """Ensure passing None as function raises."""
         from furious.async import Async
@@ -182,6 +199,7 @@ class TestAsync(unittest.TestCase):
         job = Async(some_function)
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -202,6 +220,7 @@ class TestAsync(unittest.TestCase):
         options['other'] = 'abc'
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -239,6 +258,8 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ("nonexistant", None, None)
 
+        options['_recursion'] = {'current': 0, 'max': 100}
+
         self.assertEqual(options, job._options)
 
     def test_update_options_supersede_init_opts(self):
@@ -255,6 +276,8 @@ class TestAsync(unittest.TestCase):
         options['other'] = 'stuff'
 
         options['job'] = ("nonexistant", None, None)
+
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job._options)
 
@@ -345,6 +368,7 @@ class TestAsync(unittest.TestCase):
         job = Async('nonexistant', **options.copy())
 
         options['job'] = ('nonexistant', None, None)
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job.to_dict())
 
@@ -365,8 +389,10 @@ class TestAsync(unittest.TestCase):
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "failure_function",
-            'exec': {'job': ('dir', None, None)}
+            'exec': {'job': ('dir', None, None),
+                     '_recursion': {'current': 0, 'max': 100}}
         }
+        options['_recursion'] = {'current': 0, 'max': 100}
 
         self.assertEqual(options, job.to_dict())
 
@@ -410,8 +436,11 @@ class TestAsync(unittest.TestCase):
         callbacks = async_job.get_callbacks()
         exec_callback = callbacks.pop('exec')
 
+        correct_options = {'job': ('dir', None, None),
+                           '_recursion': {'current': 0, 'max': 100}}
+
         self.assertEqual(check_callbacks, callbacks)
-        self.assertEqual({'job': ('dir', None, None)}, exec_callback.to_dict())
+        self.assertEqual(correct_options, exec_callback.to_dict())
 
     def test_reconstitution(self):
         """Ensure to_dict(job.from_dict()) returns the same thing."""
@@ -424,7 +453,8 @@ class TestAsync(unittest.TestCase):
             'job': job,
             'headers': headers,
             'task_args': task_args,
-            'persistence_engine': 'furious.extras.appengine.ndb_persistence'
+            'persistence_engine': 'furious.extras.appengine.ndb_persistence',
+            '_recursion': {'current': 1, 'max': 100}
         }
 
         async_job = Async.from_dict(options)
@@ -473,6 +503,8 @@ class TestAsync(unittest.TestCase):
 
         options['task_args']['eta'] = datetime.datetime.fromtimestamp(
             eta_posix)
+
+        options['_recursion'] = {'current': 1, 'max': 100}
 
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
@@ -597,7 +629,7 @@ class TestAsync(unittest.TestCase):
 
         async_job._restart()
 
-        mock_start.assert_called_once()
+        self.assertTrue(mock_start.called)
 
     def test_restart_not_started(self):
         """Ensure that _restart() raises a NotExecutingError when restarting
@@ -622,4 +654,56 @@ class TestAsync(unittest.TestCase):
         async_job.result = 'result'
 
         self.assertRaises(NotExecutingError, async_job._restart,)
+
+    def test_update_recursion_level_defaults(self):
+        """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
+        from furious.async import Async
+        from furious.async import MAX_DEPTH
+
+        async_job = Async("something")
+
+        async_job._increment_recursion_level()
+
+        options = async_job.get_options()['_recursion']
+        self.assertEqual(1, options['current'])
+        self.assertEqual(MAX_DEPTH, options['max'])
+
+    def test_check_recursion_level_execution_context(self):
+        """Ensure that when there is an existing Async that the correct values
+        are pulled and incremented from there, not the defaults.
+        """
+        from furious.async import Async
+        from furious.context import execution_context_from_async
+
+        context_async = Async("something", _recursion={'current': 42,
+                                                       'max': 77})
+        new_async = Async("something_else")
+
+        with execution_context_from_async(context_async):
+            new_async._increment_recursion_level()
+
+        self.assertEqual(43, new_async.recursion_depth)
+
+        options = new_async.get_options()['_recursion']
+        self.assertEqual(77, options['max'])
+
+    def test_check_recursion_level_overridden_interior_max(self):
+        """Ensure that when there is an existing Async that the correct values
+        are pulled and incremented from there, unless the interior Async sets
+        it's own custom max.
+        """
+        from furious.async import Async
+        from furious.context import execution_context_from_async
+
+        context_async = Async("something", _recursion={'current': 42,
+                                                       'max': 77})
+
+        new_async = Async("something_else", _recursion={'max': 89})
+
+        with execution_context_from_async(context_async):
+            new_async._increment_recursion_level()
+
+        options = new_async.get_options()['_recursion']
+        self.assertEqual(43, options['current'])
+        self.assertEqual(89, options['max'])
 
