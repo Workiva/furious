@@ -707,3 +707,14 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(43, options['current'])
         self.assertEqual(89, options['max'])
 
+    def test_check_recursion_depth_over_limit(self):
+        """Ensure that when over the recusion limit, calling
+        check_recursion_depth raises a AsyncRecursionError.
+        """
+        from furious.async import Async
+        from furious.async import AsyncRecursionError
+
+        async = Async("something", _recursion={'current': 8, 'max': 7})
+
+        self.assertRaises(AsyncRecursionError, async.check_recursion_depth)
+
