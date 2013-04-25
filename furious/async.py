@@ -226,7 +226,7 @@ class Async(object):
                                         'max': max_depth})
 
     def check_recursion_depth(self):
-        """Check recursion depth, return XYZ."""
+        """Check recursion depth, raise AsyncRecursionError if too deep."""
         from furious.async import MAX_DEPTH
 
         recursion_options = self._options.get('_recursion', {})
@@ -427,7 +427,7 @@ class Async(object):
         Async.
         """
         # Update the recursion info.  This is done so that if an async created
-        # outside an executing context, or one previsiously created is later
+        # outside an executing context, or one previously created is later
         # loaded from storage, that the "current" setting is correctly set.
         self._initialize_recursion_depth()
 
