@@ -127,6 +127,8 @@ class Async(object):
         self._executing = False
         self._executed = False
 
+        self._persistence_engine = None
+
         self._result = None
 
     @property
@@ -331,7 +333,35 @@ class Async(object):
 
         return self.start()
 
-        return
+    def _prepare_persistence_engine(self):
+        """Load the specified persistence engine, or the default if none is
+        set.
+        """
+        if self._persistence_engine:
+            return
+
+        persistence_engine = self._options.get('persistence_engine')
+        if persistence_engine:
+            from .job_utils import path_to_reference
+            self._persistence_engine = path_to_reference(persistence_engine)
+            return
+
+        from .config import get_default_persistence_engine
+
+        self._persistence_engine = get_default_persistence_engine()
+
+    def persist_result(self):
+        """Store this Async's result in persistent storage."""
+        self._prepare_persistence_engine()
+
+        return self._persistence_engine.store_async_result(self)
+
+    def persist_marker(self):
+        """Store a marker to indicate this Async's completion status."""
+        self._prepare_persistence_engine()
+
+        return self._persistence_engine.store_async_marker(self)
+
 
 def defaults(**options):
     """Set default Async options on the function decorated.
