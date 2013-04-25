@@ -75,6 +75,7 @@ import json
 from .job_utils import decode_callbacks
 from .job_utils import encode_callbacks
 from .job_utils import get_function_path_and_options
+from .job_utils import reference_to_path
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
@@ -203,6 +204,10 @@ class Async(object):
         """Safely update this async job's configuration options."""
 
         _check_options(options)
+
+        if 'persistence_engine' in options:
+            options['persistence_engine'] = reference_to_path(
+                options['persistence_engine'])
 
         self._options.update(options)
 

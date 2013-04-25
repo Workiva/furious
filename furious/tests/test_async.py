@@ -420,7 +420,12 @@ class TestAsync(unittest.TestCase):
         headers = {'some': 'thing', 'fun': 1}
         job = ('test', None, None)
         task_args = {'other': 'zzz', 'nested': 1}
-        options = {'job': job, 'headers': headers, 'task_args': task_args}
+        options = {
+            'job': job,
+            'headers': headers,
+            'task_args': task_args,
+            'persistence_engine': 'furious.extras.appengine.ndb_persistence'
+        }
 
         async_job = Async.from_dict(options)
 
