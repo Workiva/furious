@@ -688,7 +688,7 @@ class TestAsync(unittest.TestCase):
         new_async = Async("something_else", _recursion={'max': 89})
 
         with execution_context_from_async(context_async):
-                new_async._increment_recursion_level()
+            new_async._increment_recursion_level()
 
         options = new_async.get_options()['_recursion']
         self.assertEqual(43, options['current'])
