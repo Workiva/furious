@@ -416,12 +416,6 @@ class Async(object):
 
         return self._persistence_engine.store_async_result(self)
 
-    def persist_marker(self):
-        """Store a marker to indicate this Async's completion status."""
-        self._prepare_persistence_engine()
-
-        return self._persistence_engine.store_async_marker(self)
-
     def _increment_recursion_level(self):
         """Increment current_depth based on either defaults or the enclosing
         Async.
