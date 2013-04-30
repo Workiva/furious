@@ -55,6 +55,10 @@ def reference_to_path(reference):
                 'requirements, passed value was "%s".', reference)
         return reference
 
+    # TODO: The type tester needs reordered or otherwise made more robust.
+    # Classes are being incorrectly picked up as function references, since
+    # callable returns True for classes.
+
     if callable(reference):
         # This is a function, or a callable class.
         # Try to figure out the path to the reference.
