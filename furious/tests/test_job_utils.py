@@ -162,7 +162,7 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         some_method = FakeFunk()
 
         self.assertRaisesRegexp(
-            BadObjectPathError, "Unable to determine path to callable.",
+            BadObjectPathError, "Invalid object type.",
             get_function_path_and_options, some_method)
 
 

@@ -55,29 +55,23 @@ def reference_to_path(reference):
                 'requirements, passed value was "%s".', reference)
         return reference
 
-    # TODO: The type tester needs reordered or otherwise made more robust.
-    # Classes are being incorrectly picked up as function references, since
-    # callable returns True for classes.
-
     if callable(reference):
-        # This is a function, or a callable class.
+        # This is a function or a class.
         # Try to figure out the path to the reference.
-        try:
-            parts = [reference.__module__]
-            if hasattr(reference, 'im_class'):
-                parts.append(reference.im_class.__name__)
-            parts.append(reference.func_name)
+        parts = [reference.__module__]
+        if hasattr(reference, 'im_class'):
+            parts.append(reference.im_class.__name__)
 
-            return '.'.join(parts)
-        except AttributeError:
-            if reference.__module__ == '__builtin__':
-                return reference.__name__
+        if hasattr(reference, 'func_name'):
+            parts.append(reference.func_name)
+        elif reference.__module__ == '__builtin__':
+            return reference.__name__
+        elif not hasattr(reference, '__name__'):
+            raise BadObjectPathError("Invalid object type.")
+
+        return '.'.join(parts)
 
         raise BadObjectPathError("Unable to determine path to callable.")
-
-    elif hasattr(reference, '__module__'):
-        # This is a class.
-        return '.'.join((reference.__module__, reference.__name__))
 
     elif hasattr(reference, '__package__'):
         # This is probably a module.
