@@ -64,11 +64,12 @@ class Context(object):
     """
     def __init__(self, **options):
         self._tasks = []
+        self._task_ids = []
+        self._tasks_inserted = False
 
         id = options.get('id')
         if not id:
             id = uuid.uuid4().hex
-        self._tasks_inserted = False
         self._id = id
 
         self._persistence_engine = options.get('persistence_engine', None)
