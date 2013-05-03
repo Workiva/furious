@@ -83,7 +83,7 @@ __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
 MAX_DEPTH = 100
-DISABLE_RECURSION = -1
+DISABLE_RECURSION_CHECK = -1
 
 
 class NotExecutedError(Exception):
@@ -231,7 +231,7 @@ class Async(object):
         max_depth = recursion_options.get('max', MAX_DEPTH)
 
         # Check if recursion check has been disabled, then check depth.
-        if (max_depth != DISABLE_RECURSION and
+        if (max_depth != DISABLE_RECURSION_CHECK and
                 self.recursion_depth > max_depth):
             raise AsyncRecursionError('Max recursion depth reached.')
 
