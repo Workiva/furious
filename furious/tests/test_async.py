@@ -694,3 +694,18 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(43, options['current'])
         self.assertEqual(89, options['max'])
 
+    def test_check_recursion_disabled(self):
+        """Ensure that when recursion max depth is explicitly set to -1, then
+        the recursion check is disabled.
+
+        There are no explicit asserts in this test because the
+        check_recursion_depth() method would throw an exception if this
+        functionality wasn't working.
+        """
+        from furious.async import Async
+
+        async_job = Async("something", _recursion={'current': 101,
+                                                   'max': -1})
+
+        async_job.check_recursion_depth()
+
