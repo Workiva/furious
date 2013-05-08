@@ -633,10 +633,11 @@ class TestAsync(unittest.TestCase):
     @patch('furious.async.Async.start')
     def test_restart_MAX_RESTARTS(self, mock_start):
         from furious.async import Async
+        from furious.async import MAX_RESTARTS
 
         async_job = Async("something")
         async_job._executing = True
-        async_job.update_options(_restart_count=10)
+        async_job.update_options(_restart_count=MAX_RESTARTS)
 
         async_job._restart()
 
