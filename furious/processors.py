@@ -32,10 +32,6 @@ from .job_utils import path_to_reference
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
 
 
-class AsyncError(Exception):
-    """The base class other Async errors can subclass."""
-
-
 def run_job():
     """Takes an async object and executes its job."""
     async = get_current_async()

@@ -113,14 +113,14 @@ class TestAsync(unittest.TestCase):
     def test_none_function(self):
         """Ensure passing None as function raises."""
         from furious.async import Async
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
 
         self.assertRaises(BadObjectPathError, Async, None)
 
     def test_empty_function_path(self):
         """Ensure passing None as function raises."""
         from furious.async import Async
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
 
         self.assertRaises(BadObjectPathError, Async, '')
 
@@ -240,7 +240,7 @@ class TestAsync(unittest.TestCase):
         AlreadyInContextError.
         """
         from furious.async import Async
-        from furious.context import AlreadyInContextError
+        from furious.errors import AlreadyInContextError
 
         async = Async(target=dir)
         async.set_execution_context(object())
@@ -512,7 +512,7 @@ class TestAsync(unittest.TestCase):
     def test_getting_result_fails(self):
         """Ensure attempting to get the result before executing raises."""
         from furious.async import Async
-        from furious.async import NotExecutedError
+        from furious.errors import NotExecutedError
 
         job = Async(target=dir)
 
@@ -536,7 +536,7 @@ class TestAsync(unittest.TestCase):
     def test_setting_result_fails(self):
         """Ensure the result can not be set without the execute flag set."""
         from furious.async import Async
-        from furious.async import NotExecutingError
+        from furious.errors import NotExecutingError
 
         job = Async(target=dir)
 
@@ -636,7 +636,7 @@ class TestAsync(unittest.TestCase):
         before started.
         """
         from furious.async import Async
-        from furious.async import NotExecutingError
+        from furious.errors import NotExecutingError
 
         async_job = Async("something")
 
@@ -647,7 +647,7 @@ class TestAsync(unittest.TestCase):
         NotExecutingError.
         """
         from furious.async import Async
-        from furious.async import NotExecutingError
+        from furious.errors import NotExecutingError
 
         async_job = Async("something")
         async_job._executing = True
@@ -712,7 +712,7 @@ class TestAsync(unittest.TestCase):
         check_recursion_depth raises a AsyncRecursionError.
         """
         from furious.async import Async
-        from furious.async import AsyncRecursionError
+        from furious.errors import AsyncRecursionError
 
         async = Async("something", _recursion={'current': 8, 'max': 7})
 

@@ -48,7 +48,7 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         """Ensure get_function_path_and_options function raises
         BadObjectPathError when given a bad path.
         """
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
         from furious.job_utils import get_function_path_and_options
 
         bad_names = ['', '0abc', 'test.0abc', 'test.ab-cd',
@@ -61,7 +61,7 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
         """Ensure get_function_path_and_options raises BadObjectPathError
         on missing path.
         """
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
         from furious.job_utils import get_function_path_and_options
 
         self.assertRaises(
@@ -152,7 +152,7 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
 
     def test_damaged_method_raises(self):
         """Ensure a broken mehtod raises BadObjectPathError."""
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
         from furious.job_utils import get_function_path_and_options
 
         class FakeFunk(object):
@@ -193,7 +193,7 @@ class TestPathToReference(unittest.TestCase):
     def test_raises_on_bogus_builtin(self):
         """Ensure bad "builins" raise an exception."""
         from furious.job_utils import path_to_reference
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
 
         self.assertRaisesRegexp(
             BadObjectPathError, "Unable to find function",
@@ -211,7 +211,7 @@ class TestPathToReference(unittest.TestCase):
     def test_raises_on_bogus_std_imported(self):
         """Ensure run_job raises an exception on bogus standard import."""
         from furious.job_utils import path_to_reference
-        from furious.job_utils import BadObjectPathError
+        from furious.errors import BadObjectPathError
 
         self.assertRaisesRegexp(
             BadObjectPathError, "Unable to find function",

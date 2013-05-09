@@ -43,20 +43,10 @@ from .context import Context
 
 from . import _execution
 
+from .. import errors
 
-ContextExistsError = _execution.ContextExistsError
-CorruptContextError = _execution.CorruptContextError
+
 execution_context_from_async = _execution.execution_context_from_async
-
-
-class AlreadyInContextError(Exception):
-    """Attempt to set context on an Async that is already executing in a
-    context.
-    """
-
-
-class NotInContextError(Exception):
-    """Call that requires context made outside context."""
 
 
 def new():
@@ -78,7 +68,7 @@ def get_current_async():
     if local_context._executing_async:
         return local_context._executing_async[-1]
 
-    raise NotInContextError('Not in an _ExecutionContext.')
+    raise errors.NotInContextError('Not in an _ExecutionContext.')
 
 
 def get_current_context():
@@ -89,5 +79,5 @@ def get_current_context():
     if local_context.registry:
         return local_context.registry[-1]
 
-    raise NotInContextError('Not in a Context.')
+    raise errors.NotInContextError('Not in a Context.')
 

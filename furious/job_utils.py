@@ -18,11 +18,7 @@
 Functions to help with encoding and decoding job information.
 """
 
-import sys
-
-
-class BadObjectPathError(Exception):
-    """Invalid function path."""
+from . import errors
 
 
 def get_function_path_and_options(function):
@@ -50,7 +46,7 @@ def reference_to_path(reference):
         # This is an object path name in str form.
         import re
         if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', reference):
-            raise BadObjectPathError(
+            raise errors.BadObjectPathError(
                 'Invalid reference path, must meet Python\'s identifier '
                 'requirements, passed value was "%s".', reference)
         return reference
@@ -67,17 +63,17 @@ def reference_to_path(reference):
         elif reference.__module__ == '__builtin__':
             return reference.__name__
         elif not hasattr(reference, '__name__'):
-            raise BadObjectPathError("Invalid object type.")
+            raise errors.BadObjectPathError("Invalid object type.")
 
         return '.'.join(parts)
 
-        raise BadObjectPathError("Unable to determine path to callable.")
+        raise errors.BadObjectPathError("Unable to determine path to callable.")
 
     elif hasattr(reference, '__package__'):
         # This is probably a module.
         return reference.__name__
 
-    raise BadObjectPathError("Must provide a reference path or reference.")
+    raise errors.BadObjectPathError("Must provide a reference path or reference.")
 
 
 def path_to_reference(path):
@@ -103,7 +99,7 @@ def path_to_reference(path):
         except KeyError:
             pass
 
-        raise BadObjectPathError(
+        raise errors.BadObjectPathError(
             'Unable to find function "%s".' % (path,))
 
     module_path, function_name = path.rsplit('.', 1)
@@ -120,7 +116,7 @@ def path_to_reference(path):
     try:
         return getattr(module, function_name)
     except AttributeError:
-        raise BadObjectPathError(
+        raise errors.BadObjectPathError(
             'Unable to find function "%s".' % (path,))
 
 
