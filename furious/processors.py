@@ -21,11 +21,11 @@ import logging
 
 from collections import namedtuple
 
-from .async import Abort
-from .async import AbortAndRestart
 from .async import Async
 from .context import Context
 from .context import get_current_async
+from .errors import Abort
+from .errors import AbortAndRestart
 from .job_utils import path_to_reference
 
 
