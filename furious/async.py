@@ -82,6 +82,9 @@ __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 
 ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
+MAX_DEPTH = 100
+MAX_RESTARTS = 10
+DISABLE_RECURSION_CHECK = -1
 
 
 class NotExecutedError(Exception):
@@ -110,6 +113,10 @@ class AbortAndRestart(Exception):
     """This Async needs to be aborted immediately and restarted."""
 
 
+class AsyncRecursionError(Abort):
+    """This Async has hit the max recursion depth, it should be aborted."""
+
+
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
         self._options = {}
@@ -120,6 +127,8 @@ class Async(object):
         self._update_job(target, args, kwargs)
 
         self.update_options(**options)
+
+        self._initialize_recursion_depth()
 
         self._execution_context = None
 
@@ -175,6 +184,58 @@ class Async(object):
         """job is stored as a (function path, args, kwargs) tuple."""
         return self._options['job']
 
+    @property
+    def recursion_depth(self):
+        """Get the current recursion depth.  `None` indicates uninitialized
+        recursion info.
+        """
+        recursion_options = self._options.get('_recursion', {})
+        return recursion_options.get('current', None)
+
+    def _initialize_recursion_depth(self):
+        """Ensure recursion info is initialized, if not, initialize it."""
+        from furious.context import NotInContextError
+        from furious.context import get_current_async
+
+        recursion_options = self._options.get('_recursion', {})
+
+        current_depth = recursion_options.get('current', 0)
+        max_depth = recursion_options.get('max', MAX_DEPTH)
+
+        try:
+            executing_async = get_current_async()
+
+            # If this async is within an executing async, use the depth off
+            # that async.  Otherwise use the depth set in the async's options.
+            current_depth = executing_async.recursion_depth
+
+            # If max_depth does not equal MAX_DEPTH, it is custom. Otherwise
+            # use the max_depth from the containing async.
+            if max_depth == MAX_DEPTH:
+                executing_options = executing_async.get_options().get(
+                    '_recursion', {})
+                max_depth = executing_options.get('max', max_depth)
+
+        except NotInContextError:
+            # This Async is not being constructed inside an executing Async.
+            pass
+
+        # Store the recursion info.
+        self.update_options(_recursion={'current': current_depth,
+                                        'max': max_depth})
+
+    def check_recursion_depth(self):
+        """Check recursion depth, return XYZ."""
+        from furious.async import MAX_DEPTH
+
+        recursion_options = self._options.get('_recursion', {})
+        max_depth = recursion_options.get('max', MAX_DEPTH)
+
+        # Check if recursion check has been disabled, then check depth.
+        if (max_depth != DISABLE_RECURSION_CHECK and
+                self.recursion_depth > max_depth):
+            raise AsyncRecursionError('Max recursion depth reached.')
+
     def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
         target_path, options = get_function_path_and_options(target)
@@ -226,6 +287,9 @@ class Async(object):
     def to_task(self):
         """Return a task object representing this async job."""
         from google.appengine.api.taskqueue import Task
+
+        self._increment_recursion_level()
+        self.check_recursion_depth()
 
         url = "%s/%s" % (ASYNC_ENDPOINT, self._function_path)
 
@@ -318,7 +382,32 @@ class Async(object):
 
         self._executing = False
 
-        return self.start()
+        restart_count = self.get_options().get('_restart_count', -1)
+        restart_count += 1
+        self.update_options(_restart_count=restart_count)
+
+        if restart_count < MAX_RESTARTS:
+            return self.start()
+        else:
+            import logging
+            logging.info('Too many restarts, Aborting.')
+
+    def _increment_recursion_level(self):
+        """Increment current_depth based on either defaults or the enclosing
+        Async.
+        """
+        # Update the recursion info.  This is done so that if an async created
+        # outside an executing context, or one previsiously created is later
+        # loaded from storage, that the "current" setting is correctly set.
+        self._initialize_recursion_depth()
+
+        recursion_options = self._options.get('_recursion', {})
+        current_depth = recursion_options.get('current', 0) + 1
+        max_depth = recursion_options.get('max', MAX_DEPTH)
+
+        # Increment and store
+        self.update_options(_recursion={'current': current_depth,
+                                        'max': max_depth})
 
 
 def defaults(**options):
