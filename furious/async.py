@@ -167,7 +167,6 @@ class Async(object):
 
     def _initialize_recursion_depth(self):
         """Ensure recursion info is initialized, if not, initialize it."""
-        from furious.context import NotInContextError
         from furious.context import get_current_async
 
         recursion_options = self._options.get('_recursion', {})
