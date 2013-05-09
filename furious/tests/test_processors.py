@@ -270,41 +270,6 @@ class TestRunJob(unittest.TestCase):
 
         logging.getLogger().removeHandler(AbortLogHandler())
 
-    def test_max_depth_set(self):
-        """Ensure that max_depth is propagated on the new async."""
-        from furious.async import Async
-        from furious.context._execution import _ExecutionContext
-        from furious.processors import run_job
-
-        mock_async = Mock(spec=Async)
-
-        work = Async(target=_fake_async_returning_target,
-                     args=[mock_async],
-                     max_depth=10)
-
-        with _ExecutionContext(work):
-            run_job()
-
-        mock_async.update_options.assert_called_once_with(current_depth=1,
-                                                          max_depth=10)
-
-    @patch('__builtin__.dir')
-    def test_max_depth_set_restart(self, dir_mock):
-        """Ensure that max_depth is propagated on the new async."""
-        from furious.async import AbortAndRestart
-        from furious.async import Async
-        from furious.context._execution import _ExecutionContext
-        from furious.processors import run_job
-
-        dir_mock.side_effect = AbortAndRestart
-
-        work = Async(target='dir', max_depth=10)
-
-        with _ExecutionContext(work):
-            run_job()
-
-        self.assertEqual(10, work.get_options()['max_depth'])
-
 
 def _fake_async_returning_target(async_to_return):
     return async_to_return
