@@ -780,7 +780,7 @@ class TestAsyncFromOptions(unittest.TestCase):
 
         result = async_from_options(options)
 
-        self.assertEqual('Async', result.__class__.__name__)
+        self.assertIsInstance(result, Async)
 
     def test_has_type(self):
         """Ensure that if _type is not furious.async.Async that the correct
@@ -795,5 +795,5 @@ class TestAsyncFromOptions(unittest.TestCase):
 
         result = async_from_options(options)
 
-        self.assertEqual('MessageProcessor', result.__class__.__name__)
+        self.assertIsInstance(result, MessageProcessor)
 
