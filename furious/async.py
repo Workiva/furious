@@ -84,6 +84,7 @@ __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 ASYNC_DEFAULT_QUEUE = 'default'
 ASYNC_ENDPOINT = '/_ah/queue/async'
 MAX_DEPTH = 100
+MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
 
 
@@ -365,7 +366,15 @@ class Async(object):
 
         self._executing = False
 
-        return self.start()
+        restart_count = self.get_options().get('_restart_count', -1)
+        restart_count += 1
+        self.update_options(_restart_count=restart_count)
+
+        if restart_count < MAX_RESTARTS:
+            return self.start()
+        else:
+            import logging
+            logging.info('Too many restarts, Aborting.')
 
     def _prepare_persistence_engine(self):
         """Load the specified persistence engine, or the default if none is
