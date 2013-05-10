@@ -99,16 +99,17 @@ def run(taskq_service, queue_names=None, max_iterations=0):
 
     iterations = 0
     total_tasks_processed = 0
-    continue_processing = True
 
     # Keep processing if we have processed any tasks and are under our limit.
-    while continue_processing:
+    while True:
 
         tasks_processed = _run(taskq_service, queue_names)
         total_tasks_processed += tasks_processed
         iterations += 1
 
-        continue_processing = tasks_processed and (max_iterations == 0 or iterations < max_iterations)
+        if (not tasks_processed or 
+                (max_iterations and iterations >= max_iterations)):
+            break
 
     return {'iterations': iterations, 'tasks_processed': total_tasks_processed}
 
