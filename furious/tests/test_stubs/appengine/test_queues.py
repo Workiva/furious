@@ -93,7 +93,7 @@ class TestRunQueue(unittest.TestCase):
     def test_run_queue(self, _execute_task):
         """When run() is called, ensure tasks are run, and
         the queue is flushed to remove run tasks.  Also, ensure True
-        is returned since messages were processed.
+        is returned since tasks were processed.
         """
 
         from furious.test_stubs.appengine.queues import run_queue
@@ -157,7 +157,7 @@ class TestRunQueues(unittest.TestCase):
         queue_service = Mock()
         queue_service.GetQueues.side_effect = [queue_descs]
 
-        # Simulate that messages are processed from each push queue.
+        # Simulate that tasks are processed from each push queue.
         num_in_default = 2
         num_in_my = 1
         # The two zeros are num remaining in the 2nd iteration for each queue.
@@ -175,14 +175,14 @@ class TestRunQueues(unittest.TestCase):
         # Ensure run_queue processes the push queues.
         self.assertEqual(run_queue.call_args_list, expected_call_args_list)
 
-        # Make sure 2 is returned as the number of messages processed.
+        # Make sure 2 is returned as the number of tasks processed.
         self.assertEqual(num_in_default + num_in_my,
                          run_result['tasks_processed'])
         self.assertEqual(2, run_result['iterations'])
 
     @patch('furious.test_stubs.appengine.queues.run_queue')
-    def test_run_no_messages(self, run_queue):
-        """Ensure the return value is False when no messages are processed from
+    def test_run_no_tasks(self, run_queue):
+        """Ensure the return value is 0 when no tasks are processed from
         the queues.
         Ensure all push queues are processed by run().
         Ensure pull queues are skipped.
@@ -198,7 +198,7 @@ class TestRunQueues(unittest.TestCase):
         queue_service = Mock()
         queue_service.GetQueues.side_effect = [queue_descs]
 
-        # Simulate that there are no messages processed from any queue.
+        # Simulate that there are no tasks processed from any queue.
         run_queue.return_value = 0
 
         run_result = run(queue_service)
@@ -212,14 +212,14 @@ class TestRunQueues(unittest.TestCase):
         self.assertEqual(run_queue.call_args_list,
                          expected_call_args_list)
 
-        # Make sure that 0 is the number of messages processed.
+        # Make sure that 0 is the number of tasks processed.
         self.assertEqual(0, run_result['tasks_processed'])
         self.assertEqual(1, run_result['iterations'])
 
     @patch('furious.test_stubs.appengine.queues.run_queue')
-    def test_run_some_queues_with_messages(self, run_queue):
+    def test_run_some_queues_with_tasks(self, run_queue):
         """Ensure that the tasks_processed in the return dict is 5 when the
-        first queue processes 5 messages and the next queue processes 0.
+        first queue processes 5 tasks and the next queue processes 0.
         Ensure all push queues are processed by run().
         Ensure pull queues are skipped.
         """
@@ -232,14 +232,14 @@ class TestRunQueues(unittest.TestCase):
 
         queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
 
-        # Simulate that messages were processed from the first push queue,
+        # Simulate that tasks were processed from the first push queue,
         # but not the second.
         run_queue.side_effect = [5, 0, 0, 0]
 
         run_result = run(queue_service)
 
         # Expected 'default' and 'my_queue' to be processed.
-        # They are processed twice each since messages were processed the
+        # They are processed twice each since tasks were processed the
         # first iteration.
         expected_call_args_list = [call(queue_service, 'default'),
                                    call(queue_service, 'my_queue'),
@@ -250,7 +250,7 @@ class TestRunQueues(unittest.TestCase):
         self.assertEqual(run_queue.call_args_list,
                          expected_call_args_list)
 
-        # Make sure that 5 was returned as the number of messages processed.
+        # Make sure that 5 was returned as the number of tasks processed.
         self.assertEqual(5, run_result['tasks_processed'])
         self.assertEqual(2, run_result['iterations'])
 
