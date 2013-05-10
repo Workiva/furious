@@ -71,13 +71,13 @@ import copy
 from functools import wraps
 import json
 
-from ..job_utils import decode_callbacks
-from ..job_utils import encode_callbacks
-from ..job_utils import get_function_path_and_options
-from ..job_utils import path_to_reference
-from ..job_utils import reference_to_path
+from .job_utils import decode_callbacks
+from .job_utils import encode_callbacks
+from .job_utils import get_function_path_and_options
+from .job_utils import path_to_reference
+from .job_utils import reference_to_path
 
-from .. import errors
+from . import errors
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
