@@ -31,21 +31,10 @@ Usage:
 
 from . import _local
 
-
-__all__ = ["ContextExistsError",
-           "CorruptContextError",
-           "execution_context_from_async"]
+from .. import errors
 
 
-class ContextExistsError(Exception):
-    """Call made within context that should not be."""
-
-
-class CorruptContextError(Exception):
-    """ExecutionContext raised when the execution context stack is corrupted.
-    """
-    def __init__(self, *exc_info):
-        self.exc_info = exc_info
+__all__ = ["execution_context_from_async"]
 
 
 def execution_context_from_async(async):
@@ -55,7 +44,7 @@ def execution_context_from_async(async):
     local_context = _local.get_local_context()
 
     if local_context._executing_async_context:
-        raise ContextExistsError
+        raise errors.ContextExistsError
 
     execution_context = _ExecutionContext(async)
     local_context._executing_async_context = execution_context
@@ -93,7 +82,7 @@ class _ExecutionContext(object):
         last = local_context._executing_async.pop()
         if last is not self._async:
             local_context._executing_async.append(last)
-            raise CorruptContextError(*exc_info)
+            raise errors.CorruptContextError(*exc_info)
 
         return False
 

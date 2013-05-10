@@ -71,11 +71,13 @@ import copy
 from functools import wraps
 import json
 
-from .job_utils import decode_callbacks
-from .job_utils import encode_callbacks
-from .job_utils import get_function_path_and_options
-from .job_utils import path_to_reference
-from .job_utils import reference_to_path
+from ..job_utils import decode_callbacks
+from ..job_utils import encode_callbacks
+from ..job_utils import get_function_path_and_options
+from ..job_utils import path_to_reference
+from ..job_utils import reference_to_path
+
+from .. import errors
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
@@ -86,36 +88,6 @@ ASYNC_ENDPOINT = '/_ah/queue/async'
 MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
-
-
-class NotExecutedError(Exception):
-    """This Async has not yet been executed."""
-
-
-class NotExecutingError(Exception):
-    """This Async in not currently executing."""
-
-
-class AlreadyExecutedError(Exception):
-    """This Async has already been executed."""
-
-
-class AlreadyExecutingError(Exception):
-    """This Async is currently executing."""
-
-
-class Abort(Exception):
-    """This Async needs to be aborted immediately. Only an info level logging
-    message will be output about the aborted job.
-    """
-
-
-class AbortAndRestart(Exception):
-    """This Async needs to be aborted immediately and restarted."""
-
-
-class AsyncRecursionError(Abort):
-    """This Async has hit the max recursion depth, it should be aborted."""
 
 
 class Async(object):
@@ -151,11 +123,11 @@ class Async(object):
     @executing.setter
     def executing(self, executing):
         if self._executed:
-            raise AlreadyExecutedError(
+            raise errors.AlreadyExecutedError(
                 'You can not execute an executed job.')
 
         if self._executing:
-            raise AlreadyExecutingError(
+            raise errors.AlreadyExecutingError(
                 'Job is already executing, can not set executing.')
 
         self._executing = executing
@@ -163,7 +135,7 @@ class Async(object):
     @property
     def result(self):
         if not self.executed:
-            raise NotExecutedError(
+            raise errors.NotExecutedError(
                 'You must execute this Async before getting its result.')
 
         return self._result
@@ -171,7 +143,7 @@ class Async(object):
     @result.setter
     def result(self, result):
         if not self._executing:
-            raise NotExecutingError(
+            raise errors.NotExecutingError(
                 'The Async must be executing to set its result.')
 
         self._result = result
@@ -197,7 +169,6 @@ class Async(object):
 
     def _initialize_recursion_depth(self):
         """Ensure recursion info is initialized, if not, initialize it."""
-        from furious.context import NotInContextError
         from furious.context import get_current_async
 
         recursion_options = self._options.get('_recursion', {})
@@ -219,7 +190,7 @@ class Async(object):
                     '_recursion', {})
                 max_depth = executing_options.get('max', max_depth)
 
-        except NotInContextError:
+        except errors.NotInContextError:
             # This Async is not being constructed inside an executing Async.
             pass
 
@@ -237,7 +208,7 @@ class Async(object):
         # Check if recursion check has been disabled, then check depth.
         if (max_depth != DISABLE_RECURSION_CHECK and
                 self.recursion_depth > max_depth):
-            raise AsyncRecursionError('Max recursion depth reached.')
+            raise errors.AsyncRecursionError('Max recursion depth reached.')
 
     def _update_job(self, target, args, kwargs):
         """Specify the function this async job is to execute when run."""
@@ -254,8 +225,7 @@ class Async(object):
     def set_execution_context(self, execution_context):
         """Set the ExecutionContext this async is executing under."""
         if self._execution_context:
-            from .context import AlreadyInContextError
-            raise AlreadyInContextError
+            raise errors.AlreadyInContextError
 
         self._execution_context = execution_context
 
@@ -361,8 +331,9 @@ class Async(object):
         """
 
         if not self._executing:
-            raise NotExecutingError("Must be executing to restart the job, "
-                                    "perhaps you want Async.start()")
+            raise errors.NotExecutingError(
+                "Must be executing to restart the job, "
+                "perhaps you want Async.start()")
 
         self._executing = False
 

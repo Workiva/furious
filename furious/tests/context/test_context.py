@@ -229,7 +229,7 @@ class TestContext(unittest.TestCase):
                 'failure': "failure_function",
                 'exec': {'job': ('dir', None, None),
                          '_recursion': {'current': 0, 'max': 100},
-                         '_type': 'furious.async.Async'}
+                         '_type': 'furious.async.async.Async'}
             }
         })
 
@@ -284,7 +284,7 @@ class TestContext(unittest.TestCase):
 
         correct_dict = {'job': ('id', None, None),
                         '_recursion': {'current': 0, 'max': 100},
-                        '_type': 'furious.async.Async'}
+                        '_type': 'furious.async.async.Async'}
 
         self.assertEqual(check_callbacks, callbacks)
         self.assertEqual(correct_dict, exec_callback.to_dict())
