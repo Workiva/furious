@@ -18,7 +18,7 @@ import json
 
 import logging
 
-from ..async import Async
+from ..async import async_from_options
 from .. import context
 from ..processors import run_job
 
@@ -26,7 +26,7 @@ from ..processors import run_job
 def process_async_task(headers, request_body):
     """Process an Async task and execute the requested function."""
     async_options = json.loads(request_body)
-    async = Async.from_dict(async_options)
+    async = async_from_options(async_options)
 
     logging.info(async._function_path)
 

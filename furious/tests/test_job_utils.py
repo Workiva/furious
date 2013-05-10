@@ -166,6 +166,20 @@ class TestGetFunctionPathAndOptions(unittest.TestCase):
             get_function_path_and_options, some_method)
 
 
+# TODO: Most of the tests from TestGetFunctionPathAndOptions should probably
+# be moved into this class.
+class TestReferenceToPath(unittest.TestCase):
+    """Test that reference_to_path converts a reference to a string."""
+
+    def test_gets_class(self):
+        """Ensure that reference_to_path can get the path of a class."""
+        from furious.job_utils import reference_to_path
+
+        path = reference_to_path(ThrowAway)
+
+        self.assertEqual('furious.tests.test_job_utils.ThrowAway', path)
+
+
 class TestPathToReference(unittest.TestCase):
     """Test that path_to_reference finds and load functions."""
 

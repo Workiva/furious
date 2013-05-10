@@ -62,7 +62,10 @@ def reference_to_path(reference):
             parts.append(reference.func_name)
         elif reference.__module__ == '__builtin__':
             return reference.__name__
-        elif not hasattr(reference, '__name__'):
+        elif hasattr(reference, '__name__'):
+            # Probably a class
+            parts.append(reference.__name__)
+        else:
             raise errors.BadObjectPathError("Invalid object type.")
 
         return '.'.join(parts)

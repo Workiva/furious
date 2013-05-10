@@ -103,8 +103,6 @@ class TestAsync(unittest.TestCase):
         local_context = _local.get_local_context()
         local_context._executing_async_context = None
 
-        super(TestAsync, self).setUp()
-
     def tearDown(self):
         import os
 
@@ -369,6 +367,7 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ('nonexistant', None, None)
         options['_recursion'] = {'current': 0, 'max': 100}
+        options['_type'] = 'furious.async.Async'
 
         self.assertEqual(options, job.to_dict())
 
@@ -390,9 +389,11 @@ class TestAsync(unittest.TestCase):
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "failure_function",
             'exec': {'job': ('dir', None, None),
-                     '_recursion': {'current': 0, 'max': 100}}
+                     '_recursion': {'current': 0, 'max': 100},
+                     '_type': 'furious.async.Async'}
         }
         options['_recursion'] = {'current': 0, 'max': 100}
+        options['_type'] = 'furious.async.Async'
 
         self.assertEqual(options, job.to_dict())
 
@@ -437,7 +438,8 @@ class TestAsync(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         correct_options = {'job': ('dir', None, None),
-                           '_recursion': {'current': 0, 'max': 100}}
+                           '_recursion': {'current': 0, 'max': 100},
+                           '_type': 'furious.async.Async'}
 
         self.assertEqual(check_callbacks, callbacks)
         self.assertEqual(correct_options, exec_callback.to_dict())
@@ -454,7 +456,8 @@ class TestAsync(unittest.TestCase):
             'headers': headers,
             'task_args': task_args,
             'persistence_engine': 'furious.extras.appengine.ndb_persistence',
-            '_recursion': {'current': 1, 'max': 100}
+            '_recursion': {'current': 1, 'max': 100},
+            '_type': 'furious.async.Async',
         }
 
         async_job = Async.from_dict(options)
@@ -505,6 +508,7 @@ class TestAsync(unittest.TestCase):
             eta_posix)
 
         options['_recursion'] = {'current': 1, 'max': 100}
+        options['_type'] = 'furious.async.Async'
 
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
@@ -746,4 +750,50 @@ class TestAsync(unittest.TestCase):
                                                    'max': -1})
 
         async_job.check_recursion_depth()
+
+
+class TestAsyncFromOptions(unittest.TestCase):
+    """Ensure async_from_options() works correctly."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def tearDown(self):
+        import os
+
+        del os.environ['REQUEST_ID_HASH']
+
+    def test_no_type(self):
+        """Ensure that if not _type is in options, that it defaults to
+        furious.async.Async.
+        """
+        from furious.async import Async
+        from furious.async import async_from_options
+
+        async_job = Async(dir)
+
+        options = async_job.to_dict()
+        options.pop('_type')
+
+        result = async_from_options(options)
+
+        self.assertIsInstance(result, Async)
+
+    def test_has_type(self):
+        """Ensure that if _type is not furious.async.Async that the correct
+        subclass is instantiated.
+        """
+        from furious.async import async_from_options
+        from furious.batcher import MessageProcessor
+
+        async_job = MessageProcessor(dir)
+
+        options = async_job.to_dict()
+
+        result = async_from_options(options)
+
+        self.assertIsInstance(result, MessageProcessor)
 
