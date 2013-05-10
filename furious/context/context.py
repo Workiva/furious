@@ -49,11 +49,7 @@ from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
 from ..job_utils import reference_to_path
 
-
-class ContextAlreadyStartedError(Exception):
-    """Attempt to set context on an Async that is already executing in a
-    context.
-    """
+from .. import errors
 
 
 class Context(object):
@@ -99,7 +95,7 @@ class Context(object):
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
-            raise ContextAlreadyStartedError(
+            raise errors.ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         task_map = self._get_tasks_by_queue()
@@ -130,7 +126,7 @@ class Context(object):
         from ..batcher import Message
 
         if self._tasks_inserted:
-            raise ContextAlreadyStartedError(
+            raise errors.ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         if not isinstance(target, (Async, Message)):

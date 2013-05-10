@@ -138,9 +138,9 @@ class TestExecutionContext(unittest.TestCase):
     def test_corrupt_context(self):
         """Ensure wrong context is not popped from execution context stack."""
         from furious.async import Async
-        from furious.context._execution import CorruptContextError
         from furious.context._execution import _ExecutionContext
         from furious.context._local import get_local_context
+        from furious.errors import CorruptContextError
 
         with self.assertRaises(CorruptContextError) as cm:
             job_outer = Async(target=dir)
@@ -179,8 +179,8 @@ class TestExecutionContextFromAsync(unittest.TestCase):
     def test_double_init_raises_error(self):
         """Ensure initing twice raises a ContextExistsError."""
         from furious.async import Async
-        from furious.context._execution import ContextExistsError
         from furious.context._execution import execution_context_from_async
+        from furious.errors import ContextExistsError
 
         execution_context_from_async(Async(target=dir))
         self.assertRaises(
