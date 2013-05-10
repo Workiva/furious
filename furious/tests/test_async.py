@@ -367,7 +367,7 @@ class TestAsync(unittest.TestCase):
 
         options['job'] = ('nonexistant', None, None)
         options['_recursion'] = {'current': 0, 'max': 100}
-        options['_type'] = 'furious.async.Async'
+        options['_type'] = 'furious.async.async.Async'
 
         self.assertEqual(options, job.to_dict())
 
@@ -390,10 +390,10 @@ class TestAsync(unittest.TestCase):
             'failure': "failure_function",
             'exec': {'job': ('dir', None, None),
                      '_recursion': {'current': 0, 'max': 100},
-                     '_type': 'furious.async.Async'}
+                     '_type': 'furious.async.async.Async'}
         }
         options['_recursion'] = {'current': 0, 'max': 100}
-        options['_type'] = 'furious.async.Async'
+        options['_type'] = 'furious.async.async.Async'
 
         self.assertEqual(options, job.to_dict())
 
@@ -439,7 +439,7 @@ class TestAsync(unittest.TestCase):
 
         correct_options = {'job': ('dir', None, None),
                            '_recursion': {'current': 0, 'max': 100},
-                           '_type': 'furious.async.Async'}
+                           '_type': 'furious.async.async.Async'}
 
         self.assertEqual(check_callbacks, callbacks)
         self.assertEqual(correct_options, exec_callback.to_dict())
@@ -457,7 +457,7 @@ class TestAsync(unittest.TestCase):
             'task_args': task_args,
             'persistence_engine': 'furious.extras.appengine.ndb_persistence',
             '_recursion': {'current': 1, 'max': 100},
-            '_type': 'furious.async.Async',
+            '_type': 'furious.async.async.Async',
         }
 
         async_job = Async.from_dict(options)
@@ -508,7 +508,7 @@ class TestAsync(unittest.TestCase):
             eta_posix)
 
         options['_recursion'] = {'current': 1, 'max': 100}
-        options['_type'] = 'furious.async.Async'
+        options['_type'] = 'furious.async.async.Async'
 
         self.assertEqual(
             options, Async.from_dict(json.loads(task.payload)).get_options())
