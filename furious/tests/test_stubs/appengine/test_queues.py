@@ -263,9 +263,9 @@ class TestRunQueues(unittest.TestCase):
 
     @patch('furious.test_stubs.appengine.queues.run_queue')
     def test_run_with_max_iterations_less_than_possible(self, run_queue):
-        """Ensure the return value is 10 when 5 tasks are processed from
-        each of the 2 queues with a max_iterations = 1 with additional
-        iterations possible.
+        """Ensure the return value is 14 when 7 tasks are processed from
+        each of the 2 queues over the course of 2 iterations with a 
+        max_iterations = 2 and additional iterations possible.
         """
 
         from furious.test_stubs.appengine.queues import run
@@ -275,7 +275,7 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
         queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
-        max_iterations = 1
+        max_iterations = 2 
 
         # Simulate that tasks would be processed for each queue for 3 
         # iterations if no max_iterations was set.
@@ -283,9 +283,9 @@ class TestRunQueues(unittest.TestCase):
 
         run_result = run(queue_service, None, max_iterations)
 
-        # Make sure 10 is returned as the number of tasks processed.
-        self.assertEqual(10, run_result['tasks_processed'])
-        self.assertEqual(1, run_result['iterations'])
+        # Make sure 14 is returned as the number of tasks processed.
+        self.assertEqual(14, run_result['tasks_processed'])
+        self.assertEqual(2, run_result['iterations'])
 
     @patch('furious.test_stubs.appengine.queues.run_queue')
     def test_run_with_max_iterations_and_no_tasks(self, run_queue):
