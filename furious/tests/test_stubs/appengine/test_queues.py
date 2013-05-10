@@ -118,9 +118,9 @@ class TestRunQueue(unittest.TestCase):
 
     @patch('furious.test_stubs.appengine.queues._execute_task')
     def test_run_queue_no_tasks(self, _execute_task):
-        """When run() is called and there are no tasks in the queue,
+        """When run_queue() is called and there are no tasks in the queue,
         ensure _execute_task is not called.
-        Ensure False is returned since no messages were processed.
+        Ensure 0 is returned since no tasks were processed.
         """
 
         from furious.test_stubs.appengine.queues import run_queue
