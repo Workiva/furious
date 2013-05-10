@@ -183,7 +183,7 @@ class TestRunQueues(unittest.TestCase):
     @patch('furious.test_stubs.appengine.queues.run_queue')
     def test_run_no_tasks(self, run_queue):
         """Ensure the return value is 0 when no tasks are processed from
-        the queues.
+        the queues whether max_iterations is set or not.
         Ensure all push queues are processed by run().
         Ensure pull queues are skipped.
         """
@@ -195,8 +195,7 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'default-pull', 'mode': 'pull', 'bucket_size': 5},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock()
-        queue_service.GetQueues.side_effect = [queue_descs]
+        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
 
         # Simulate that there are no tasks processed from any queue.
         run_queue.return_value = 0
@@ -212,9 +211,17 @@ class TestRunQueues(unittest.TestCase):
         self.assertEqual(run_queue.call_args_list,
                          expected_call_args_list)
 
+
         # Make sure that 0 is the number of tasks processed.
         self.assertEqual(0, run_result['tasks_processed'])
         self.assertEqual(1, run_result['iterations'])
+
+        # Test again with max_iterations set to something > 0
+        queue_service_with_max = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        run_result_with_max = run(queue_service_with_max, None, 5)
+
+        # Make sure setting max_iterations > 0 still returns 0.
+        self.assertEqual(0, run_result_with_max['tasks_processed'])
 
     @patch('furious.test_stubs.appengine.queues.run_queue')
     def test_run_some_queues_with_tasks(self, run_queue):
@@ -254,6 +261,56 @@ class TestRunQueues(unittest.TestCase):
         self.assertEqual(5, run_result['tasks_processed'])
         self.assertEqual(2, run_result['iterations'])
 
+    @patch('furious.test_stubs.appengine.queues.run_queue')
+    def test_run_with_max_iterations_less_than_possible(self, run_queue):
+        """Ensure the return value is 10 when 5 tasks are processed from
+        each of the 2 queues with a max_iterations = 1 with additional
+        iterations possible.
+        """
+
+        from furious.test_stubs.appengine.queues import run
+
+        queue_descs = [
+            {'name': 'default', 'mode': 'push', 'bucket_size': 100},
+            {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
+
+        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        max_iterations = 1
+
+        # Simulate that tasks would be processed for each queue for 3 
+        # iterations if no max_iterations was set.
+        run_queue.side_effect = [5, 5, 2, 2, 1, 1]
+
+        run_result = run(queue_service, None, max_iterations)
+
+        # Make sure 10 is returned as the number of tasks processed.
+        self.assertEqual(10, run_result['tasks_processed'])
+        self.assertEqual(1, run_result['iterations'])
+
+    @patch('furious.test_stubs.appengine.queues.run_queue')
+    def test_run_with_max_iterations_and_no_tasks(self, run_queue):
+        """Ensure the return value is 0 when no tasks are processed from
+        each of the 2 queues with a max_iteration = 5 and tasks remaining.
+        """
+
+        from furious.test_stubs.appengine.queues import run
+
+        queue_descs = [
+            {'name': 'default', 'mode': 'push', 'bucket_size': 100},
+            {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
+
+        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        max_iterations = 5 
+
+        # Simulate that tasks were processed from the first push queue,
+        # but not the second.
+        run_queue.side_effect = [0, 0, 0, 0, 0, 0]
+
+        run_result = run(queue_service, None, max_iterations)
+
+        # Make sure that  was returned as the number of tasks processed.
+        self.assertEqual(0, run_result['tasks_processed'])
+        self.assertEqual(1, run_result['iterations'])
 
 @attr('slow')
 class TestRunQueuesIntegration(unittest.TestCase):
