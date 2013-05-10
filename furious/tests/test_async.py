@@ -103,8 +103,6 @@ class TestAsync(unittest.TestCase):
         local_context = _local.get_local_context()
         local_context._executing_async_context = None
 
-        super(TestAsync, self).setUp()
-
     def tearDown(self):
         import os
 
@@ -762,8 +760,6 @@ class TestAsyncFromOptions(unittest.TestCase):
         import uuid
 
         os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
-
-        super(TestAsyncFromOptions, self).setUp()
 
     def tearDown(self):
         import os
