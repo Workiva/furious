@@ -19,6 +19,24 @@ from mock import patch
 
 
 class TestConfigurationLoading(unittest.TestCase):
+    def setUp(self):
+        super(TestConfigurationLoading, self).setUp()
+        self._reset_config()
+
+    def tearDown(self):
+        super(TestConfigurationLoading, self).tearDown()
+        self._reset_config()
+
+    def _reset_config(self):
+        """Reset config."""
+        from furious.config import get_config
+        from furious.config import default_config
+
+        config = get_config()
+
+        get_config().clear()
+        config.update(default_config())
+
     def test_load_yaml_config(self):
         """Ensure _load_yaml_config will load a specified path."""
         from furious.config import _load_yaml_config

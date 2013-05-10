@@ -1,9 +1,12 @@
 .coverage
 .noseids
+.build
+
 \#*\#
 .idea
 gaepdb.py
 *.xml
+
 # for sphinx documentation
 doc/build/*
 doc/source/*
