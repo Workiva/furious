@@ -249,7 +249,7 @@ class TestContext(unittest.TestCase):
             'random_option': 'avalue',
             '_tasks_inserted': True,
             '_task_ids': [1, 2, 3, 4],
-            'persistence_engine': 'furious.context.Context'
+            'persistence_engine': 'furious.context.context.Context'
         }
 
         context = Context.from_dict(options)
