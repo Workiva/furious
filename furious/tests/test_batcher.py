@@ -329,7 +329,8 @@ class MessageProcessorTestCase(unittest.TestCase):
                 '_recursion': {
                     'current': 1,
                     'max': 100
-                }
+                },
+                '_type': 'furious.batcher.MessageProcessor',
             }),
             'countdown': 30,
             'name': 'processor-processor-current-batch-3'
