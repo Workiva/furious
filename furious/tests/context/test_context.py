@@ -228,7 +228,8 @@ class TestContext(unittest.TestCase):
                             "TestContext.test_to_dict_with_callbacks"),
                 'failure': "failure_function",
                 'exec': {'job': ('dir', None, None),
-                         '_recursion': {'current': 0, 'max': 100}}
+                         '_recursion': {'current': 0, 'max': 100},
+                         '_type': 'furious.async.Async'}
             }
         })
 
@@ -282,7 +283,8 @@ class TestContext(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         correct_dict = {'job': ('id', None, None),
-                        '_recursion': {'current': 0, 'max': 100}}
+                        '_recursion': {'current': 0, 'max': 100},
+                        '_type': 'furious.async.Async'}
 
         self.assertEqual(check_callbacks, callbacks)
         self.assertEqual(correct_dict, exec_callback.to_dict())
@@ -294,7 +296,8 @@ class TestContext(unittest.TestCase):
         options = {
             'id': 123098,
             'insert_tasks': 'furious.context.context._insert_tasks',
-            'persistence_engine': 'furious.job_utils.get_function_path_and_options',
+            'persistence_engine':
+            'furious.job_utils.get_function_path_and_options',
             '_tasks_inserted': True,
             '_task_ids': []
         }
