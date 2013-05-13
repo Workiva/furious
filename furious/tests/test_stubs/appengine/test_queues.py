@@ -404,6 +404,7 @@ class TestPurge(unittest.TestCase):
         async2 = Async(target='time.ctime')
         async2.start()
 
+        # Insert a pull task
         Message(queue='default-pull').insert()
 
         num_cleared = purge_queues(self.taskqueue_service, 'default')
@@ -488,3 +489,114 @@ class TestNamesFromQueueService(unittest.TestCase):
         names = all_queue_names_from_queue_service(self.taskqueue_service)
 
         self.assertEqual(names, ['default', 'default-pull'])
+
+
+@attr('slow')
+class TestGetTasks(unittest.TestCase):
+    """Ensure that get_tasks(), returns the queues' tasks."""
+
+    def setUp(self):
+        from google.appengine.ext import testbed
+
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub(root_path="")
+        self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+
+        self.queue_service = self.testbed.get_stub(
+            testbed.TASKQUEUE_SERVICE_NAME)
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+    def test_get_tasks_when_there_are_no_tasks(self):
+        """Ensure that no tasks are returned from get_tasks() when no tasks
+        have been added yet.
+        """
+
+        from furious.test_stubs.appengine.queues import get_tasks
+
+        task_dict = get_tasks(self.queue_service)
+        num_tasks = sum([len(task_list) for task_list in task_dict.values()])
+
+        self.assertEqual(0, num_tasks)
+
+    @patch('time.ctime')
+    def test_get_tasks_from_all_queues(self, ctime):
+        """Ensure all tasks are returned from get_tasks()."""
+
+        from furious.async import Async
+        from furious.batcher import Message
+        from furious.test_stubs.appengine.queues import get_tasks
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        # Insert a pull task
+        Message(queue='default-pull').insert()
+
+        task_dict = get_tasks(self.queue_service)
+        num_tasks = sum([len(task_list) for task_list in task_dict.values()])
+
+        self.assertEqual(3, num_tasks)
+
+    @patch('time.ctime')
+    def test_get_tasks_when_queue_names_are_specified(self, ctime):
+        """Ensure queues' tasks are returned from get_tasks() when a list of
+        queue_names are passed as an argument.
+        """
+
+        from furious.async import Async
+        from furious.batcher import Message
+        from furious.test_stubs.appengine.queues import get_tasks
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        # Insert a pull task
+        Message(queue='default-pull').insert()
+
+        task_dict = get_tasks(self.queue_service, ['default'])
+        num_tasks = sum([len(task_list) for task_list in task_dict.values()])
+
+        self.assertEqual(2, num_tasks)
+
+    @patch('time.ctime')
+    def test_get_tasks_when_queue_name_string_is_passed(self, ctime):
+        """Ensure a queue's tasks are returned from get_tasks() when a
+        queue_name is passed as a string.
+        """
+
+        from furious.async import Async
+        from furious.batcher import Message
+        from furious.test_stubs.appengine.queues import get_tasks
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        # Insert a pull task
+        Message(queue='default-pull').insert()
+
+        task_dict = get_tasks(self.queue_service, 'default-pull')
+        num_tasks = sum([len(task_list) for task_list in task_dict.values()])
+
+        self.assertEqual(1, num_tasks)
+
+    @patch('time.ctime')
+    def test_get_tasks_with_nonexistent_queue(self, ctime):
+        """If a non-existing queue is passed to get_tasks(), ensure that an
+        Exception is raised.
+        """
+        from furious.test_stubs.appengine.queues import get_tasks
+
+        self.assertRaises(Exception, get_tasks, self.queue_service,
+                          'non-existent-queue')

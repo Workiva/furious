@@ -115,6 +115,33 @@ def run(taskq_service, queue_names=None, max_iterations=None):
     return {'iterations': iterations, 'tasks_processed': tasks_processed}
 
 
+def get_tasks(taskq_service, queue_names=None):
+    """
+    Get all tasks from queues and return them in a dict keyed by queue_name.
+    If queue_names not specified, returns tasks from all queues.
+
+    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_names: :class: `list` of queue name strings.
+    """
+
+    # Make sure queue_names is a list
+    if isinstance(queue_names, basestring):
+        queue_names = [queue_names]
+
+    if not queue_names:
+        queue_names = all_queue_names_from_queue_service(taskq_service)
+
+    task_dict = defaultdict(list)
+
+    for queue_name in queue_names:
+        # Get tasks
+        tasks = taskq_service.GetTasks(queue_name)
+
+        task_dict[queue_name].extend(tasks)
+
+    return task_dict
+
+
 def purge(taskq_service, queue_names=None):
     """
     Remove all tasks from queues.
