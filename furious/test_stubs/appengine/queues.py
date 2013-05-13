@@ -55,8 +55,9 @@ import uuid
 from furious.context._local import _clear_context
 from furious.handlers import process_async_task
 
-
-__all__ = ['run', 'run_queue', 'Runner', 'pullqueue_names_from_taskq_service']
+__all__ = ['run', 'run_queue', 'Runner', 'all_queue_names_from_queue_service',
+           'pullqueue_names_from_queue_service',
+           'pushqueue_names_from_queue_service']
 
 
 def run_queue(taskq_service, queue_name):
@@ -95,7 +96,7 @@ def run(taskq_service, queue_names=None, max_iterations=None):
     """
 
     if not queue_names:
-        queue_names = pullqueue_names_from_taskq_service(taskq_service)
+        queue_names = pushqueue_names_from_queue_service(taskq_service)
 
     iterations = 0
     tasks_processed = 0
@@ -127,7 +128,7 @@ def purge(taskq_service, queue_names=None):
         queue_names = [queue_names]
 
     if not queue_names:
-        queue_names = all_queue_names_from_taskq_service(taskq_service)
+        queue_names = all_queue_names_from_queue_service(taskq_service)
 
     num_tasks = 0
 
@@ -141,7 +142,17 @@ def purge(taskq_service, queue_names=None):
     return num_tasks
 
 
-def pullqueue_names_from_taskq_service(taskq_service):
+def pullqueue_names_from_queue_service(taskq_service):
+    """Returns push queue names from the taskqueue service."""
+
+    queue_descriptions = taskq_service.GetQueues()
+
+    return [description['name']
+            for description in queue_descriptions
+            if 'pull' == description['mode']]
+
+
+def pushqueue_names_from_queue_service(taskq_service):
     """Returns push queue names from the taskqueue service."""
 
     queue_descriptions = taskq_service.GetQueues()
@@ -149,6 +160,14 @@ def pullqueue_names_from_taskq_service(taskq_service):
     return [description['name']
             for description in queue_descriptions
             if 'pull' != description['mode']]
+
+
+def all_queue_names_from_queue_service(taskq_service):
+    """Returns push and pull queue names from the taskqueue service."""
+
+    queue_descriptions = taskq_service.GetQueues()
+
+    return [description['name'] for description in queue_descriptions]
 
 
 class Runner(object):
@@ -165,7 +184,7 @@ class Runner(object):
         self.taskq_service = taskq_service
 
         if None == queue_names:
-            self.queue_names = pullqueue_names_from_taskq_service(
+            self.queue_names = pushqueue_names_from_queue_service(
                 self.taskq_service)
         else:
             self.queue_names = queue_names

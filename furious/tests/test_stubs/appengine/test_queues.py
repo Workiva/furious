@@ -257,8 +257,7 @@ class TestRunQueues(unittest.TestCase):
 
 @attr('slow')
 class TestRunQueuesIntegration(unittest.TestCase):
-    """Ensure tasks from queues are run.
-    """
+    """Ensure tasks from queues are run."""
 
     def setUp(self):
         from google.appengine.ext import testbed
@@ -276,7 +275,7 @@ class TestRunQueuesIntegration(unittest.TestCase):
 
     @patch('time.ctime')
     def test_run(self, ctime):
-        """ """
+        """Ensure tasks are run when run_queues is called."""
 
         from furious.async import Async
         from furious.test_stubs.appengine.queues import run as run_queues
@@ -429,3 +428,63 @@ class TestPurge(unittest.TestCase):
         self.assertRaises(Exception, purge_queues, self.taskqueue_service,
                           'non-existent-queue')
 
+
+@attr('slow')
+class TestNamesFromQueueService(unittest.TestCase):
+    """Ensure that all_queue_names_from_queue_service(),
+    pullqueue_names_from_queue_service(), and
+    pushqueue_names_from_queue_service() return the correct names.
+    """
+
+    def setUp(self):
+        from google.appengine.ext import testbed
+
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub(root_path="")
+        self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+
+        self.taskqueue_service = self.testbed.get_stub(
+            testbed.TASKQUEUE_SERVICE_NAME)
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+    @patch('time.ctime')
+    def test_pullqueue_names_from_queue_service(self, ctime):
+        """Ensure the correct pull queue names are returned from
+        pullqueue_names_from_queue_service.
+        """
+
+        from furious.test_stubs.appengine.queues import (
+            pullqueue_names_from_queue_service)
+
+        names = pullqueue_names_from_queue_service(self.taskqueue_service)
+
+        self.assertEqual(names, ['default-pull'])
+
+    @patch('time.ctime')
+    def test_pushqueue_names_from_queue_service(self, ctime):
+        """Ensure the correct push queue names are returned from
+        pushqueue_names_from_queue_service.
+        """
+
+        from furious.test_stubs.appengine.queues import (
+            pushqueue_names_from_queue_service)
+
+        names = pushqueue_names_from_queue_service(self.taskqueue_service)
+
+        self.assertEqual(names, ['default'])
+
+    @patch('time.ctime')
+    def test_all_queue_names_from_queue_service(self, ctime):
+        """Ensure the correct queue names are returned from
+        all_queue_names_from_queue_service.
+        """
+
+        from furious.test_stubs.appengine.queues import (
+            all_queue_names_from_queue_service)
+
+        names = all_queue_names_from_queue_service(self.taskqueue_service)
+
+        self.assertEqual(names, ['default', 'default-pull'])
