@@ -11,5 +11,7 @@ before_script:
 install: "pip install -r requirements_dev.txt --use-mirrors"
 
 # command to run tests
-script: nosetests --gae-lib-path=./google_appengine --with-coverage
-
+script:
+  - nosetests --gae-lib-path=./google_appengine --with-coverage
+  - python setup.py sdist
+  - pip install .
