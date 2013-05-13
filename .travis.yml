@@ -8,7 +8,7 @@ before_script:
   - unzip -q google_appengine_1.7.7.zip
 
 # command to install dependencies
-install: "pip install -r requirements.txt --use-mirrors"
+install: "pip install -r requirements_dev.txt --use-mirrors"
 
 # command to run tests
 script: nosetests --gae-lib-path=./google_appengine --with-coverage
