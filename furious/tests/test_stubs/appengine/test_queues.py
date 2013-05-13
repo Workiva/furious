@@ -291,3 +291,141 @@ class TestRunQueuesIntegration(unittest.TestCase):
         run_queues(self.taskqueue_service)
 
         self.assertEqual(2, ctime.call_count)
+
+
+@attr('slow')
+class TestPurge(unittest.TestCase):
+    """Ensure that purge() clears tasks from queues."""
+
+    def setUp(self):
+        from google.appengine.ext import testbed
+
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_taskqueue_stub(root_path="")
+        self.testbed.get_stub(testbed.TASKQUEUE_SERVICE_NAME)
+
+        self.taskqueue_service = self.testbed.get_stub(
+            testbed.TASKQUEUE_SERVICE_NAME)
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+    @patch('time.ctime')
+    def test_purge_with_no_tasks(self, ctime):
+        """Ensure no errors occur when purging queues containing no tasks.
+        Ensure the number of tasks cleared is correct.
+        """
+
+        from furious.test_stubs.appengine.queues import purge as purge_queues
+
+        num_cleared = purge_queues(self.taskqueue_service)
+
+        # Ensure zero tasks were cleared.
+        self.assertEqual(0, num_cleared)
+
+        # Ensure no tasks were run
+        self.assertEqual(0, ctime.call_count)
+
+    @patch('time.ctime')
+    def test_purge_with_tasks(self, ctime):
+        """After queues are run, ensure no tasks are left to execute.
+        Ensure the number of tasks cleared is correct.
+        """
+
+        from furious.async import Async
+        from furious.batcher import Message
+        from furious.test_stubs.appengine.queues import run as run_queues
+        from furious.test_stubs.appengine.queues import purge as purge_queues
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        Message(queue='default-pull').insert()
+
+        num_cleared = purge_queues(self.taskqueue_service)
+
+        # Run the tasks to check if tasks remain
+        run_queues(self.taskqueue_service)
+
+        # Ensure three tasks were cleared, from 'default' and 'default-pull'.
+        self.assertEqual(3, num_cleared)
+
+        # Ensure no tasks were run
+        self.assertEqual(0, ctime.call_count)
+
+    @patch('time.ctime')
+    def test_purge_with_queue_names_provided(self, ctime):
+        """When a list of queue_names is provided, ensure purge() clears the
+        tasks and none are left to execute.
+        Ensure the number of tasks cleared is correct.
+        """
+
+        from furious.async import Async
+        from furious.batcher import Message
+        from furious.test_stubs.appengine.queues import run as run_queues
+        from furious.test_stubs.appengine.queues import purge as purge_queues
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        Message(queue='default-pull').insert()
+
+        num_cleared = purge_queues(self.taskqueue_service, ['default'])
+
+        # Run the tasks to check if tasks remain
+        run_queues(self.taskqueue_service)
+
+        # Ensure two tasks from the default queue were cleared.
+        self.assertEqual(2, num_cleared)
+
+        # Ensure no tasks were run
+        self.assertEqual(0, ctime.call_count)
+
+    @patch('time.ctime')
+    def test_purge_with_string_passed_to_queue_names(self, ctime):
+        """If a single queue_name is passed to purge() instead of a list,
+        ensure that the queue specified is still cleared.
+        Ensure the number of tasks cleared is correct.
+        """
+        from furious.async import Async
+        from furious.batcher import Message
+        from furious.test_stubs.appengine.queues import run as run_queues
+        from furious.test_stubs.appengine.queues import purge as purge_queues
+
+        # Enqueue a couple of tasks
+        async = Async(target='time.ctime')
+        async.start()
+        async2 = Async(target='time.ctime')
+        async2.start()
+
+        Message(queue='default-pull').insert()
+
+        num_cleared = purge_queues(self.taskqueue_service, 'default')
+
+        # Run the tasks to check if tasks remain
+        run_queues(self.taskqueue_service)
+
+        # Ensure two tasks from the default queue were cleared.
+        self.assertEqual(2, num_cleared)
+
+        # Ensure no tasks were run
+        self.assertEqual(0, ctime.call_count)
+
+    @patch('time.ctime')
+    def test_purge_with_nonexistent_queue(self, ctime):
+        """If purge is attempted on a queue that does not exist, ensure that an
+        Exception is raised.
+        """
+
+        from furious.test_stubs.appengine.queues import purge as purge_queues
+
+        self.assertRaises(Exception, purge_queues, self.taskqueue_service,
+                          'non-existent-queue')
+
