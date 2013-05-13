@@ -1,8 +1,7 @@
 from setuptools import find_packages, setup
 
 
-
-setup(
+setup_args = dict(
     name='furious',
     version='0.1',
     license='Apache',
@@ -21,3 +20,7 @@ setup(
         'Programming Language :: Python',
     ],
 )
+
+
+if __name__ == '__main__':
+    setup(**setup_args)
