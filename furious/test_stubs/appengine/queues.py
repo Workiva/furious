@@ -58,7 +58,8 @@ from google.appengine.api import taskqueue
 from furious.context._local import _clear_context
 from furious.handlers import process_async_task
 
-__all__ = ['run', 'run_queue', 'Runner', 'all_queue_names_from_queue_service',
+__all__ = ['run', 'run_queue', 'Runner', 'add_tasks', 'get_tasks', 'purge',
+           'all_queue_names_from_queue_service',
            'pullqueue_names_from_queue_service',
            'pushqueue_names_from_queue_service']
 
