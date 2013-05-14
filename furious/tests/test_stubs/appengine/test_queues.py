@@ -629,6 +629,29 @@ class TestAddTasks(unittest.TestCase):
         self.assertEqual(0, num_added)
         self.assertEqual(0, num_purged)
 
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
+    def test_add_tasks_with_empty_queues(self, queue_add):
+        """Ensure qeueue.add() is not called when there are no tasks to queue.
+        In some cases adding an empty list causes an error in the taskqueue
+        stub.
+        """
+
+        from furious.test_stubs.appengine.queues import add_tasks
+        from furious.test_stubs.appengine.queues import purge
+
+        task_dict = {'default': [], 'default-pull': []}
+
+        # Add using empty lists of tasks.
+        num_added = add_tasks(self.queue_service, task_dict)
+
+        # Purge tasks to verify the count of tasks added.
+        num_purged = purge(self.queue_service)
+
+        # Ensure no tasks were added.
+        self.assertEqual(0, queue_add.call_count)
+        self.assertEqual(0, num_added)
+        self.assertEqual(0, num_purged)
+
     def test_add_pushqueue_tasks_(self):
         """Ensure that pushqueue tasks can be added with add_tasks()."""
 

@@ -203,8 +203,9 @@ def add_tasks(taskq_service, task_dict):
             tasks_to_add.append(task_obj)
 
         # Add tasks to queue
-        queue.add(tasks_to_add)
-        num_added += len(tasks_to_add)
+        if tasks_to_add:
+            queue.add(tasks_to_add)
+            num_added += len(tasks_to_add)
 
     return num_added
 
