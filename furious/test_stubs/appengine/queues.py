@@ -49,8 +49,11 @@ runner.run()
 """
 
 import base64
+from collections import defaultdict
 import os
 import uuid
+
+from google.appengine.api import taskqueue
 
 from furious.context._local import _clear_context
 from furious.handlers import process_async_task
@@ -140,6 +143,69 @@ def get_tasks(taskq_service, queue_names=None):
         task_dict[queue_name].extend(tasks)
 
     return task_dict
+
+
+def add_tasks(taskq_service, task_dict):
+    """
+    Allow readding of multiple tasks across multiple queues.
+    The task_dict is a dictionary with tasks for each queue, keyed by queue
+    name.
+    Tasks themselves can be dicts like those received from GetTasks() or Task
+    instances.
+
+    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_names: :class: `dict` of queue name: tasks dictionary.
+    """
+
+    num_added = 0
+
+    # Get the descriptions so we know when to specify PULL mode.
+    queue_descriptions = taskq_service.GetQueues()
+    queue_desc_dict = dict((queue_desc['name'], queue_desc)
+                           for queue_desc in queue_descriptions)
+
+    # Loop over queues and add tasks for each.
+    for queue_name, tasks in task_dict.items():
+
+        queue = taskqueue.Queue(queue_name)
+
+        is_pullqueue = ('pull' == queue_desc_dict[queue_name]['mode'])
+
+        tasks_to_add = []
+
+        # Ensure tasks are formatted to add to queues.
+        for task in tasks:
+
+            # If already formatted as a Task, add it.
+            if isinstance(task, taskqueue.Task):
+                tasks_to_add.append(task)
+                continue
+
+            # If in dict format that comes from GetTasks(), format it as a Task
+            # First look for payload.  If no payload, look for body to decode.
+            if 'payload' in task:
+                payload = task['payload']
+            else:
+                payload = base64.b64decode(task.get('body'))
+
+            # Setup different parameters for pull and push queues
+            if is_pullqueue:
+                task_obj = taskqueue.Task(payload=payload,
+                                          name=task.get('name'),
+                                          method='PULL',
+                                          url=task.get('url'))
+            else:
+                task_obj = taskqueue.Task(payload=payload,
+                                          name=task.get('name'),
+                                          method=task.get('method'))
+
+            tasks_to_add.append(task_obj)
+
+        # Add tasks to queue
+        queue.add(tasks_to_add)
+        num_added += len(tasks_to_add)
+
+    return num_added
 
 
 def purge(taskq_service, queue_names=None):
