@@ -656,6 +656,18 @@ class TestAsync(unittest.TestCase):
 
         self.assertRaises(NotExecutingError, async_job._restart,)
 
+    def test_restart_remove_name(self):
+        """Ensure that any set task name is removed upon restart."""
+        from furious.async import Async
+
+        async_job = Async("something", task_args={'name': 'a_name'})
+        async_job._executing = True
+
+        async_job._restart()
+
+        self.assertEqual(0, async_job.get_options()['_restart_count'])
+        self.assertNotIn('name', async_job.get_task_args())
+
     def test_update_recursion_level_defaults(self):
         """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
         from furious.async import Async
