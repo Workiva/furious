@@ -293,8 +293,8 @@ class TestRunQueuesIntegration(unittest.TestCase):
 
 
 @attr('slow')
-class TestPurge(unittest.TestCase):
-    """Ensure that purge() clears tasks from queues."""
+class TestPurgeTasks(unittest.TestCase):
+    """Ensure that purge_tasks() clears tasks from queues."""
 
     def setUp(self):
         from google.appengine.ext import testbed
@@ -311,14 +311,14 @@ class TestPurge(unittest.TestCase):
         self.testbed.deactivate()
 
     @patch('time.ctime')
-    def test_purge_with_no_tasks(self, ctime):
+    def test_purge_tasks_with_no_tasks(self, ctime):
         """Ensure no errors occur when purging queues containing no tasks.
         Ensure the number of tasks cleared is correct.
         """
 
-        from furious.test_stubs.appengine.queues import purge as purge_queues
+        from furious.test_stubs.appengine.queues import purge_tasks
 
-        num_cleared = purge_queues(self.taskqueue_service)
+        num_cleared = purge_tasks(self.taskqueue_service)
 
         # Ensure zero tasks were cleared.
         self.assertEqual(0, num_cleared)
@@ -327,7 +327,7 @@ class TestPurge(unittest.TestCase):
         self.assertEqual(0, ctime.call_count)
 
     @patch('time.ctime')
-    def test_purge_with_tasks(self, ctime):
+    def test_purge_tasks_with_tasks(self, ctime):
         """After queues are run, ensure no tasks are left to execute.
         Ensure the number of tasks cleared is correct.
         """
@@ -335,7 +335,7 @@ class TestPurge(unittest.TestCase):
         from furious.async import Async
         from furious.batcher import Message
         from furious.test_stubs.appengine.queues import run as run_queues
-        from furious.test_stubs.appengine.queues import purge as purge_queues
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         # Enqueue a couple of tasks
         async = Async(target='time.ctime')
@@ -345,7 +345,7 @@ class TestPurge(unittest.TestCase):
 
         Message(queue='default-pull').insert()
 
-        num_cleared = purge_queues(self.taskqueue_service)
+        num_cleared = purge_tasks(self.taskqueue_service)
 
         # Run the tasks to check if tasks remain
         run_queues(self.taskqueue_service)
@@ -357,16 +357,16 @@ class TestPurge(unittest.TestCase):
         self.assertEqual(0, ctime.call_count)
 
     @patch('time.ctime')
-    def test_purge_with_queue_names_provided(self, ctime):
-        """When a list of queue_names is provided, ensure purge() clears the
-        tasks and none are left to execute.
+    def test_purge_tasks_with_queue_names_provided(self, ctime):
+        """When a list of queue_names is provided, ensure purge_tasks() clears
+        the tasks and none are left to execute.
         Ensure the number of tasks cleared is correct.
         """
 
         from furious.async import Async
         from furious.batcher import Message
         from furious.test_stubs.appengine.queues import run as run_queues
-        from furious.test_stubs.appengine.queues import purge as purge_queues
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         # Enqueue a couple of tasks
         async = Async(target='time.ctime')
@@ -376,7 +376,7 @@ class TestPurge(unittest.TestCase):
 
         Message(queue='default-pull').insert()
 
-        num_cleared = purge_queues(self.taskqueue_service, ['default'])
+        num_cleared = purge_tasks(self.taskqueue_service, ['default'])
 
         # Run the tasks to check if tasks remain
         run_queues(self.taskqueue_service)
@@ -388,15 +388,15 @@ class TestPurge(unittest.TestCase):
         self.assertEqual(0, ctime.call_count)
 
     @patch('time.ctime')
-    def test_purge_with_string_passed_to_queue_names(self, ctime):
-        """If a single queue_name is passed to purge() instead of a list,
+    def test_purge_tasks_with_string_passed_to_queue_names(self, ctime):
+        """If a single queue_name is passed to purge_tasks() instead of a list,
         ensure that the queue specified is still cleared.
         Ensure the number of tasks cleared is correct.
         """
         from furious.async import Async
         from furious.batcher import Message
         from furious.test_stubs.appengine.queues import run as run_queues
-        from furious.test_stubs.appengine.queues import purge as purge_queues
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         # Enqueue a couple of tasks
         async = Async(target='time.ctime')
@@ -407,7 +407,7 @@ class TestPurge(unittest.TestCase):
         # Insert a pull task
         Message(queue='default-pull').insert()
 
-        num_cleared = purge_queues(self.taskqueue_service, 'default')
+        num_cleared = purge_tasks(self.taskqueue_service, 'default')
 
         # Run the tasks to check if tasks remain
         run_queues(self.taskqueue_service)
@@ -423,17 +423,16 @@ class TestPurge(unittest.TestCase):
         Exception is raised.
         """
 
-        from furious.test_stubs.appengine.queues import purge as purge_queues
+        from furious.test_stubs.appengine.queues import purge_tasks
 
-        self.assertRaises(Exception, purge_queues, self.taskqueue_service,
+        self.assertRaises(Exception, purge_tasks, self.taskqueue_service,
                           'non-existent-queue')
 
 
 @attr('slow')
 class TestNamesFromQueueService(unittest.TestCase):
-    """Ensure that all_queue_names_from_queue_service(),
-    pullqueue_names_from_queue_service(), and
-    pushqueue_names_from_queue_service() return the correct names.
+    """Ensure that get_queue_names(), get_pull_queue_names(), and
+    get_push_queue_names() return the correct names.
     """
 
     def setUp(self):
@@ -450,39 +449,34 @@ class TestNamesFromQueueService(unittest.TestCase):
     def tearDown(self):
         self.testbed.deactivate()
 
-    def test_pullqueue_names_from_queue_service(self):
+    def test_get_pull_queue_names(self):
         """Ensure the correct pull queue names are returned from
-        pullqueue_names_from_queue_service.
+        get_pull_queue_names().
         """
 
-        from furious.test_stubs.appengine.queues import (
-            pullqueue_names_from_queue_service)
+        from furious.test_stubs.appengine.queues import get_pull_queue_names
 
-        names = pullqueue_names_from_queue_service(self.taskqueue_service)
+        names = get_pull_queue_names(self.taskqueue_service)
 
         self.assertEqual(names, ['default-pull'])
 
-    def test_pushqueue_names_from_queue_service(self):
+    def test_get_push_queue_names(self):
         """Ensure the correct push queue names are returned from
-        pushqueue_names_from_queue_service.
+        get_push_queue_names().
         """
 
-        from furious.test_stubs.appengine.queues import (
-            pushqueue_names_from_queue_service)
+        from furious.test_stubs.appengine.queues import get_push_queue_names
 
-        names = pushqueue_names_from_queue_service(self.taskqueue_service)
+        names = get_push_queue_names(self.taskqueue_service)
 
         self.assertEqual(names, ['default'])
 
-    def test_all_queue_names_from_queue_service(self):
-        """Ensure the correct queue names are returned from
-        all_queue_names_from_queue_service.
-        """
+    def test_get_queue_names(self):
+        """Ensure the correct queue names are returned from get_queue_names."""
 
-        from furious.test_stubs.appengine.queues import (
-            all_queue_names_from_queue_service)
+        from furious.test_stubs.appengine.queues import get_queue_names
 
-        names = all_queue_names_from_queue_service(self.taskqueue_service)
+        names = get_queue_names(self.taskqueue_service)
 
         self.assertEqual(names, ['default', 'default-pull'])
 
@@ -596,7 +590,7 @@ class TestGetTasks(unittest.TestCase):
 
 @attr('slow')
 class TestAddTasks(unittest.TestCase):
-    """Ensure that add_tasks(), adds tasks to appengine's queues."""
+    """Ensure that add_tasks(), adds tasks to App Engine's queues."""
 
     def setUp(self):
         from google.appengine.ext import testbed
@@ -618,13 +612,13 @@ class TestAddTasks(unittest.TestCase):
         """
 
         from furious.test_stubs.appengine.queues import add_tasks
-        from furious.test_stubs.appengine.queues import purge
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         task_dict = {}
         num_added = add_tasks(self.queue_service, task_dict)
 
         # Purge tasks to count if any tasks remained.
-        num_purged = purge(self.queue_service)
+        num_purged = purge_tasks(self.queue_service)
 
         self.assertEqual(0, num_added)
         self.assertEqual(0, num_purged)
@@ -637,7 +631,7 @@ class TestAddTasks(unittest.TestCase):
         """
 
         from furious.test_stubs.appengine.queues import add_tasks
-        from furious.test_stubs.appengine.queues import purge
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         task_dict = {'default': [], 'default-pull': []}
 
@@ -645,20 +639,20 @@ class TestAddTasks(unittest.TestCase):
         num_added = add_tasks(self.queue_service, task_dict)
 
         # Purge tasks to verify the count of tasks added.
-        num_purged = purge(self.queue_service)
+        num_purged = purge_tasks(self.queue_service)
 
         # Ensure no tasks were added.
         self.assertEqual(0, queue_add.call_count)
         self.assertEqual(0, num_added)
         self.assertEqual(0, num_purged)
 
-    def test_add_pushqueue_tasks_(self):
-        """Ensure that pushqueue tasks can be added with add_tasks()."""
+    def test_add_push_queue_tasks(self):
+        """Ensure that push queue tasks can be added with add_tasks()."""
 
         from furious.async import Async
         from furious.test_stubs.appengine.queues import add_tasks
         from furious.test_stubs.appengine.queues import get_tasks
-        from furious.test_stubs.appengine.queues import purge
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         # Add tasks the normal way so we can get them and test readding them
         async = Async(target='time.ctime')
@@ -669,23 +663,23 @@ class TestAddTasks(unittest.TestCase):
         task_dict = get_tasks(self.queue_service)
 
         # purge current tasks so we can verify how many we add next.
-        purge(self.queue_service)
+        purge_tasks(self.queue_service)
 
         num_added = add_tasks(self.queue_service, task_dict)
 
         # Purge tasks to check how many tasks are in the queues
-        num_queued = purge(self.queue_service)
+        num_queued = purge_tasks(self.queue_service)
 
         self.assertEqual(2, num_added)
         self.assertEqual(2, num_queued)
 
-    def test_add_pullqueue_tasks_(self):
+    def test_add_pull_queue_tasks(self):
         """Ensure that pull tasks can be added with add_tasks()."""
 
         from furious.batcher import Message
         from furious.test_stubs.appengine.queues import add_tasks
         from furious.test_stubs.appengine.queues import get_tasks
-        from furious.test_stubs.appengine.queues import purge
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         # Add tasks the normal way so we can get them and test readding them
         Message(queue='default-pull').insert()
@@ -693,24 +687,24 @@ class TestAddTasks(unittest.TestCase):
         task_dict = get_tasks(self.queue_service)
 
         # purge current tasks so we can verify how many we add next.
-        purge(self.queue_service)
+        purge_tasks(self.queue_service)
 
         num_added = add_tasks(self.queue_service, task_dict)
 
         # Purge tasks to check how many tasks are in the queues
-        num_queued = purge(self.queue_service)
+        num_queued = purge_tasks(self.queue_service)
 
         self.assertEqual(1, num_added)
         self.assertEqual(1, num_queued)
 
-    def test_add_pull_and_pushqueue_tasks(self):
+    def test_add_pull_and_push_queue_tasks(self):
         """Ensure that push and pull tasks can be added with add_tasks()."""
 
         from furious.async import Async
         from furious.batcher import Message
         from furious.test_stubs.appengine.queues import add_tasks
         from furious.test_stubs.appengine.queues import get_tasks
-        from furious.test_stubs.appengine.queues import purge
+        from furious.test_stubs.appengine.queues import purge_tasks
 
         # Add tasks the normal way so we can get them and test readding them
         async = Async(target='time.ctime')
@@ -721,13 +715,13 @@ class TestAddTasks(unittest.TestCase):
 
         task_dict = get_tasks(self.queue_service)
 
-        # purge current tasks so we can verify how many we add next.
-        purge(self.queue_service)
+        # purge current tasks so we can verify how many we will add next.
+        purge_tasks(self.queue_service)
 
         num_added = add_tasks(self.queue_service, task_dict)
 
         # Purge tasks to check how many tasks are in the queues
-        num_queued = purge(self.queue_service)
+        num_queued = purge_tasks(self.queue_service)
 
         self.assertEqual(3, num_added)
         self.assertEqual(3, num_queued)
@@ -764,13 +758,13 @@ class TestAddTasks(unittest.TestCase):
         # Run the tasks to make sure they were inserted correctly.
         run_queues(self.queue_service)
 
-        # Ensure both pushqueue tasks were executed.
+        # Ensure both push queue tasks were executed.
         self.assertEqual(2, ctime.call_count)
 
-        # Lease the pullqueue task and make sure it has the correct payload.
+        # Lease the pull queue task and make sure it has the correct payload.
         tasks = taskqueue.Queue('default-pull').lease_tasks(3600, 100)
         returned_task_message = tasks[0]
 
-        # Ensure pullqueue task payload is the same as the original.
+        # Ensure pull queue task payload is the same as the original.
         self.assertEqual(returned_task_message.payload, message_task.payload)
 
