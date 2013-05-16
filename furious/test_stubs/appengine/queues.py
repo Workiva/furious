@@ -58,7 +58,7 @@ from google.appengine.api import taskqueue
 from furious.context._local import _clear_context
 from furious.handlers import process_async_task
 
-__all__ = ['run', 'run_queue', 'Runner', 'add_tasks', 'get_tasks', 'purge',
+__all__ = ['run', 'run_queue', 'Runner', 'add_tasks', 'get_tasks', 'purge_tasks',
            'get_queue_names', 'get_pull_queue_names', 'get_push_queue_names']
 
 
@@ -208,7 +208,7 @@ def add_tasks(taskq_service, task_dict):
     return num_added
 
 
-def purge(taskq_service, queue_names=None):
+def purge_tasks(taskq_service, queue_names=None):
     """
     Remove all tasks from queues.
 
