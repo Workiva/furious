@@ -431,9 +431,8 @@ class TestPurge(unittest.TestCase):
 
 @attr('slow')
 class TestNamesFromQueueService(unittest.TestCase):
-    """Ensure that all_queue_names_from_queue_service(),
-    pullqueue_names_from_queue_service(), and
-    pushqueue_names_from_queue_service() return the correct names.
+    """Ensure that get_queue_names(), get_pull_queue_names(), and
+    get_push_queue_names() return the correct names.
     """
 
     def setUp(self):
@@ -450,39 +449,34 @@ class TestNamesFromQueueService(unittest.TestCase):
     def tearDown(self):
         self.testbed.deactivate()
 
-    def test_pullqueue_names_from_queue_service(self):
+    def test_get_pull_queue_names(self):
         """Ensure the correct pull queue names are returned from
-        pullqueue_names_from_queue_service.
+        get_pull_queue_names().
         """
 
-        from furious.test_stubs.appengine.queues import (
-            pullqueue_names_from_queue_service)
+        from furious.test_stubs.appengine.queues import get_pull_queue_names
 
-        names = pullqueue_names_from_queue_service(self.taskqueue_service)
+        names = get_pull_queue_names(self.taskqueue_service)
 
         self.assertEqual(names, ['default-pull'])
 
-    def test_pushqueue_names_from_queue_service(self):
+    def test_get_push_queue_names(self):
         """Ensure the correct push queue names are returned from
-        pushqueue_names_from_queue_service.
+        get_push_queue_names().
         """
 
-        from furious.test_stubs.appengine.queues import (
-            pushqueue_names_from_queue_service)
+        from furious.test_stubs.appengine.queues import get_push_queue_names
 
-        names = pushqueue_names_from_queue_service(self.taskqueue_service)
+        names = get_push_queue_names(self.taskqueue_service)
 
         self.assertEqual(names, ['default'])
 
-    def test_all_queue_names_from_queue_service(self):
-        """Ensure the correct queue names are returned from
-        all_queue_names_from_queue_service.
-        """
+    def test_get_queue_names(self):
+        """Ensure the correct queue names are returned from get_queue_names."""
 
-        from furious.test_stubs.appengine.queues import (
-            all_queue_names_from_queue_service)
+        from furious.test_stubs.appengine.queues import get_queue_names
 
-        names = all_queue_names_from_queue_service(self.taskqueue_service)
+        names = get_queue_names(self.taskqueue_service)
 
         self.assertEqual(names, ['default', 'default-pull'])
 
@@ -596,7 +590,7 @@ class TestGetTasks(unittest.TestCase):
 
 @attr('slow')
 class TestAddTasks(unittest.TestCase):
-    """Ensure that add_tasks(), adds tasks to appengine's queues."""
+    """Ensure that add_tasks(), adds tasks to App Engine's queues."""
 
     def setUp(self):
         from google.appengine.ext import testbed
@@ -652,8 +646,8 @@ class TestAddTasks(unittest.TestCase):
         self.assertEqual(0, num_added)
         self.assertEqual(0, num_purged)
 
-    def test_add_pushqueue_tasks_(self):
-        """Ensure that pushqueue tasks can be added with add_tasks()."""
+    def test_add_push_queue_tasks(self):
+        """Ensure that push queue tasks can be added with add_tasks()."""
 
         from furious.async import Async
         from furious.test_stubs.appengine.queues import add_tasks
@@ -679,7 +673,7 @@ class TestAddTasks(unittest.TestCase):
         self.assertEqual(2, num_added)
         self.assertEqual(2, num_queued)
 
-    def test_add_pullqueue_tasks_(self):
+    def test_add_pull_queue_tasks(self):
         """Ensure that pull tasks can be added with add_tasks()."""
 
         from furious.batcher import Message
@@ -703,7 +697,7 @@ class TestAddTasks(unittest.TestCase):
         self.assertEqual(1, num_added)
         self.assertEqual(1, num_queued)
 
-    def test_add_pull_and_pushqueue_tasks(self):
+    def test_add_pull_and_push_queue_tasks(self):
         """Ensure that push and pull tasks can be added with add_tasks()."""
 
         from furious.async import Async
@@ -764,13 +758,13 @@ class TestAddTasks(unittest.TestCase):
         # Run the tasks to make sure they were inserted correctly.
         run_queues(self.queue_service)
 
-        # Ensure both pushqueue tasks were executed.
+        # Ensure both push queue tasks were executed.
         self.assertEqual(2, ctime.call_count)
 
-        # Lease the pullqueue task and make sure it has the correct payload.
+        # Lease the pull queue task and make sure it has the correct payload.
         tasks = taskqueue.Queue('default-pull').lease_tasks(3600, 100)
         returned_task_message = tasks[0]
 
-        # Ensure pullqueue task payload is the same as the original.
+        # Ensure pull queue task payload is the same as the original.
         self.assertEqual(returned_task_message.payload, message_task.payload)
 
