@@ -18,11 +18,7 @@
 Functions to help with encoding and decoding job information.
 """
 
-import sys
-
-
-class BadFunctionPathError(Exception):
-    """Invalid function path."""
+from . import errors
 
 
 def get_function_path_and_options(function):
@@ -40,36 +36,51 @@ def get_function_path_and_options(function):
     """
     # Try to pop the options off whatever they passed in.
     options = getattr(function, '_async_options', None)
+    return reference_to_path(function), options
 
-    if isinstance(function, basestring):
-        # This is a function name in str form.
+
+def reference_to_path(reference):
+    """Convert a reference to a Python object to a string path."""
+    # Try to pop the options off whatever they passed in.
+    if isinstance(reference, basestring):
+        # This is an object path name in str form.
         import re
-        if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', function):
-            raise BadFunctionPathError(
-                'Invalid function path, must meet Python\'s identifier '
-                'requirements, passed value was "%s".', function)
-        return function, options
+        if not re.match(r'^[^\d\W]([a-zA-Z._]|((?<!\.)\d))+$', reference):
+            raise errors.BadObjectPathError(
+                'Invalid reference path, must meet Python\'s identifier '
+                'requirements, passed value was "%s".', reference)
+        return reference
 
-    if callable(function):
-        # Try to figure out the path to the function.
-        try:
-            parts = [function.__module__]
-            if hasattr(function, 'im_class'):
-                parts.append(function.im_class.__name__)
-            parts.append(function.func_name)
+    if callable(reference):
+        # This is a function or a class.
+        # Try to figure out the path to the reference.
+        parts = [reference.__module__]
+        if hasattr(reference, 'im_class'):
+            parts.append(reference.im_class.__name__)
 
-            return ('.'.join(parts), options)
-        except AttributeError:
-            if function.__module__ == '__builtin__':
-                return function.__name__, options
+        if hasattr(reference, 'func_name'):
+            parts.append(reference.func_name)
+        elif reference.__module__ == '__builtin__':
+            return reference.__name__
+        elif hasattr(reference, '__name__'):
+            # Probably a class
+            parts.append(reference.__name__)
+        else:
+            raise errors.BadObjectPathError("Invalid object type.")
 
-        raise BadFunctionPathError("Unable to determine path to callable.")
+        return '.'.join(parts)
 
-    raise BadFunctionPathError("Must provide a function path or reference.")
+        raise errors.BadObjectPathError("Unable to determine path to callable.")
+
+    elif hasattr(reference, '__package__'):
+        # This is probably a module.
+        return reference.__name__
+
+    raise errors.BadObjectPathError("Must provide a reference path or reference.")
 
 
 def path_to_reference(path):
-    """Convert a function path reference to a reference."""
+    """Convert an object path reference to a reference."""
 
     # By default JSON decodes strings as unicode. The Python __import__ does
     # not like that choice. So we'll just cast all function paths to a string.
@@ -91,27 +102,24 @@ def path_to_reference(path):
         except KeyError:
             pass
 
-        raise BadFunctionPathError(
+        raise errors.BadObjectPathError(
             'Unable to find function "%s".' % (path,))
 
     module_path, function_name = path.rsplit('.', 1)
 
-    if module_path in sys.modules:
-        module = sys.modules[module_path]
-    else:
-        try:
-            module = __import__(name=module_path,
-                                fromlist=[function_name])
-        except ImportError:
-            module_path, class_name = module_path.rsplit('.', 1)
+    try:
+        module = __import__(name=module_path,
+                            fromlist=[function_name])
+    except ImportError:
+        module_path, class_name = module_path.rsplit('.', 1)
 
-            module = __import__(name=module_path, fromlist=[class_name])
-            module = getattr(module, class_name)
+        module = __import__(name=module_path, fromlist=[class_name])
+        module = getattr(module, class_name)
 
     try:
         return getattr(module, function_name)
     except AttributeError:
-        raise BadFunctionPathError(
+        raise errors.BadObjectPathError(
             'Unable to find function "%s".' % (path,))
 
 
