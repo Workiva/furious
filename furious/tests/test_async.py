@@ -623,56 +623,6 @@ class TestAsync(unittest.TestCase):
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
 
-    @patch('furious.async.Async.start')
-    def test_restart(self, mock_start):
-        """Ensure that _restart() calls Async.start() again."""
-        from furious.async import Async
-
-        async_job = Async("something")
-        async_job._executing = True
-
-        async_job._restart()
-
-        self.assertTrue(mock_start.called)
-        self.assertEqual(0, async_job.get_options()['_restart_count'])
-
-    def test_restart_not_started(self):
-        """Ensure that _restart() raises a NotExecutingError when restarting
-        before started.
-        """
-        from furious.async import Async
-        from furious.errors import NotExecutingError
-
-        async_job = Async("something")
-
-        self.assertRaises(NotExecutingError, async_job._restart,)
-
-    @patch('furious.async.Async.start')
-    def test_restart_MAX_RESTARTS(self, mock_start):
-        from furious.async import Async
-        from furious.async import MAX_RESTARTS
-
-        async_job = Async("something")
-        async_job._executing = True
-        async_job.update_options(_restart_count=MAX_RESTARTS)
-
-        async_job._restart()
-
-        self.assertFalse(mock_start.called)
-
-    def test_restart_finished_fails(self):
-        """Ensure that calling _restart() on a finished Async raises a
-        NotExecutingError.
-        """
-        from furious.async import Async
-        from furious.errors import NotExecutingError
-
-        async_job = Async("something")
-        async_job._executing = True
-        async_job.result = 'result'
-
-        self.assertRaises(NotExecutingError, async_job._restart,)
-
     def test_update_recursion_level_defaults(self):
         """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
         from furious.async import Async

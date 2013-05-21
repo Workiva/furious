@@ -322,31 +322,6 @@ class Async(object):
 
         return cls(target, args, kwargs, **async_options)
 
-    def _restart(self):
-        """Restarts the executing Async.
-
-        If the Async is executing, then it will reset the _executing flag, and
-        restart this job. This means that the job will not necessarily execute
-        immediately, or on the same machine, as it goes back into the queue.
-        """
-
-        if not self._executing:
-            raise errors.NotExecutingError(
-                "Must be executing to restart the job, "
-                "perhaps you want Async.start()")
-
-        self._executing = False
-
-        restart_count = self.get_options().get('_restart_count', -1)
-        restart_count += 1
-        self.update_options(_restart_count=restart_count)
-
-        if restart_count < MAX_RESTARTS:
-            return self.start()
-        else:
-            import logging
-            logging.info('Too many restarts, Aborting.')
-
     def _prepare_persistence_engine(self):
         """Load the specified persistence engine, or the default if none is
         set.
