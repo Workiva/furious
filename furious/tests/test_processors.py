@@ -88,7 +88,7 @@ class TestRunJob(unittest.TestCase):
     def test_raises_on_missing_job(self):
         """Ensure run_job raises an exception on bogus standard import."""
         from furious.async import Async
-        from furious.context import NotInContextError
+        from furious.errors import NotInContextError
         from furious.processors import run_job
 
         work = Async("nothere")
@@ -213,9 +213,9 @@ class TestRunJob(unittest.TestCase):
     @patch('__builtin__.dir')
     def test_AbortAndRestart(self, dir_mock, mock_start):
         """Ensures when AbortAndRestart is raised the Async restarts."""
-        from furious.async import AbortAndRestart
         from furious.async import Async
         from furious.context._execution import _ExecutionContext
+        from furious.errors import AbortAndRestart
         from furious.processors import run_job
 
         dir_mock.side_effect = AbortAndRestart
@@ -239,9 +239,9 @@ class TestRunJob(unittest.TestCase):
         """Ensures that when Abort is raised, the Async immediately stops."""
         import logging
 
-        from furious.async import Abort
         from furious.async import Async
         from furious.context._execution import _ExecutionContext
+        from furious.errors import Abort
         from furious.processors import run_job
 
         class AbortLogHandler(logging.Handler):
