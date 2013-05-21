@@ -337,9 +337,16 @@ class Async(object):
 
         self._executing = False
 
+        # Increment restart_count
         restart_count = self.get_options().get('_restart_count', -1)
         restart_count += 1
-        self.update_options(_restart_count=restart_count)
+
+        # Remove task name
+        task_args = self.get_task_args()
+        if 'name' in task_args:
+            del task_args['name']
+
+        self.update_options(task_args=task_args, _restart_count=restart_count)
 
         if restart_count < MAX_RESTARTS:
             return self.start()
