@@ -49,14 +49,17 @@ runner.run()
 """
 
 import base64
+from collections import defaultdict
 import os
 import uuid
+
+from google.appengine.api import taskqueue
 
 from furious.context._local import _clear_context
 from furious.handlers import process_async_task
 
-
-__all__ = ['run', 'run_queue', 'Runner', 'pullqueue_names_from_taskq_service']
+__all__ = ['run', 'run_queue', 'Runner', 'add_tasks', 'get_tasks', 'purge_tasks',
+           'get_queue_names', 'get_pull_queue_names', 'get_push_queue_names']
 
 
 def run_queue(taskq_service, queue_name):
@@ -95,7 +98,7 @@ def run(taskq_service, queue_names=None, max_iterations=0):
     """
 
     if not queue_names:
-        queue_names = pullqueue_names_from_taskq_service(taskq_service)
+        queue_names = get_push_queue_names(taskq_service)
 
     iterations = 0
     total_tasks_processed = 0
@@ -114,14 +117,151 @@ def run(taskq_service, queue_names=None, max_iterations=0):
     return {'iterations': iterations, 'tasks_processed': total_tasks_processed}
 
 
-def pullqueue_names_from_taskq_service(taskq_service):
-    """Returns push queue names from the taskqueue service."""
+def get_tasks(taskq_service, queue_names=None):
+    """
+    Get all tasks from queues and return them in a dict keyed by queue_name.
+    If queue_names not specified, returns tasks from all queues.
+
+    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_names: :class: `list` of queue name strings.
+    """
+
+    # Make sure queue_names is a list
+    if isinstance(queue_names, basestring):
+        queue_names = [queue_names]
+
+    if not queue_names:
+        queue_names = get_queue_names(taskq_service)
+
+    task_dict = defaultdict(list)
+
+    for queue_name in queue_names:
+        # Get tasks
+        tasks = taskq_service.GetTasks(queue_name)
+
+        task_dict[queue_name].extend(tasks)
+
+    return task_dict
+
+
+def add_tasks(taskq_service, task_dict):
+    """
+    Allow readding of multiple tasks across multiple queues.
+    The task_dict is a dictionary with tasks for each queue, keyed by queue
+    name.
+    Tasks themselves can be dicts like those received from GetTasks() or Task
+    instances.
+
+    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_names: :class: `dict` of queue name: tasks dictionary.
+    """
+
+    num_added = 0
+
+    # Get the descriptions so we know when to specify PULL mode.
+    queue_descriptions = taskq_service.GetQueues()
+    queue_desc_dict = dict((queue_desc['name'], queue_desc)
+                           for queue_desc in queue_descriptions)
+
+    # Loop over queues and add tasks for each.
+    for queue_name, tasks in task_dict.items():
+
+        queue = taskqueue.Queue(queue_name)
+
+        is_pullqueue = ('pull' == queue_desc_dict[queue_name]['mode'])
+
+        tasks_to_add = []
+
+        # Ensure tasks are formatted to add to queues.
+        for task in tasks:
+
+            # If already formatted as a Task, add it.
+            if isinstance(task, taskqueue.Task):
+                tasks_to_add.append(task)
+                continue
+
+            # If in dict format that comes from GetTasks(), format it as a Task
+            # First look for payload.  If no payload, look for body to decode.
+            if 'payload' in task:
+                payload = task['payload']
+            else:
+                payload = base64.b64decode(task.get('body'))
+
+            # Setup different parameters for pull and push queues
+            if is_pullqueue:
+                task_obj = taskqueue.Task(payload=payload,
+                                          name=task.get('name'),
+                                          method='PULL',
+                                          url=task.get('url'))
+            else:
+                task_obj = taskqueue.Task(payload=payload,
+                                          name=task.get('name'),
+                                          method=task.get('method'))
+
+            tasks_to_add.append(task_obj)
+
+        # Add tasks to queue
+        if tasks_to_add:
+            queue.add(tasks_to_add)
+            num_added += len(tasks_to_add)
+
+    return num_added
+
+
+def purge_tasks(taskq_service, queue_names=None):
+    """
+    Remove all tasks from queues.
+
+    :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_names: :class: `list` of queue name strings.
+    """
+
+    # Make sure queue_names is a list
+    if isinstance(queue_names, basestring):
+        queue_names = [queue_names]
+
+    if not queue_names:
+        queue_names = get_queue_names(taskq_service)
+
+    num_tasks = 0
+
+    for queue_name in queue_names:
+        # Get tasks to help give some feedback
+        tasks = taskq_service.GetTasks(queue_name)
+        num_tasks += len(tasks)
+
+        taskq_service.FlushQueue(queue_name)
+
+    return num_tasks
+
+
+def get_queue_names(taskq_service, mode=None):
+    """Returns push queue names from the Task Queue service."""
+
+    queue_descriptions = taskq_service.GetQueues()
+
+    return [description['name']
+            for description in queue_descriptions]
+
+
+def get_pull_queue_names(taskq_service, mode=None):
+    """Returns pull queue names from the Task Queue service."""
 
     queue_descriptions = taskq_service.GetQueues()
 
     return [description['name']
             for description in queue_descriptions
-            if 'pull' != description['mode']]
+            if 'pull' == description.get('mode')]
+
+
+def get_push_queue_names(taskq_service, mode=None):
+    """Returns push queue names from the Task Queue service."""
+
+    queue_descriptions = taskq_service.GetQueues()
+
+    return [description['name']
+            for description in queue_descriptions
+            if 'push' == description.get('mode')]
 
 
 class Runner(object):
@@ -138,8 +278,7 @@ class Runner(object):
         self.taskq_service = taskq_service
 
         if None == queue_names:
-            self.queue_names = pullqueue_names_from_taskq_service(
-                self.taskq_service)
+            self.queue_names = get_push_queue_names(self.taskq_service)
         else:
             self.queue_names = queue_names
 

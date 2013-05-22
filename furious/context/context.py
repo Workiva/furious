@@ -47,13 +47,9 @@ import uuid
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
-from ..job_utils import get_function_path_and_options
+from ..job_utils import reference_to_path
 
-
-class ContextAlreadyStartedError(Exception):
-    """Attempt to set context on an Async that is already executing in a
-    context.
-    """
+from .. import errors
 
 
 class Context(object):
@@ -64,20 +60,24 @@ class Context(object):
     """
     def __init__(self, **options):
         self._tasks = []
+        self._task_ids = []
+        self._tasks_inserted = False
 
         id = options.get('id')
         if not id:
             id = uuid.uuid4().hex
-        self._tasks_inserted = False
         self._id = id
+
+        self._persistence_engine = options.get('persistence_engine', None)
+        if self._persistence_engine:
+            options['persistence_engine'] = reference_to_path(
+                self._persistence_engine)
 
         self._options = options
 
         self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
         if not callable(self._insert_tasks):
             raise TypeError('You must provide a valid insert_tasks function.')
-
-        self._persistence_engine = options.pop('persistence_engine', None)
 
     @property
     def id(self):
@@ -95,7 +95,7 @@ class Context(object):
     def _handle_tasks(self):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
-            raise ContextAlreadyStartedError(
+            raise errors.ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         task_map = self._get_tasks_by_queue()
@@ -126,7 +126,7 @@ class Context(object):
         from ..batcher import Message
 
         if self._tasks_inserted:
-            raise ContextAlreadyStartedError(
+            raise errors.ContextAlreadyStartedError(
                 "This Context has already had its tasks inserted.")
 
         if not isinstance(target, (Async, Message)):
@@ -165,11 +165,10 @@ class Context(object):
         options = copy.deepcopy(self._options)
 
         if self._insert_tasks:
-            options['insert_tasks'], _ = get_function_path_and_options(
-                self._insert_tasks)
+            options['insert_tasks'] = reference_to_path(self._insert_tasks)
 
         if self._persistence_engine:
-            options['persistence_engine'], _ = get_function_path_and_options(
+            options['persistence_engine'] = reference_to_path(
                 self._persistence_engine)
 
         options.update({
@@ -197,6 +196,7 @@ class Context(object):
         if insert_tasks:
             context_options['insert_tasks'] = path_to_reference(insert_tasks)
 
+        # The constructor expects a reference to the persistence engine.
         persistence_engine = context_options.pop('persistence_engine', None)
         if persistence_engine:
             context_options['persistence_engine'] = path_to_reference(

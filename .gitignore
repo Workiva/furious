@@ -1,6 +1,8 @@
 .DS_Store
 .coverage
 .noseids
+.build
+
 \#*\#
 .idea
 gaepdb.py
