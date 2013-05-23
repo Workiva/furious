@@ -264,6 +264,7 @@ class Async(object):
     def to_task(self):
         """Return a task object representing this async job."""
         from google.appengine.api.taskqueue import Task
+        from google.appengine.api.taskqueue import TaskRetryOptions
 
         self._increment_recursion_level()
         self.check_recursion_depth()
@@ -275,7 +276,12 @@ class Async(object):
             'headers': self.get_headers().copy(),
             'payload': json.dumps(self.to_dict()),
         }
-        kwargs.update(self.get_task_args())
+        task_args = self.get_task_args()
+
+        # Set task_retry_limit
+        task_args['retry_options'] = TaskRetryOptions(
+            task_retry_limit=task_args.pop('task_retry_limit', MAX_RESTARTS))
+        kwargs.update(task_args)
 
         return Task(**kwargs)
 

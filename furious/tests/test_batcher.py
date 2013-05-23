@@ -300,17 +300,23 @@ class MessageProcessorTestCase(unittest.TestCase):
 
         memcache.get.assert_called_once_with('agg-batch-processor')
 
+    @patch('google.appengine.api.taskqueue.TaskRetryOptions', autospec=True)
     @patch('google.appengine.api.taskqueue.Task', autospec=True)
     @patch('furious.batcher.time')
     @patch('furious.batcher.memcache')
-    def test_to_task_has_correct_arguments(self, memcache, time, task):
+    def test_to_task_has_correct_arguments(self, memcache, time, task,
+                                           task_retry):
         """Ensure that if no name is passed into the MessageProcessor that it
         creates a default unique name when creating the task.
         """
+        from furious.async import MAX_RESTARTS
         from furious.batcher import MessageProcessor
 
         memcache.get.return_value = 'current-batch'
         time.time.return_value = 100
+
+        task_retry_object = Mock()
+        task_retry.return_value = task_retry_object
 
         processor = MessageProcessor('something', queue='test_queue')
 
@@ -333,10 +339,12 @@ class MessageProcessorTestCase(unittest.TestCase):
                 '_type': 'furious.batcher.MessageProcessor',
             }),
             'countdown': 30,
-            'name': 'processor-processor-current-batch-3'
+            'name': 'processor-processor-current-batch-3',
+            'retry_options': task_retry_object
         }
 
         task.assert_called_once_with(**task_args)
+        task_retry.assert_called_once_with(task_retry_limit=MAX_RESTARTS)
 
     @patch('furious.batcher.memcache')
     def test_curent_batch_key_exists_in_cache(self, cache):

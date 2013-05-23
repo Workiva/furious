@@ -701,6 +701,29 @@ class TestAsync(unittest.TestCase):
 
         async_job.check_recursion_depth()
 
+    def test_retry_default(self):
+        """Ensure that when no task_retry_limit specified, that the default is
+        set.
+        """
+        from furious.async import Async
+        from furious.async import MAX_RESTARTS
+
+        async_job = Async("something")
+        task = async_job.to_task()
+
+        self.assertEqual(MAX_RESTARTS, task.retry_options.task_retry_limit)
+
+    def test_retry_custom(self):
+        """Ensure that when a custom retry limit is set, that it's
+        propagated.
+        """
+        from furious.async import Async
+
+        async_job = Async("something", task_args={'task_retry_limit': 5})
+        task = async_job.to_task()
+
+        self.assertEqual(5, task.retry_options.task_retry_limit)
+
 
 class TestAsyncFromOptions(unittest.TestCase):
     """Ensure async_from_options() works correctly."""

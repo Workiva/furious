@@ -43,7 +43,7 @@ class TestExecuteTask(unittest.TestCase):
 
         body = base64.b64encode(json.dumps(async_options))
 
-        task = {'body': body, 'headers': ''}
+        task = {'body': body, 'headers': {}}
 
         _execute_task(task)
 
@@ -74,7 +74,7 @@ class TestExecuteTask(unittest.TestCase):
 
         body = base64.b64encode(json.dumps(async_options))
 
-        task = {'body': body, 'headers': ''}
+        task = {'body': body, 'headers': {}}
 
         _execute_task(task)
 
