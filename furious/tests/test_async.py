@@ -724,6 +724,21 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(5, task.retry_options.task_retry_limit)
 
+    def test_existing_TaskRetryOptions(self):
+        """Ensure taht when an existing TaskRetryOptions exists, it's
+        correctly converted.
+        """
+        from google.appengine.api.taskqueue import TaskRetryOptions
+        from furious.async import Async
+
+        async_job = Async("something",
+                          task_args={'retry_options':
+                                     TaskRetryOptions(task_retry_limit=4)})
+        task = async_job.to_task()
+
+        self.assertEqual(
+            4, json.loads(task.payload)['task_args']['task_retry_limit'])
+
 
 class TestAsyncFromOptions(unittest.TestCase):
     """Ensure async_from_options() works correctly."""
