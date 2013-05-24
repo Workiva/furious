@@ -278,10 +278,6 @@ class Async(object):
             retry_limit = task_args.pop('retry_options').task_retry_limit
             self_dict['task_args']['task_retry_limit'] = retry_limit
 
-        import logging
-        logging.info('*****************************************')
-        logging.info(self_dict)
-
         kwargs = {
             'url': url,
             'headers': self.get_headers().copy(),
