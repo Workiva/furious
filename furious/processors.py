@@ -58,8 +58,8 @@ def run_job():
         logging.info('Async job was aborted: %r', abort)
         async.result = None
         return
-    except AbortAndRestart as restart:
-        raise restart
+    except AbortAndRestart:
+        raise
     except Exception as e:
         async.result = encode_exception(e)
 

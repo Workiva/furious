@@ -271,17 +271,10 @@ class Async(object):
 
         url = "%s/%s" % (ASYNC_ENDPOINT, self._function_path)
 
-        self_dict = self.to_dict()
-
-        if 'retry_options' in self_dict.get('task_args', {}):
-            task_args = self_dict['task_args']
-            retry_limit = task_args.pop('retry_options').task_retry_limit
-            self_dict['task_args']['task_retry_limit'] = retry_limit
-
         kwargs = {
             'url': url,
             'headers': self.get_headers().copy(),
-            'payload': json.dumps(self_dict)
+            'payload': json.dumps(self.to_dict())
         }
         task_args = self.get_task_args()
 
@@ -407,6 +400,11 @@ def encode_async_options(async):
     callbacks = async._options.get('callbacks')
     if callbacks:
         options['callbacks'] = encode_callbacks(callbacks)
+
+    if 'retry_options' in options.get('task_args', {}):
+        task_args = options['task_args']
+        retry_limit = task_args.pop('retry_options').task_retry_limit
+        options['task_args']['task_retry_limit'] = retry_limit
 
     return options
 
