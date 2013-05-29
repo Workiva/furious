@@ -719,25 +719,40 @@ class TestAsync(unittest.TestCase):
         """
         from furious.async import Async
 
-        async_job = Async("something", task_args={'task_retry_limit': 5})
+        async_job = Async("something",
+                          task_args={'retry_options': {'task_retry_limit': 5}})
         task = async_job.to_task()
 
         self.assertEqual(5, task.retry_options.task_retry_limit)
 
-    def test_existing_TaskRetryOptions(self):
-        """Ensure taht when an existing TaskRetryOptions exists, it's
-        correctly converted.
+    def test_retry_value_without_to_task(self):
+        """Ensure that when you encode the options, the retry_options are not
+        affected.
         """
-        from google.appengine.api.taskqueue import TaskRetryOptions
         from furious.async import Async
+        from furious.async import encode_async_options
 
         async_job = Async("something",
-                          task_args={'retry_options':
-                                     TaskRetryOptions(task_retry_limit=4)})
-        task = async_job.to_task()
+                          task_args={'retry_options': {'task_retry_limit': 5}})
+        options = encode_async_options(async_job)
 
         self.assertEqual(
-            4, json.loads(task.payload)['task_args']['task_retry_limit'])
+            5, options['task_args']['retry_options']['task_retry_limit'])
+
+    def test_retry_value_with_to_task(self):
+        """Ensure that calling to_task doesn't affect the options when
+        encoding.
+        """
+        from furious.async import Async
+        from furious.async import encode_async_options
+
+        async_job = Async("something",
+                          task_args={'retry_options': {'task_retry_limit': 5}})
+        async_job.to_task()
+        options = encode_async_options(async_job)
+
+        self.assertEqual(
+            5, options['task_args']['retry_options']['task_retry_limit'])
 
 
 class TestAsyncFromOptions(unittest.TestCase):

@@ -276,12 +276,13 @@ class Async(object):
             'headers': self.get_headers().copy(),
             'payload': json.dumps(self.to_dict())
         }
-        task_args = self.get_task_args()
+        kwargs.update(copy.deepcopy(self.get_task_args()))
 
         # Set task_retry_limit
-        task_args['retry_options'] = TaskRetryOptions(
-            task_retry_limit=task_args.pop('task_retry_limit', MAX_RESTARTS))
-        kwargs.update(task_args)
+        retry_options = kwargs.pop('retry_options', {})
+        retry_options['task_retry_limit'] = retry_options.get(
+            'task_retry_limit', MAX_RESTARTS)
+        kwargs['retry_options'] = TaskRetryOptions(**retry_options)
 
         return Task(**kwargs)
 
@@ -400,11 +401,6 @@ def encode_async_options(async):
     callbacks = async._options.get('callbacks')
     if callbacks:
         options['callbacks'] = encode_callbacks(callbacks)
-
-    if 'retry_options' in options.get('task_args', {}):
-        task_args = options['task_args']
-        retry_limit = task_args.pop('retry_options').task_retry_limit
-        options['task_args']['task_retry_limit'] = retry_limit
 
     return options
 
