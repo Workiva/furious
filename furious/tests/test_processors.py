@@ -209,9 +209,8 @@ class TestRunJob(unittest.TestCase):
 
         returned_async.start.assert_called_once_with()
 
-    @patch('furious.async.Async.start')
     @patch('__builtin__.dir')
-    def test_AbortAndRestart(self, dir_mock, mock_start):
+    def test_AbortAndRestart(self, dir_mock):
         """Ensures when AbortAndRestart is raised the Async restarts."""
         from furious.async import Async
         from furious.context._execution import _ExecutionContext
@@ -227,9 +226,8 @@ class TestRunJob(unittest.TestCase):
                                 'error': mock_error})
 
         with _ExecutionContext(work):
-            run_job()
+            self.assertRaises(AbortAndRestart, run_job)
 
-        mock_start.assert_called_once()
         self.assertFalse(mock_success.called)
         self.assertFalse(mock_error.called)
 

@@ -50,7 +50,7 @@ def aborting_function():
     logging.info('In aborting_function')
 
     if random.random() < .5:
-        from furious.async import AbortAndRestart
+        from furious.errors import AbortAndRestart
 
         logging.info('Getting ready to restart')
 

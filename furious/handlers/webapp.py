@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import webapp2
 
 from . import process_async_task
+from ..errors import AbortAndRestart
 
 
 class AsyncJobHandler(webapp2.RequestHandler):
@@ -31,9 +31,17 @@ class AsyncJobHandler(webapp2.RequestHandler):
         """Pass request info to the async framework."""
         headers = self.request.headers
 
-        staus_code, output = process_async_task(headers, self.request.body)
+        message = None
+        try:
+            status_code, output = process_async_task(
+                headers, self.request.body)
+        except AbortAndRestart as restart:
+            # Async retry status code
+            status_code = 549
+            message = 'Retry Async Task'
+            output = str(restart)
 
-        self.response.set_status(staus_code)
+        self.response.set_status(status_code, message)
         self.response.out.write(output)
 
 app = webapp2.WSGIApplication([
