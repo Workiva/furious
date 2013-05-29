@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import logging
-
 import webapp2
 
 from . import process_async_task
@@ -38,7 +36,6 @@ class AsyncJobHandler(webapp2.RequestHandler):
             status_code, output = process_async_task(
                 headers, self.request.body)
         except AbortAndRestart as restart:
-            logging.info('Async job was aborted and restarted: %r', restart)
             # Async retry status code
             status_code = 549
             message = 'Retry Async Task'
