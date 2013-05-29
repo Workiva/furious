@@ -754,6 +754,32 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(
             5, options['task_args']['retry_options']['task_retry_limit'])
 
+    def test_retry_value_is_decodable(self):
+        """Ensure that from_dict is the inverse of to_dict when retry options
+        are given.
+        """
+        from furious.async import Async
+
+        async_job = Async("something",
+                          task_args={'retry_options': {'task_retry_limit': 5}})
+        new_async_job = Async.from_dict(async_job.to_dict())
+
+        self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
+    def test_used_async_retry_value_is_decodable(self):
+        """Ensure that from_dict is the inverse of to_dict when retry options
+        are given and the async has be cast to task.
+        """
+        from furious.async import Async
+
+        async_job = Async("something",
+                          task_args={'retry_options': {'task_retry_limit': 5}})
+        async_job.to_dict()
+
+        new_async_job = Async.from_dict(async_job.to_dict())
+
+        self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
 
 class TestAsyncFromOptions(unittest.TestCase):
     """Ensure async_from_options() works correctly."""
