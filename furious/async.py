@@ -89,6 +89,10 @@ MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
 
+DEFAULT_RETRY_OPTIONS = {
+    'task_retry_limit': MAX_RESTARTS
+}
+
 
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
@@ -279,9 +283,8 @@ class Async(object):
         kwargs.update(copy.deepcopy(self.get_task_args()))
 
         # Set task_retry_limit
-        retry_options = kwargs.pop('retry_options', {})
-        retry_options['task_retry_limit'] = retry_options.get(
-            'task_retry_limit', MAX_RESTARTS)
+        retry_options = copy.deepcopy(DEFAULT_RETRY_OPTIONS)
+        retry_options.update(kwargs.pop('retry_options', {}))
         kwargs['retry_options'] = TaskRetryOptions(**retry_options)
 
         return Task(**kwargs)
