@@ -35,5 +35,3 @@ def process_async_task(headers, request_body):
 
     return 200, async._function_path
 
-
-
