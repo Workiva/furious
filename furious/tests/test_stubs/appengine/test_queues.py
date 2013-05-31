@@ -195,7 +195,8 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'default-pull', 'mode': 'pull', 'bucket_size': 5},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        queue_service = Mock()
+        queue_service.GetQueues=Mock(side_effect=[queue_descs])
 
         # Simulate that there are no tasks processed from any queue.
         run_queue.return_value = 0
@@ -217,7 +218,9 @@ class TestRunQueues(unittest.TestCase):
         self.assertEqual(1, run_result['iterations'])
 
         # Test again with max_iterations set to something > 0
-        queue_service_with_max = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        queue_service_with_max = Mock()
+        queue_service_with_max.GetQueues=Mock(side_effect=[queue_descs])
+
         run_result_with_max = run(queue_service_with_max, None, 5)
 
         # Make sure setting max_iterations > 0 still returns 0.
@@ -237,7 +240,8 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'default', 'mode': 'push', 'bucket_size': 100},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        queue_service = Mock()
+        queue_service.GetQueues=Mock(side_effect=[queue_descs])
 
         # Simulate that tasks were processed from the first push queue,
         # but not the second.
@@ -274,7 +278,10 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'default', 'mode': 'push', 'bucket_size': 100},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+
+        queue_service = Mock()
+        queue_service.GetQueues=Mock(side_effect=[queue_descs])
+
         max_iterations = 2 
 
         # Simulate that tasks would be processed for each queue for 3 
@@ -299,7 +306,9 @@ class TestRunQueues(unittest.TestCase):
             {'name': 'default', 'mode': 'push', 'bucket_size': 100},
             {'name': 'my_queue', 'mode': 'push', 'bucket_size': 100}]
 
-        queue_service = Mock(GetQueues=Mock(side_effect=[queue_descs]))
+        queue_service = Mock()
+        queue_service.GetQueues=Mock(side_effect=[queue_descs])
+
         max_iterations = 5 
 
         # Simulate that tasks were processed from the first push queue,
