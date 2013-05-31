@@ -28,6 +28,7 @@ def process_async_task(headers, request_body):
     async_options = json.loads(request_body)
     async = async_from_options(async_options)
 
+    _log_task_info(headers)
     logging.info(async._function_path)
 
     with context.execution_context_from_async(async):
@@ -35,3 +36,14 @@ def process_async_task(headers, request_body):
 
     return 200, async._function_path
 
+def _log_task_info(headers):
+    """Processes the header from task requests to log analytical data."""
+    task_info = {
+        'queue_name': headers.get('X-Appengine-Queuename', ''),
+        'task_name': headers.get('X-Appengine-Taskname', ''),
+        'retry_count': headers.get('X-Appengine-Taskretrycount', ''),
+        'execution_count': headers.get('X-Appengine-Taskexecutioncount', ''),
+        'eta': headers.get('X-Appengine-Tasketa', '')
+    }
+
+    logging.debug('TASK-INFO: %s' % json.dumps(task_info))
