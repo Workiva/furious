@@ -22,6 +22,7 @@ from mock import patch
 
 @patch('logging.debug')
 class TestLogTaskInfo(unittest.TestCase):
+    """Ensure that _log_task_info works as expected."""
 
     def test_all_headers(self, debug_mock):
         """Ensure _log_task_info produces the correct logs."""
