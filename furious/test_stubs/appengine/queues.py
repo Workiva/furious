@@ -301,7 +301,7 @@ def _execute_task(task):
 
     # Decode the body and process the task.
     body = base64.b64decode(task['body'])
-    return_code, func_path = process_async_task(task['headers'], body)
+    return_code, func_path = process_async_task(dict(task['headers']), body)
 
     # TODO: Possibly do more with return_codes.
 

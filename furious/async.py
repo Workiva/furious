@@ -89,6 +89,10 @@ MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
 
+DEFAULT_RETRY_OPTIONS = {
+    'task_retry_limit': MAX_RESTARTS
+}
+
 
 class Async(object):
     def __init__(self, target, args=None, kwargs=None, **options):
@@ -264,6 +268,7 @@ class Async(object):
     def to_task(self):
         """Return a task object representing this async job."""
         from google.appengine.api.taskqueue import Task
+        from google.appengine.api.taskqueue import TaskRetryOptions
 
         self._increment_recursion_level()
         self.check_recursion_depth()
@@ -273,9 +278,14 @@ class Async(object):
         kwargs = {
             'url': url,
             'headers': self.get_headers().copy(),
-            'payload': json.dumps(self.to_dict()),
+            'payload': json.dumps(self.to_dict())
         }
-        kwargs.update(self.get_task_args())
+        kwargs.update(copy.deepcopy(self.get_task_args()))
+
+        # Set task_retry_limit
+        retry_options = copy.deepcopy(DEFAULT_RETRY_OPTIONS)
+        retry_options.update(kwargs.pop('retry_options', {}))
+        kwargs['retry_options'] = TaskRetryOptions(**retry_options)
 
         return Task(**kwargs)
 
@@ -321,31 +331,6 @@ class Async(object):
         target, args, kwargs = async_options.pop('job')
 
         return cls(target, args, kwargs, **async_options)
-
-    def _restart(self):
-        """Restarts the executing Async.
-
-        If the Async is executing, then it will reset the _executing flag, and
-        restart this job. This means that the job will not necessarily execute
-        immediately, or on the same machine, as it goes back into the queue.
-        """
-
-        if not self._executing:
-            raise errors.NotExecutingError(
-                "Must be executing to restart the job, "
-                "perhaps you want Async.start()")
-
-        self._executing = False
-
-        restart_count = self.get_options().get('_restart_count', -1)
-        restart_count += 1
-        self.update_options(_restart_count=restart_count)
-
-        if restart_count < MAX_RESTARTS:
-            return self.start()
-        else:
-            import logging
-            logging.info('Too many restarts, Aborting.')
 
     def _prepare_persistence_engine(self):
         """Load the specified persistence engine, or the default if none is
