@@ -46,4 +46,4 @@ def _log_task_info(headers):
         'eta': headers.get('X-Appengine-Tasketa', '')
     }
 
-    logging.debug('TASK-INFO: %s' % json.dumps(task_info))
+    logging.debug('TASK-INFO: %s', json.dumps(task_info))

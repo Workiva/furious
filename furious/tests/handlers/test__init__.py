@@ -37,11 +37,11 @@ class TestLogTaskInfo(unittest.TestCase):
 
         handlers._log_task_info(headers)
 
-        expected_logs = ('TASK-INFO: '
+        expected_logs = (
             '{"eta": "purple", "retry_count": "blue", "queue_name": "red",'
             ' "task_name": "green", "execution_count": "yellow"}')
 
-        debug_mock.assert_called_with(expected_logs)
+        debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
 
     def test_no_headers(self, debug_mock):
         """Ensure _log_task_info produces the correct logs."""
@@ -50,11 +50,11 @@ class TestLogTaskInfo(unittest.TestCase):
 
         handlers._log_task_info(headers)
 
-        expected_logs = ('TASK-INFO: '
+        expected_logs = (
             '{"eta": "", "retry_count": "", "queue_name": "",'
             ' "task_name": "", "execution_count": ""}')
 
-        debug_mock.assert_called_with(expected_logs)
+        debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
 
     def test_ignore_extra_headers(self, debug_mock):
         """Ensure _log_task_info ignores extra items in the header"""
@@ -70,8 +70,8 @@ class TestLogTaskInfo(unittest.TestCase):
 
         handlers._log_task_info(headers)
 
-        expected_logs = ('TASK-INFO: '
+        expected_logs = (
             '{"eta": "purple", "retry_count": "blue", "queue_name": "red",'
             ' "task_name": "green", "execution_count": "yellow"}')
 
-        debug_mock.assert_called_with(expected_logs)
+        debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
