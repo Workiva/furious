@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 
-import json
 
 import unittest
 
 from mock import patch
+
 
 @patch('logging.debug')
 class TestLogTaskInfo(unittest.TestCase):
