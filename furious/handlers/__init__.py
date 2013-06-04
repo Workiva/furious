@@ -15,6 +15,7 @@
 #
 
 import json
+import time
 
 import logging
 
@@ -36,14 +37,17 @@ def process_async_task(headers, request_body):
 
     return 200, async._function_path
 
+
 def _log_task_info(headers):
     """Processes the header from task requests to log analytical data."""
+    ran_at = time.time()
+    task_eta = float(headers.get('X-Appengine-Tasketa', 0.0))
     task_info = {
-        'queue_name': headers.get('X-Appengine-Queuename', ''),
-        'task_name': headers.get('X-Appengine-Taskname', ''),
         'retry_count': headers.get('X-Appengine-Taskretrycount', ''),
         'execution_count': headers.get('X-Appengine-Taskexecutioncount', ''),
-        'eta': headers.get('X-Appengine-Tasketa', '')
+        'task_eta': task_eta,
+        'ran': ran_at,
+        'gae_latency_seconds': ran_at - task_eta
     }
 
     logging.debug('TASK-INFO: %s', json.dumps(task_info))
