@@ -174,7 +174,8 @@ class MessageIterator(object):
     operation inside a transaction, or when other flows are needed.
     """
 
-    def __init__(self, tag, queue_name, size, duration=60, auto_delete=True):
+    def __init__(self, tag, queue_name, size, duration=60, deadline=10,
+                 auto_delete=True):
         """The generator will yield json deserialized payloads from tasks with
         the corresponding tag.
 
@@ -198,6 +199,7 @@ class MessageIterator(object):
         self.size = size
         self.duration = duration
         self.auto_delete = auto_delete
+        self.deadline = deadline
 
         self._messages = []
         self._processed_messages = []
@@ -214,7 +216,7 @@ class MessageIterator(object):
             return
 
         loaded_messages = self.queue.lease_tasks_by_tag(
-            self.duration, self.size, tag=self.tag)
+            self.duration, self.size, tag=self.tag, deadline=self.deadline)
 
         self._messages.extend(loaded_messages)
 
