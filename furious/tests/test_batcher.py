@@ -519,7 +519,6 @@ class MessageIteratorTestCase(unittest.TestCase):
             iterator.next()
 
             self.assertRaises(StopIteration, iterator.next)
-            self.assertRaises(StopIteration, iterator.next)
 
         queue.lease_tasks_by_tag.assert_called_once_with(
             60, 1, tag='tag', deadline=2)

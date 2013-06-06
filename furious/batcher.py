@@ -224,8 +224,8 @@ class MessageIterator(object):
         # returned, then we are hitting queue contention issues and we should
         # treat this as a TransientError.
         # TODO: investigate other ways around this, perhaps async leases, etc.
-        if (round(time.time() - start, 1) >= self.deadline - 0.1 and
-                not loaded_messages):
+        if (not loaded_messages and
+                round(time.time() - start, 1) >= self.deadline - 0.1):
             from google.appengine.api.taskqueue import TransientError
 
             logging.info('Hit the deadline, raising TransientError')
