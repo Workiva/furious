@@ -215,8 +215,21 @@ class MessageIterator(object):
         if self._fetched:
             return
 
+        start = time.time()
+
         loaded_messages = self.queue.lease_tasks_by_tag(
             self.duration, self.size, tag=self.tag, deadline=self.deadline)
+
+        # If we are within 0.1 sec of our deadline and no messages were
+        # returned, then we are hitting queue contention issues and we should
+        # treat this as a TransientError.
+        # TODO: investigate other ways around this, perhaps async leases, etc.
+        if (round(time.time() - start, 1) >= self.deadline - 0.1 and
+                not loaded_messages):
+            from google.appengine.api.taskqueue import TransientError
+
+            logging.info('Hit the deadline, raising TransientError')
+            raise TransientError()
 
         self._messages.extend(loaded_messages)
 
