@@ -448,7 +448,7 @@ class MessageIteratorTestCase(unittest.TestCase):
             self.assertRaises(StopIteration, iterator.next)
 
         queue.lease_tasks_by_tag.assert_called_once_with(
-            60, 1, tag='tag')
+            60, 1, tag='tag', deadline=10)
 
     def test_rerun_after_depletion_calls_once(self):
         """Ensure MessageIterator works when used manually."""
@@ -468,7 +468,7 @@ class MessageIteratorTestCase(unittest.TestCase):
             results = [payload for payload in iterator]
 
         queue.lease_tasks_by_tag.assert_called_once_with(
-            60, 1, tag='tag')
+            60, 1, tag='tag', deadline=10)
 
     def test_rerun_after_depletion_doesnt_delete_too_much(self):
         """Ensure MessageIterator works when used manually."""
@@ -497,8 +497,30 @@ class MessageIteratorTestCase(unittest.TestCase):
 
             # Lease should only have been called a single time.
             queue.lease_tasks_by_tag.assert_called_once_with(
-                60, 1, tag='tag')
+                60, 1, tag='tag', deadline=10)
 
             # The delete call should delete only the original work.
             iterator.delete_messages()
             queue.delete_tasks.assert_called_once_with([task])
+
+    def test_custom_deadline(self):
+        """Ensure that a custom deadline gets passed to lease_tasks."""
+        from furious.batcher import MessageIterator
+
+        payload = '["test"]'
+        task = Mock(payload=payload, tag='tag')
+
+        message_iterator = MessageIterator('tag', 'qn', 1, deadline=2)
+
+        with patch.object(message_iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = [task]
+
+            iterator = iter(message_iterator)
+            iterator.next()
+
+            self.assertRaises(StopIteration, iterator.next)
+            self.assertRaises(StopIteration, iterator.next)
+
+        queue.lease_tasks_by_tag.assert_called_once_with(
+            60, 1, tag='tag', deadline=2)
+
