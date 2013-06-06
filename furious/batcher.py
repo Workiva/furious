@@ -185,6 +185,7 @@ class MessageIterator(object):
         :param size: :class: `int` The number of items to pull at once
         :param duration: :class: `int` After this time, the tasks may be leased
                          again. Tracked in seconds
+        :param deadline: :class: `int` The time in seconds to wait for the rpc.
         :param auto_delete: :class: `bool` Delete tasks when iteration is
                             complete.
 
