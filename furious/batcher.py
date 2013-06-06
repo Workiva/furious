@@ -174,7 +174,8 @@ class MessageIterator(object):
     operation inside a transaction, or when other flows are needed.
     """
 
-    def __init__(self, tag, queue_name, size, duration=60, auto_delete=True):
+    def __init__(self, tag, queue_name, size, duration=60, deadline=10,
+                 auto_delete=True):
         """The generator will yield json deserialized payloads from tasks with
         the corresponding tag.
 
@@ -184,6 +185,7 @@ class MessageIterator(object):
         :param size: :class: `int` The number of items to pull at once
         :param duration: :class: `int` After this time, the tasks may be leased
                          again. Tracked in seconds
+        :param deadline: :class: `int` The time in seconds to wait for the rpc.
         :param auto_delete: :class: `bool` Delete tasks when iteration is
                             complete.
 
@@ -198,6 +200,7 @@ class MessageIterator(object):
         self.size = size
         self.duration = duration
         self.auto_delete = auto_delete
+        self.deadline = deadline
 
         self._messages = []
         self._processed_messages = []
@@ -214,7 +217,7 @@ class MessageIterator(object):
             return
 
         loaded_messages = self.queue.lease_tasks_by_tag(
-            self.duration, self.size, tag=self.tag)
+            self.duration, self.size, tag=self.tag, deadline=self.deadline)
 
         self._messages.extend(loaded_messages)
 
