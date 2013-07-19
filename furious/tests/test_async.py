@@ -623,6 +623,32 @@ class TestAsync(unittest.TestCase):
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
 
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_task_transactional(self, queue_add_mock):
+        """Ensure the task is added transactional when start is
+        called with transactional."""
+        from furious.async import Async
+        async_job = Async("something")
+        async_job.start(transactional=True)
+        call_args = queue_add_mock.call_args
+        call_kwargs = call_args[1]
+
+        self.assertIn('transactional', call_kwargs)
+        self.assertTrue(call_kwargs['transactional'])
+
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_task_non_transactional(self, queue_add_mock):
+        """Ensure the task is added transactional when start is
+        called with transactional."""
+        from furious.async import Async
+        async_job = Async("something")
+        async_job.start(transactional=False)
+        call_args = queue_add_mock.call_args
+        call_kwargs = call_args[1]
+
+        self.assertIn('transactional', call_kwargs)
+        self.assertFalse(call_kwargs['transactional'])
+
     def test_update_recursion_level_defaults(self):
         """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
         from furious.async import Async

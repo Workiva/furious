@@ -289,7 +289,7 @@ class Async(object):
 
         return Task(**kwargs)
 
-    def start(self):
+    def start(self, transactional=False):
         """Insert the task into the requested queue, 'default' if non given.
 
         If a TransientError is hit the task will re-insert the task.
@@ -302,10 +302,12 @@ class Async(object):
         task = self.to_task()
 
         try:
-            taskqueue.Queue(name=self.get_queue()).add(task)
+            taskqueue.Queue(name=self.get_queue()).add(
+                task, transactional=transactional)
 
         except taskqueue.TransientError:
-            taskqueue.Queue(name=self.get_queue()).add(task)
+            taskqueue.Queue(name=self.get_queue()).add(
+                task, transactional=transactional)
 
         except (taskqueue.TaskAlreadyExistsError,
                 taskqueue.TombstonedTaskError):
