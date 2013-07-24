@@ -84,7 +84,13 @@ __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
 
 
 ASYNC_DEFAULT_QUEUE = 'default'
-ASYNC_ENDPOINT = '/_ah/queue/async'
+
+try:
+    from settings import FURIOUS_URL as ASYNC_ENDPOINT
+except ImportError:
+    ASYNC_ENDPOINT = '/_ah/queue/async'
+
+
 MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
