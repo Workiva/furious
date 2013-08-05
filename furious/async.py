@@ -88,6 +88,8 @@ ASYNC_ENDPOINT = '/_ah/queue/async'
 MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
+TASK_WEIGHT = 0.6
+EXECUTED_WEIGHT = 0.4
 
 DEFAULT_RETRY_OPTIONS = {
     'task_retry_limit': MAX_RESTARTS
@@ -446,6 +448,77 @@ def defaults(**options):
         return wrapper
 
     return real_decorator
+
+
+# Use a thread local cache to optimize performance in select_queue.
+from threading import local
+_queue_group_cache = local()
+_queue_group_cache.lists = {}
+
+
+def select_queue(queue_group, queue_count=1, random=True):
+    """Select an optimal queue to run a task in from the given queue group. By
+    default, this simply randomly selects a queue from the group, otherwise it
+    leverages the taskqueue API to try and determine the best queue to use. The
+    queue_count kwarg indicates the number of queues allocated to the group.
+    """
+
+    if not queue_group:
+        return ASYNC_DEFAULT_QUEUE
+
+    if queue_count <= 0:
+        raise Exception('Queue group must have at least 1 queue.')
+
+    if queue_count == 1:
+        return '%s-0' % queue_group
+
+    if random:
+        group_queues = _queue_group_cache.lists.setdefault(queue_group, [])
+
+        if len(group_queues) == 0:
+            from random import shuffle
+
+            group_queues.extend('%s-%d' % (queue_group, i)
+                                for i in xrange(queue_count))
+
+            shuffle(group_queues)
+
+        return group_queues.pop()
+
+    return _calculate_optimal_queue(queue_group, queue_count)
+
+
+def _calculate_optimal_queue(queue_group, queue_count):
+    """Determine an approximate optimal queue from the given queue group. The
+    queue_count argument indicates the number of queues allocated to the group.
+    """
+
+    from google.appengine.api import taskqueue
+
+    # Asynchronously fetch the stats for every queue in the group.
+    queue_stats = taskqueue.QueueStatistics.fetch(
+        [taskqueue.Queue(name='%s-%d' % (queue_group, i))
+         for i in xrange(queue_count)])
+
+    # Apply ranks to the queues.
+    ranks = [(_calculate_queue_rank(queue_stat), queue_stat.queue.name)
+             for queue_stat in queue_stats]
+
+    # Sort on rank and return the best one (lowest rank score).
+    ranks.sort(key=lambda tup: tup[0])
+
+    # The second value of the tuple is the queue name.
+    return ranks[0][1]
+
+
+def _calculate_queue_rank(queue_stats):
+    """Calculate a ranking for the given QueueStatistics object such that the
+    lower the rank, the more "optimal" the queue is.
+    """
+
+    # TODO: This is just a rudimentary ranking formula - may want to revisit.
+    return queue_stats.tasks * TASK_WEIGHT - \
+        queue_stats.executed_last_minute * EXECUTED_WEIGHT
 
 
 def _check_options(options):
