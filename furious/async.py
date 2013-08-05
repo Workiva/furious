@@ -263,9 +263,10 @@ class Async(object):
         """Return the queue the task should run in."""
         queue_group = self._options.get('queue_group')
         if queue_group:
-            return select_queue(queue_group[0],
-                                queue_count=queue_group[1],
-                                random=queue_group[2])
+            queue_count = self._options.get('queue_count', 1)
+            random = self._options.get('random', True)
+            return select_queue(queue_group, queue_count=queue_count,
+                                random=random)
 
         return self._options.get('queue', ASYNC_DEFAULT_QUEUE)
 
@@ -462,7 +463,8 @@ _queue_group_cache = local()
 _queue_group_cache.lists = {}
 
 
-def select_queue(queue_group, queue_count=1, random=True):
+def select_queue(queue_group, queue_count=1, random=True,
+                 default=ASYNC_DEFAULT_QUEUE):
     """Select an optimal queue to run a task in from the given queue group. By
     default, this simply randomly selects a queue from the group, otherwise it
     leverages the taskqueue API to try and determine the best queue to use. The
@@ -470,7 +472,7 @@ def select_queue(queue_group, queue_count=1, random=True):
     """
 
     if not queue_group:
-        return ASYNC_DEFAULT_QUEUE
+        return default
 
     if queue_count <= 0:
         raise Exception('Queue group must have at least 1 queue.')

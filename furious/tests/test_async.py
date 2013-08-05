@@ -335,13 +335,15 @@ class TestAsync(unittest.TestCase):
         is given.
         """
         from furious.async import Async
+        from furious.async import ASYNC_DEFAULT_QUEUE
 
         queue_group = 'foo-queue'
         queue_count = 5
         random = False
 
-        job = Async('nonexistant',
-                    queue_group=(queue_group, queue_count, random))
+        job = Async('nonexistant', queue_group=queue_group,
+                    queue_count=queue_count, random=random,
+                    default=ASYNC_DEFAULT_QUEUE)
 
         expected = '%s-2' % queue_group
         mock_select_queue.return_value = expected

@@ -48,8 +48,10 @@ class Message(object):
         """Return the queue the task should run in."""
         queue_group = self._options.get('queue_group')
         if queue_group:
-            return select_queue(queue_group[0], queue_count=queue_group[1],
-                                random=queue_group[2])
+            queue_count = self._options.get('queue_count', 1)
+            random = self._options.get('random', True)
+            return select_queue(queue_group, queue_count=queue_count,
+                                random=random, default=MESSAGE_DEFAULT_QUEUE)
 
         return self._options.get('queue', MESSAGE_DEFAULT_QUEUE)
 

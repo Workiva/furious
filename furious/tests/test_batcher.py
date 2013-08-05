@@ -77,12 +77,14 @@ class MessageTestCase(unittest.TestCase):
         is given.
         """
         from furious.batcher import Message
+        from furious.batcher import MESSAGE_DEFAULT_QUEUE
 
         queue_group = 'foo-queue'
         queue_count = 5
         random = False
 
-        message = Message(queue_group=(queue_group, queue_count, random))
+        message = Message(queue_group=queue_group, queue_count=queue_count,
+                          random=random, default=MESSAGE_DEFAULT_QUEUE)
 
         expected = '%s-2' % queue_group
         mock_select_queue.return_value = expected
