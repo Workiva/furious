@@ -501,7 +501,6 @@ def _calculate_optimal_queue(queue_group, queue_count):
 
     from google.appengine.api import taskqueue
 
-    # Asynchronously fetch the stats for every queue in the group.
     queue_stats = taskqueue.QueueStatistics.fetch(
         [taskqueue.Queue(name='%s-%d' % (queue_group, i))
          for i in xrange(queue_count)])
