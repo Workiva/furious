@@ -71,6 +71,24 @@ class MessageTestCase(unittest.TestCase):
 
         self.assertEqual('default-pull', message.get_queue())
 
+    @patch('furious.batcher.select_queue')
+    def test_get_queue_group_queue(self, mock_select_queue):
+        """Ensure get_queue calls through to select_queue when a queue group
+        is given.
+        """
+        from furious.batcher import Message
+
+        queue_group = 'foo-queue'
+        queue_count = 5
+        random = False
+
+        message = Message(queue_group=(queue_group, queue_count, random))
+
+        expected = '%s-2' % queue_group
+        mock_select_queue.return_value = expected
+
+        self.assertEqual(expected, message.get_queue())
+
     def test_get_task_args(self):
         """Ensure get_task_args returns the message task_args."""
         from furious.batcher import Message
