@@ -82,6 +82,18 @@ class TestContext(unittest.TestCase):
 
         self.assertEqual('test_id_weee', Context(id='test_id_weee').id)
 
+    def test_insert_success(self):
+        """Ensure a new Context has an insert_success of 0."""
+        from furious.context import Context
+
+        self.assertEqual(0, Context().insert_success)
+
+    def test_insert_failed(self):
+        """Ensure a new Context has an insert_failed of 0."""
+        from furious.context import Context
+
+        self.assertEqual(0, Context().insert_failed)
+
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_add_job_to_context_works(self, queue_add_mock):
         """Ensure adding a job works."""

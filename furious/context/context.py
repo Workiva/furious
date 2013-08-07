@@ -62,6 +62,8 @@ class Context(object):
         self._tasks = []
         self._task_ids = []
         self._tasks_inserted = False
+        self._insert_success_count = 0
+        self._insert_failed_count = 0
 
         id = options.get('id')
         if not id:
@@ -83,6 +85,14 @@ class Context(object):
     def id(self):
         return self._id
 
+    @property
+    def insert_success(self):
+        return self._insert_success_count
+
+    @property
+    def insert_failed(self):
+        return self._insert_failed_count
+
     def __enter__(self):
         return self
 
@@ -101,7 +111,11 @@ class Context(object):
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
             for batch in _task_batcher(tasks):
-                self._insert_tasks(batch, queue=queue)
+                inserted = self._insert_tasks(batch, queue=queue)
+                if isinstance(inserted, (int, long)):
+                    # Ignore insert_tasks functions that do not return counts.
+                    self._insert_success_count += inserted
+                    self._insert_failed_count += len(batch) - inserted
 
         self._tasks_inserted = True
 
@@ -218,25 +232,28 @@ class Context(object):
 def _insert_tasks(tasks, queue, transactional=False):
     """Insert a batch of tasks into the specified queue. If an error occurs
     during insertion, split the batch and retry until they are successfully
-    inserted.
+    inserted. Return the number of successfully inserted tasks.
     """
     from google.appengine.api import taskqueue
 
     if not tasks:
-        return
+        return 0
 
     try:
         taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
+        return len(tasks)
     except (taskqueue.BadTaskStateError,
             taskqueue.TaskAlreadyExistsError,
             taskqueue.TombstonedTaskError,
             taskqueue.TransientError):
         count = len(tasks)
         if count <= 1:
-            return
+            return 0
 
-        _insert_tasks(tasks[:count / 2], queue, transactional)
-        _insert_tasks(tasks[count / 2:], queue, transactional)
+        inserted = _insert_tasks(tasks[:count / 2], queue, transactional)
+        inserted += _insert_tasks(tasks[count / 2:], queue, transactional)
+
+        return inserted
 
 
 def _task_batcher(tasks):
