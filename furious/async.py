@@ -457,12 +457,6 @@ def defaults(**options):
     return real_decorator
 
 
-# Use a thread local cache to optimize performance in select_queue.
-from threading import local
-_queue_group_cache = local()
-_queue_group_cache.lists = {}
-
-
 def select_queue(queue_group, queue_count=1, random=True,
                  default=ASYNC_DEFAULT_QUEUE):
     """Select an optimal queue to run a task in from the given queue group. By
@@ -481,7 +475,8 @@ def select_queue(queue_group, queue_count=1, random=True,
         return '%s-0' % queue_group
 
     if random:
-        group_queues = _queue_group_cache.lists.setdefault(queue_group, [])
+        lists = _get_from_cache('queues', default={})
+        group_queues = lists.setdefault(queue_group, [])
 
         if len(group_queues) == 0:
             from random import shuffle
@@ -501,31 +496,80 @@ def _calculate_optimal_queue(queue_group, queue_count):
     queue_count argument indicates the number of queues allocated to the group.
     """
 
+    from google.appengine.api import memcache
     from google.appengine.api import taskqueue
 
-    queue_stats = taskqueue.QueueStatistics.fetch(
-        [taskqueue.Queue(name='%s-%d' % (queue_group, i))
-         for i in xrange(queue_count)])
+    STATS_NAMESPACE = 'queuestats'
+
+    queues = ['%s-%d' % (queue_group, i) for i in xrange(queue_count)]
+    queue_dict = memcache.get_multi(queues, namespace=STATS_NAMESPACE)
+
+    if len(queue_dict) != len(queues):
+        # Fetch the QueueStatistics and cache them for 30 seconds.
+        queue_stats = taskqueue.QueueStatistics.fetch(queues)
+        stats_and_counts = [(stats, 0) for stats in queue_stats]
+        queue_dict = dict(zip(queues, stats_and_counts))
+        memcache.set_multi(queue_dict, namespace=STATS_NAMESPACE, time=30)
 
     # Apply ranks to the queues.
-    ranks = [(_calculate_queue_rank(queue_stat), queue_stat.queue.name)
-             for queue_stat in queue_stats]
+    ranks = [(queue, _calculate_queue_rank(*queue_dict.get(queue)))
+             for queue in queues]
 
     # Sort on rank and return the best one (lowest rank score).
-    ranks.sort(key=lambda tup: tup[0])
+    ranks.sort(key=lambda tup: tup[1])
 
-    # The second value of the tuple is the queue name.
-    return ranks[0][1]
+    # The first value of the tuple is the queue name.
+    queue = ranks[0][0]
+
+    stats, assigned = queue_dict.get(queue)
+    assigned += 1
+    memcache.set(queue, (stats, assigned), namespace=STATS_NAMESPACE, time=30)
+
+    return queue
 
 
-def _calculate_queue_rank(queue_stats):
+def _calculate_queue_rank(queue_stats, assigned):
     """Calculate a ranking for the given QueueStatistics object such that the
     lower the rank, the more "optimal" the queue is.
     """
 
+    if not queue_stats:
+        return 0
+
+    executed_last_minute = queue_stats.executed_last_minute
+    if not executed_last_minute:
+        executed_last_minute = 0
+
     # TODO: This is just a rudimentary ranking formula - may want to revisit.
-    return queue_stats.tasks * TASK_WEIGHT - \
-        queue_stats.executed_last_minute * EXECUTED_WEIGHT
+    # Also, it's ineffective when adding tasks to a context because this is
+    # called for every task before any are inserted, so a queue will get the
+    # same rank even if it has had tasks added.
+    rank = (queue_stats.tasks + assigned) * TASK_WEIGHT - \
+        executed_last_minute * EXECUTED_WEIGHT
+
+    print '%s: %d' % (queue_stats.queue.name, rank)
+
+
+# Use a thread local cache to optimize performance in select_queue.
+from threading import local
+_cache = local()
+
+
+def _get_from_cache(key, default=None):
+    """Fetch the value for the given key from the thread local cache. If the
+    key does not exist, set it for the given default value and return the
+    default.
+    """
+
+    if not key:
+        return default
+
+    if hasattr(_cache, key):
+        return getattr(_cache, key)
+
+    setattr(_cache, key, default)
+
+    return default
 
 
 def _check_options(options):
