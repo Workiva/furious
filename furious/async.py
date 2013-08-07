@@ -470,7 +470,7 @@ def select_queue(queue_group, queue_count=1, default=ASYNC_DEFAULT_QUEUE):
     queue_lists = _get_from_cache('queues', default={})
     group_queues = queue_lists.setdefault(queue_group, [])
 
-    if len(group_queues) == 0:
+    if not group_queues:
         from random import shuffle
 
         group_queues.extend('%s-%d' % (queue_group, i)
