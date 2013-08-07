@@ -918,18 +918,80 @@ class TestSelectQueue(unittest.TestCase):
 
         self.assertEqual(actual, expected)
 
-    @patch('random.shuffle')
-    def test_random(self, mock_shuffle):
-        """Ensure that a random queue is selected from the group."""
+    @patch('furious.async._get_from_cache')
+    def test_random_from_cache(self, mock_cache):
+        """Ensure that a random queue is selected from the group when there are
+        cached queues.
+        """
         from furious.async import select_queue
 
         queue_group = 'foo-queue'
         queue_count = 5
+        expected = '%s-4' % queue_group
+
+        mock_cache.return_value = {queue_group: [expected]}
 
         actual = select_queue(queue_group, queue_count=queue_count)
 
-        self.assertEqual(actual, 'foo-queue-4')
+        self.assertEqual(actual, expected)
+        mock_cache.assert_called_once_with('queues', default={})
 
-        # TODO: assert call args
+    @patch('random.shuffle')
+    @patch('furious.async._get_from_cache')
+    def test_random_no_cache(self, mock_cache, mock_shuffle):
+        """Ensure that a random queue is selected from the group when there are
+        no cached queues.
+        """
+        from furious.async import select_queue
+
+        queue_group = 'foo-queue'
+        queue_count = 5
+        expected = '%s-4' % queue_group
+
+        mock_cache.return_value = {}
+
+        actual = select_queue(queue_group, queue_count=queue_count)
+
+        self.assertEqual(actual, expected)
+        mock_cache.assert_called_once_with('queues', default={})
         self.assertTrue(mock_shuffle.called)
+
+    def test_get_from_cache_no_key(self):
+        """Ensure the default value is returned when the key is None."""
+        from furious.async import _get_from_cache
+
+        key = None
+        expected = 'default'
+
+        actual = _get_from_cache(key, default=expected)
+
+        self.assertEqual(actual, expected)
+
+    def test_get_from_cache_present(self):
+        """Ensure the correct value is returned when the key is present."""
+        from furious.async import _cache
+        from furious.async import _get_from_cache
+
+        key = 'key'
+        expected = 'value'
+        setattr(_cache, key, expected)
+
+        actual = _get_from_cache(key)
+
+        self.assertEqual(actual, expected)
+
+    def test_get_from_cache_not_present(self):
+        """Ensure the default value is returned and set when the key is not
+        present.
+        """
+        from furious.async import _cache
+        from furious.async import _get_from_cache
+
+        key = 'key'
+        expected = 'default'
+
+        actual = _get_from_cache(key, default=expected)
+
+        self.assertEqual(actual, expected)
+        self.assertTrue(hasattr(_cache, key))
 
