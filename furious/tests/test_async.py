@@ -339,11 +339,9 @@ class TestAsync(unittest.TestCase):
 
         queue_group = 'foo-queue'
         queue_count = 5
-        random = False
 
         job = Async('nonexistant', queue_group=queue_group,
-                    queue_count=queue_count, random=random,
-                    default=ASYNC_DEFAULT_QUEUE)
+                    queue_count=queue_count, default=ASYNC_DEFAULT_QUEUE)
 
         expected = '%s-2' % queue_group
         mock_select_queue.return_value = expected
@@ -883,8 +881,7 @@ class TestSelectQueue(unittest.TestCase):
         from threading import local
         from furious import async
 
-        async._queue_group_cache = local()
-        async._queue_group_cache.lists = {}
+        async._cache = local()
 
     def test_none(self):
         """Ensure that if the queue group is None, the default queue is
@@ -936,65 +933,3 @@ class TestSelectQueue(unittest.TestCase):
         # TODO: assert call args
         self.assertTrue(mock_shuffle.called)
 
-    @patch('furious.async._calculate_optimal_queue')
-    def test_optimal_selection(self, mock_optimal_queue):
-        """Ensure that select_queue calls through to _calculate_optimal_queue
-        when random=False.
-        """
-        from furious.async import select_queue
-
-        queue_group = 'foo-queue'
-        queue_count = 5
-        expected = '%s-0' % queue_group
-        mock_optimal_queue.return_value = expected
-
-        actual = select_queue(queue_group, random=False,
-                              queue_count=queue_count)
-
-        self.assertEqual(actual, expected)
-        mock_optimal_queue.assert_called_once_with(queue_group, queue_count)
-
-    @patch('furious.async._calculate_queue_rank')
-    @patch('google.appengine.api.taskqueue.QueueStatistics.fetch')
-    def test_calculate_optimal_queue(self, mock_fetch, mock_queue_rank):
-        """Ensure _calculate_optimal_queue returns the queue with the highest
-        rank.
-        """
-        from furious.async import _calculate_optimal_queue
-
-        queue_group = 'foo-queue'
-        queue_count = 5
-
-        mock_queues = []
-        for i in range(queue_count):
-            mock_queue = Mock()
-            mock_queue.name = '%s-%d' % (queue_group, i)
-            mock_queues.append(mock_queue)
-
-        mock_stats = [Mock(queue=mock_queue) for mock_queue in mock_queues]
-        mock_fetch.return_value = mock_stats
-        mock_queue_rank.side_effect = [2, 4, 3, 1, 0]
-
-        actual = _calculate_optimal_queue(queue_group, queue_count)
-
-        self.assertEqual(actual, '%s-4' % queue_group)
-        mock_calls = [call(mock_stat) for mock_stat in mock_stats]
-        self.assertEqual(mock_queue_rank.call_args_list, mock_calls)
-
-    def test_calculate_queue_rank(self):
-        """Ensure _calculate_queue_rank returns the correct value."""
-        from furious.async import EXECUTED_WEIGHT
-        from furious.async import TASK_WEIGHT
-        from furious.async import _calculate_queue_rank
-
-        tasks = 5
-        executed = 10
-        queue_stats = Mock()
-        queue_stats.tasks = tasks
-        queue_stats.executed_last_minute = executed
-
-        expected = TASK_WEIGHT * tasks - EXECUTED_WEIGHT * executed
-
-        actual = _calculate_queue_rank(queue_stats)
-
-        self.assertEqual(actual, expected)
