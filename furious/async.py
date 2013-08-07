@@ -467,9 +467,6 @@ def select_queue(queue_group, queue_count=1, default=ASYNC_DEFAULT_QUEUE):
     if queue_count <= 0:
         raise Exception('Queue group must have at least 1 queue.')
 
-    if queue_count == 1:
-        return '%s-0' % queue_group
-
     queue_lists = _get_from_cache('queues', default={})
     group_queues = queue_lists.setdefault(queue_group, [])
 

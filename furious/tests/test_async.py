@@ -905,19 +905,6 @@ class TestSelectQueue(unittest.TestCase):
         self.assertEqual(context.exception.message,
                          'Queue group must have at least 1 queue.')
 
-    def test_single_queue(self):
-        """Ensure that if the queue group passed in has a single queue, that
-        queue is returned.
-        """
-        from furious.async import select_queue
-
-        queue_group = 'foo-queue'
-        expected = '%s-0' % queue_group
-
-        actual = select_queue(queue_group)
-
-        self.assertEqual(actual, expected)
-
     @patch('furious.async._get_from_cache')
     def test_random_from_cache(self, mock_cache):
         """Ensure that a random queue is selected from the group when there are
