@@ -27,21 +27,14 @@ import webapp2
 
 class QueueGroupIntroHandler(webapp2.RequestHandler):
     """Demonstrate the creation and insertion of 500 furious tasks to be run
-    in a queue group with optimal queue selection enabled."""
+    in a queue group with random distribution."""
     def get(self):
-        from furious.async import Async
+        from furious import context
 
-        random = self.request.get('random')
-        if random and random == '1':
-            random = True
-        else:
-            random = False
-
-        for i in xrange(500):
-            async_task = Async(target=example_function, args=[i],
-                               queue_group='workers', queue_count=4,
-                               random=random)
-            async_task.start()
+        with context.new() as ctx:
+            for i in xrange(500):
+                ctx.add(target=example_function, args=[i],
+                        queue_group='workers', queue_count=4)
 
         logging.info('500 Async jobs inserted.')
 
@@ -52,6 +45,4 @@ def example_function(*args, **kwargs):
     """This function is called by furious tasks to demonstrate usage."""
     logging.info('example_function executed with args: %r, kwargs: %r',
                  args, kwargs)
-    import time
-    time.sleep(2)
     return args
