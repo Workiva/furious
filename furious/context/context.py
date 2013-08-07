@@ -113,7 +113,7 @@ class Context(object):
             for batch in _task_batcher(tasks):
                 inserted = self._insert_tasks(batch, queue=queue)
                 if isinstance(inserted, (int, long)):
-                    # Ignore insert_tasks functions that do not return counts.
+                    # Don't blow up on insert_tasks that don't return counts.
                     self._insert_success_count += inserted
                     self._insert_failed_count += len(batch) - inserted
 
