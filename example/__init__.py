@@ -35,6 +35,7 @@ from .complex_workflow import ComplexWorkflowHandler
 from .context_intro import ContextIntroHandler
 from .grep import GrepHandler
 from .simple_workflow import SimpleWorkflowHandler
+from .queue_group_intro import QueueGroupIntroHandler
 
 config = {
     'webapp2_extras.jinja2': {
@@ -55,5 +56,6 @@ app = webapp2.WSGIApplication([
     ('/batcher/run', BatcherHandler),
     ('/batcher/stats', BatcherStatsHandler),
     ('/grep', GrepHandler),
+    ('/queue_group', QueueGroupIntroHandler)
 ], config=config)
 
