@@ -194,6 +194,26 @@ class TestContext(unittest.TestCase):
         self.assertEqual(1, len(queue_registry['C']._calls[0][0][0]))
         self.assertEqual(4, ctx.insert_success)
 
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_add_task_fails(self, queue_add_mock):
+        """Ensure insert_failed and insert_success are calculated correctly."""
+        from google.appengine.api.taskqueue import TaskAlreadyExistsError
+        from furious.context import Context
+
+        def queue_add(tasks, transactional=False):
+            if len(tasks) != 2:
+                raise TaskAlreadyExistsError()
+
+        queue_add_mock.side_effect = queue_add
+
+        with Context() as ctx:
+            ctx.add('test', args=[1, 2], queue='A')
+            ctx.add('test', args=[1, 2], queue='B')
+            ctx.add('test', args=[1, 2], queue='B')
+
+        self.assertEqual(2, ctx.insert_success)
+        self.assertEqual(1, ctx.insert_failed)
+
     def test_to_dict(self):
         """Ensure to_dict returns a dictionary representation of the Context.
         """
