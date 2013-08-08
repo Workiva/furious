@@ -51,6 +51,8 @@ from ..job_utils import reference_to_path
 
 from .. import errors
 
+DEFAULT_TASK_BATCH_SIZE = 100
+
 
 class Context(object):
     """Furious context object.
