@@ -14,12 +14,13 @@
 # limitations under the License.
 #
 
-import unittest
+"""
+Furious AutoContext is used batch inserts of tasks into groups.
 
-from google.appengine.ext import testbed
+It is similar to Context, but inserts automatically before the context
+is exited.
+"""
 
-from mock import Mock
-from mock import patch
 
 from furious.context.context import Context
 
@@ -35,8 +36,6 @@ class AutoContext(Context):
         Context.__init__(self, **options)
 
         self.batch_size = batch_size
-
-        self._num_tasks_inserted = 0
 
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
