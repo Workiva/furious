@@ -156,7 +156,7 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work), self.assertRaises(TypeError) as context:
             run_job()
 
-        self.assertTrue(isinstance(context.exception, TypeError))
+        self.assertIsInstance(context.exception, TypeError)
         self.assertEqual(1, len(handle_count),
                          "Error handler called wrong number of times.")
         self.assertEqual(0, len(call_count),
