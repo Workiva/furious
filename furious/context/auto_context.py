@@ -1,3 +1,25 @@
+#
+# Copyright 2012 WebFilings, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import unittest
+
+from google.appengine.ext import testbed
+
+from mock import Mock
+from mock import patch
 
 from furious.context.context import Context
 
@@ -19,10 +41,12 @@ class AutoContext(Context):
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
 
-        The same as Context.add, but calls _auto_insert_check() to
-        insert tasks automatically.
+        Like Context.add(): creates an Async and adds it to our list of tasks.
+        but also calls _auto_insert_check() to add tasks to queues
+        automatically.
         """
 
+        # In superclass, add new task to our list of tasks
         target = super(
             AutoContext, self).add(target, args, kwargs, **options)
 
@@ -39,7 +63,7 @@ class AutoContext(Context):
             self._handle_tasks()
             return
 
-        if len(self.tasks) >= self.batch_size:
+        if len(self._tasks) >= self.batch_size:
             self._handle_tasks()
 
     def _handle_tasks(self):
@@ -49,6 +73,7 @@ class AutoContext(Context):
         """
 
         self._handle_tasks_insert(batch_size=self.batch_size)
+        self._tasks = []
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """In addition to the default __exit__(), also mark all tasks
