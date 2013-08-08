@@ -92,7 +92,7 @@ class Context(object):
 
         return False
 
-    def _handle_tasks(self):
+    def _handle_tasks_insert(self, batch_size=None):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
             raise errors.ContextAlreadyStartedError(
@@ -100,8 +100,14 @@ class Context(object):
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
-            for batch in _task_batcher(tasks):
+            for batch in _task_batcher(tasks, batch_size=batch_size):
                 self._insert_tasks(batch, queue=queue)
+
+    def _handle_tasks(self):
+        """Convert all Async's into tasks, then insert them into queues.
+        Also mark all tasks inserted to ensure they are not reinserted later.
+        """
+        self._handle_tasks_insert()
 
         self._tasks_inserted = True
 
@@ -119,8 +125,8 @@ class Context(object):
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
 
-        Takes an Async object or the argumnets to construct an Async
-        object as argumnets.  Returns the newly added Async object.
+        Takes an Async object or the arguments to construct an Async
+        object as arguments.  Returns the newly added Async object.
         """
         from ..async import Async
         from ..batcher import Message
@@ -239,12 +245,15 @@ def _insert_tasks(tasks, queue, transactional=False):
         _insert_tasks(tasks[count / 2:], queue, transactional)
 
 
-def _task_batcher(tasks):
+def _task_batcher(tasks, batch_size=None):
     """Batches large task lists into groups of 100 so that they can all be
     inserted.
     """
     from itertools import izip_longest
 
-    args = [iter(tasks)] * 100
+    if not batch_size:
+        batch_size = DEFAULT_TASK_BATCH_SIZE
+
+    args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
 
