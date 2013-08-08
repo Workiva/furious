@@ -61,7 +61,6 @@ def run_job():
         exception = abort
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
-        async.result = None
         exception = restart
     except Exception as e:
         exception = e
