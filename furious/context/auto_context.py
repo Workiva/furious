@@ -60,7 +60,6 @@ class AutoContext(Context):
         """
 
         if not self.batch_size:
-            self._handle_tasks()
             return
 
         if len(self._tasks) >= self.batch_size:
