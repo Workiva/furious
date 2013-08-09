@@ -50,10 +50,10 @@ def run_job():
         kwargs = {}
 
     function = path_to_reference(function_path)
+    exception = None
 
     try:
         async.executing = True
-        exception = None
         async.result = function(*args, **kwargs)
     except Abort as abort:
         logging.info('Async job was aborted: %r', abort)
