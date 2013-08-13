@@ -519,8 +519,24 @@ class MessageIteratorTestCase(unittest.TestCase):
             iterator.next()
 
             self.assertRaises(StopIteration, iterator.next)
-            self.assertRaises(StopIteration, iterator.next)
 
         queue.lease_tasks_by_tag.assert_called_once_with(
             60, 1, tag='tag', deadline=2)
+
+    @patch('time.time')
+    def test_time_check(self, time):
+        """Ensure that a DeadlineExceededError is thrown when the lease takes
+        over (deadline-0.1) secs.
+        """
+        from google.appengine.runtime import apiproxy_errors
+        from furious.batcher import MessageIterator
+
+        time.side_effect = [0.0, 9.9]
+        message_iterator = MessageIterator('tag', 'qn', 1)
+
+        with patch.object(message_iterator, 'queue') as queue:
+            queue.lease_tasks_by_tag.return_value = []
+
+            self.assertRaises(
+                apiproxy_errors.DeadlineExceededError, iter, message_iterator)
 

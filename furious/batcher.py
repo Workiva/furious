@@ -19,6 +19,7 @@ import logging
 import time
 
 from google.appengine.api import memcache
+from google.appengine.runtime.apiproxy_errors import DeadlineExceededError
 
 from .async import Async
 
@@ -216,8 +217,18 @@ class MessageIterator(object):
         if self._fetched:
             return
 
+        start = time.time()
+
         loaded_messages = self.queue.lease_tasks_by_tag(
             self.duration, self.size, tag=self.tag, deadline=self.deadline)
+
+        # If we are within 0.1 sec of our deadline and no messages were
+        # returned, then we are hitting queue contention issues and this
+        # should be a DeadlineExceederError.
+        # TODO: investigate other ways around this, perhaps async leases, etc.
+        if (not loaded_messages and
+                round(time.time() - start, 1) >= self.deadline - 0.1):
+            raise DeadlineExceededError()
 
         self._messages.extend(loaded_messages)
 
