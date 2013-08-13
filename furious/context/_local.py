@@ -55,7 +55,7 @@ def _init():
     # If there is a context and it is initialized to this request,
     # return, otherwise reinitialize the _local_context.
     if (hasattr(_local_context, '_initialized') and
-            _local_context._initialized == os.environ['REQUEST_ID_HASH']):
+            _local_context._initialized == os.environ.get('REQUEST_ID_HASH')):
         return
 
     # Used to track the context object stack.
@@ -66,7 +66,7 @@ def _init():
     _local_context._executing_async = []
 
     # So that we do not inadvertently reinitialize the local context.
-    _local_context._initialized = os.environ['REQUEST_ID_HASH']
+    _local_context._initialized = os.environ.get('REQUEST_ID_HASH')
 
     return _local_context
 
