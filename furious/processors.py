@@ -50,6 +50,7 @@ def run_job():
         kwargs = {}
 
     function = path_to_reference(function_path)
+    exception = None
 
     try:
         async.executing = True
@@ -57,20 +58,30 @@ def run_job():
     except Abort as abort:
         logging.info('Async job was aborted: %r', abort)
         async.result = None
-        return
+        exception = abort
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
-        raise
+        exception = restart
     except Exception as e:
-        async.result = encode_exception(e)
+        exception = e
+    finally:
+        if isinstance(exception, Abort):
+            return
+        if isinstance(exception, AbortAndRestart):
+            raise
+        if exception:
+            async.result = encode_exception(exception)
 
-    results_processor = async_options.get('_process_results')
-    if not results_processor:
-        results_processor = _process_results
+        results_processor = async_options.get('_process_results')
+        if not results_processor:
+            results_processor = _process_results
 
-    processor_result = results_processor()
-    if isinstance(processor_result, (Async, Context)):
-        processor_result.start()
+        processor_result = results_processor()
+        if isinstance(processor_result, (Async, Context)):
+            processor_result.start()
+
+        if exception:
+            raise
 
 
 def encode_exception(exception):
@@ -94,7 +105,7 @@ def _process_results():
     if isinstance(async.result, AsyncException):
         error_callback = callbacks.get('error')
         if not error_callback:
-            raise async.result.exception
+            return
 
         return _execute_callback(async, error_callback)
 
