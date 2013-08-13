@@ -68,6 +68,7 @@ The order of precedence is:
     4) options specified by @defaults decorator.
 """
 import copy
+from functools import partial
 from functools import wraps
 import json
 
@@ -301,7 +302,6 @@ class Async(object):
         the task itself. If the rpc kwarg is provided, but we're not in async
         mode, then it is ignored.
         """
-        from functools import partial
         from google.appengine.api import taskqueue
 
         task = self.to_task()
@@ -319,6 +319,7 @@ class Async(object):
                 taskqueue.TombstonedTaskError):
             return
 
+        # TODO: Return a "result" object.
         return ret
 
     def __deepcopy__(self, *args):
