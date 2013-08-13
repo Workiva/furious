@@ -628,6 +628,7 @@ class TestAsync(unittest.TestCase):
         """Ensure the task is added transactional when start is
         called with transactional."""
         from furious.async import Async
+
         async_job = Async("something")
         async_job.start(transactional=True)
         call_args = queue_add_mock.call_args
@@ -641,6 +642,7 @@ class TestAsync(unittest.TestCase):
         """Ensure the task is added transactional when start is
         called with transactional."""
         from furious.async import Async
+
         async_job = Async("something")
         async_job.start(transactional=False)
         call_args = queue_add_mock.call_args
@@ -648,6 +650,34 @@ class TestAsync(unittest.TestCase):
 
         self.assertIn('transactional', call_kwargs)
         self.assertFalse(call_kwargs['transactional'])
+
+    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
+    def test_start_async_no_rpc(self, queue_add_async_mock):
+        """Ensure that when the task is called with async=True, that the
+        add_async method is called with the default rpc=None.
+        """
+        from furious.async import Async
+
+        async_job = Async("something")
+        async_job.start(async=True)
+
+        self.assertTrue(queue_add_async_mock.called)
+        self.assertEqual(None, queue_add_async_mock.call_args[1]['rpc'])
+
+    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
+    def test_start_async_with_rpc(self, queue_add_async_mock):
+        """Ensure that when the task is called with async=True and an rpc is
+        provided, that the add_async method is called with the correct rpc.
+        """
+        from mock import Mock
+        from furious.async import Async
+
+        rpc = Mock()
+        async_job = Async("something")
+        async_job.start(async=True, rpc=rpc)
+
+        self.assertTrue(queue_add_async_mock.called)
+        self.assertEqual(rpc, queue_add_async_mock.call_args[1]['rpc'])
 
     def test_update_recursion_level_defaults(self):
         """Ensure that defaults (1, MAX_DEPTH) are set correctly."""
