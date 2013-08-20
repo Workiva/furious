@@ -17,8 +17,12 @@
 from random import shuffle
 from threading import local
 
+from furious.config import get_config
 
-def select_queue(queue_group, queue_count=1):
+QUEUE_COUNTS = 'queue_counts'
+
+
+def select_queue(queue_group):
     """Select an optimal queue to run a task in from the given queue group. By
     default, this simply randomly selects a queue from the group.
 
@@ -28,6 +32,9 @@ def select_queue(queue_group, queue_count=1):
 
     if not queue_group:
         return None
+
+    queue_counts = get_config().get(QUEUE_COUNTS)
+    queue_count = queue_counts.get(queue_group, 0)
 
     if queue_count <= 0:
         raise Exception('Queue group must have at least 1 queue.')

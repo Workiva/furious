@@ -263,8 +263,7 @@ class Async(object):
         """Return the queue the task should run in."""
         queue_group = self._options.get('queue_group')
         if queue_group:
-            queue_count = self._options.get('queue_count', 1)
-            return select_queue(queue_group, queue_count=queue_count)
+            return select_queue(queue_group)
 
         return self._options.get('queue', ASYNC_DEFAULT_QUEUE)
 

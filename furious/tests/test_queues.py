@@ -36,19 +36,26 @@ class TestSelectQueue(unittest.TestCase):
 
         self.assertEqual(actual, None)
 
-    def test_invalid_queue_count(self):
+    @patch('furious.queues.get_config')
+    def test_invalid_queue_count(self, mock_get_config):
         """Ensure that an exception is raised when a bad queue count is given.
         """
         from furious.async import select_queue
 
+        queue_group = 'foo-queue'
+
+        mock_get_config.return_value = {'queue_counts':
+                                        {queue_group: 0}}
+
         with self.assertRaises(Exception) as context:
-            select_queue('foo-queue', queue_count=0)
+            select_queue(queue_group)
 
         self.assertEqual(context.exception.message,
                          'Queue group must have at least 1 queue.')
 
+    @patch('furious.queues.get_config')
     @patch('furious.queues._get_from_cache')
-    def test_random_from_cache(self, mock_cache):
+    def test_random_from_cache(self, mock_cache, mock_get_config):
         """Ensure that a random queue is selected from the group when there are
         cached queues.
         """
@@ -58,16 +65,20 @@ class TestSelectQueue(unittest.TestCase):
         queue_count = 5
         expected = '%s-4' % queue_group
 
+        mock_get_config.return_value = {'queue_counts':
+                                        {queue_group: queue_count}}
+
         mock_cache.return_value = {queue_group: [expected]}
 
-        actual = select_queue(queue_group, queue_count=queue_count)
+        actual = select_queue(queue_group)
 
         self.assertEqual(actual, expected)
         mock_cache.assert_called_once_with('queues', default={})
 
+    @patch('furious.queues.get_config')
     @patch('furious.queues.shuffle')
     @patch('furious.queues._get_from_cache')
-    def test_random_no_cache(self, mock_cache, mock_shuffle):
+    def test_random_no_cache(self, mock_cache, mock_shuffle, mock_get_config):
         """Ensure that a random queue is selected from the group when there are
         no cached queues.
         """
@@ -77,9 +88,12 @@ class TestSelectQueue(unittest.TestCase):
         queue_count = 5
         expected = '%s-4' % queue_group
 
+        mock_get_config.return_value = {'queue_counts':
+                                        {queue_group: queue_count}}
+
         mock_cache.return_value = {}
 
-        actual = select_queue(queue_group, queue_count=queue_count)
+        actual = select_queue(queue_group)
 
         self.assertEqual(actual, expected)
         mock_cache.assert_called_once_with('queues', default={})
