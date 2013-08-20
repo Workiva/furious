@@ -77,6 +77,8 @@ from .job_utils import get_function_path_and_options
 from .job_utils import path_to_reference
 from .job_utils import reference_to_path
 
+from .queues import select_queue
+
 from . import errors
 
 
@@ -451,56 +453,6 @@ def defaults(**options):
         return wrapper
 
     return real_decorator
-
-
-def select_queue(queue_group, queue_count=1, default=ASYNC_DEFAULT_QUEUE):
-    """Select an optimal queue to run a task in from the given queue group. By
-    default, this simply randomly selects a queue from the group.
-
-    TODO: leverage the taskqueue API to try and determine the best queue to
-    use via a kwarg.
-    """
-
-    if not queue_group:
-        return default
-
-    if queue_count <= 0:
-        raise Exception('Queue group must have at least 1 queue.')
-
-    queue_lists = _get_from_cache('queues', default={})
-    group_queues = queue_lists.setdefault(queue_group, [])
-
-    if not group_queues:
-        from random import shuffle
-
-        group_queues.extend('%s-%d' % (queue_group, i)
-                            for i in xrange(queue_count))
-
-        shuffle(group_queues)
-
-    return group_queues.pop()
-
-
-# Use a thread local cache to optimize performance and queue distribution.
-from threading import local
-_cache = local()
-
-
-def _get_from_cache(key, default=None):
-    """Fetch the value for the given key from the thread local cache. If the
-    key does not exist, set it for the given default value and return the
-    default.
-    """
-
-    if not key:
-        return default
-
-    if hasattr(_cache, key):
-        return getattr(_cache, key)
-
-    setattr(_cache, key, default)
-
-    return default
 
 
 def _check_options(options):

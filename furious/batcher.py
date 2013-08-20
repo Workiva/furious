@@ -21,7 +21,7 @@ import time
 from google.appengine.api import memcache
 
 from .async import Async
-from .async import select_queue
+from .queues import select_queue
 
 MESSAGE_DEFAULT_QUEUE = 'default-pull'
 MESSAGE_PROCESSOR_NAME = 'processor'
@@ -49,8 +49,7 @@ class Message(object):
         queue_group = self._options.get('queue_group')
         if queue_group:
             queue_count = self._options.get('queue_count', 1)
-            return select_queue(queue_group, queue_count=queue_count,
-                                default=MESSAGE_DEFAULT_QUEUE)
+            return select_queue(queue_group, queue_count=queue_count)
 
         return self._options.get('queue', MESSAGE_DEFAULT_QUEUE)
 
