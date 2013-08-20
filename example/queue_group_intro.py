@@ -34,7 +34,7 @@ class QueueGroupIntroHandler(webapp2.RequestHandler):
         with context.new() as ctx:
             for i in xrange(500):
                 ctx.add(target=example_function, args=[i],
-                        queue_group='workers', queue_count=4)
+                        queue_group='workers')
 
         logging.info('500 Async jobs inserted.')
 
