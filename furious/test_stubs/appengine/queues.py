@@ -84,7 +84,7 @@ def run_queue(taskq_service, queue_name):
     return num_processed
 
 
-def run(taskq_service, queue_names=None, max_iterations=None):
+def run(taskq_service, queue_names=None, max_iterations=0):
     """
     Run all the tasks in queues, limited by max_iterations.
 
@@ -101,20 +101,20 @@ def run(taskq_service, queue_names=None, max_iterations=None):
         queue_names = get_push_queue_names(taskq_service)
 
     iterations = 0
-    tasks_processed = 0
-    processed = (max_iterations is None or max_iterations > 0)
+    total_tasks_processed = 0
 
     # Keep processing if we have processed any tasks and are under our limit.
-    while processed:
+    while True:
 
-        processed = _run(taskq_service, queue_names)
-        tasks_processed += processed
+        tasks_processed = _run(taskq_service, queue_names)
+        total_tasks_processed += tasks_processed
         iterations += 1
 
-        if max_iterations and iterations >= max_iterations:
+        if (not tasks_processed or 
+                (max_iterations and iterations >= max_iterations)):
             break
 
-    return {'iterations': iterations, 'tasks_processed': tasks_processed}
+    return {'iterations': iterations, 'tasks_processed': total_tasks_processed}
 
 
 def get_tasks(taskq_service, queue_names=None):
