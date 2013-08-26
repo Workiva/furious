@@ -18,15 +18,15 @@ import unittest
 
 from mock import patch
 
+from nose.plugins.attrib import attr
+
 
 class TestSelectQueue(unittest.TestCase):
     """Ensure select_queue() works correctly."""
 
-    def setUp(self):
-        from threading import local
-        from furious import async
-
-        async._cache = local()
+    def tearDown(self):
+        from furious.context import _local
+        _local._clear_context()
 
     def test_none(self):
         """Ensure that None is returned when the queue group is None."""
@@ -52,6 +52,23 @@ class TestSelectQueue(unittest.TestCase):
 
         self.assertEqual(context.exception.message,
                          'Queue group must have at least 1 queue.')
+
+    @patch('furious.queues.get_config')
+    def test_invalid_queue_count_config(self, mock_get_config):
+        """Ensure that an exception is raised when a bad queue count config is
+        provided.
+        """
+        from furious.async import select_queue
+
+        queue_group = 'foo-queue'
+
+        mock_get_config.return_value = {'queue_counts': 'woops'}
+
+        with self.assertRaises(Exception) as context:
+            select_queue(queue_group)
+
+        self.assertEqual(context.exception.message,
+                         'queue_counts config property must be a dict.')
 
     @patch('furious.queues.get_config')
     @patch('furious.queues._get_from_cache')
@@ -110,24 +127,26 @@ class TestSelectQueue(unittest.TestCase):
 
         self.assertEqual(actual, expected)
 
+    @attr('slow')
     def test_get_from_cache_present(self):
         """Ensure the correct value is returned when the key is present."""
-        from furious.queues import _cache
+        from furious.context._local import get_local_context
         from furious.queues import _get_from_cache
 
         key = 'key'
         expected = 'value'
-        setattr(_cache, key, expected)
+        setattr(get_local_context(), key, expected)
 
         actual = _get_from_cache(key)
 
         self.assertEqual(actual, expected)
 
+    @attr('slow')
     def test_get_from_cache_not_present(self):
         """Ensure the default value is returned and set when the key is not
         present.
         """
-        from furious.queues import _cache
+        from furious.context._local import get_local_context
         from furious.queues import _get_from_cache
 
         key = 'key'
@@ -136,5 +155,5 @@ class TestSelectQueue(unittest.TestCase):
         actual = _get_from_cache(key, default=expected)
 
         self.assertEqual(actual, expected)
-        self.assertTrue(hasattr(_cache, key))
+        self.assertTrue(hasattr(get_local_context(), key))
 

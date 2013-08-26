@@ -15,7 +15,6 @@
 #
 
 from random import shuffle
-from threading import local
 
 from furious.config import get_config
 
@@ -54,23 +53,22 @@ def select_queue(queue_group):
     return group_queues.pop()
 
 
-# Use a thread local cache to optimize performance and queue distribution.
-_cache = local()
-
-
 def _get_from_cache(key, default=None):
-    """Fetch the value for the given key from the thread local cache. If the
+    """Fetch the value for the given key from the thread local context. If the
     key does not exist, set it for the given default value and return the
     default.
     """
+    from furious.context._local import get_local_context
 
     if not key:
         return default
 
-    if hasattr(_cache, key):
-        return getattr(_cache, key)
+    local_context = get_local_context()
 
-    setattr(_cache, key, default)
+    if hasattr(local_context, key):
+        return getattr(local_context, key)
+
+    setattr(local_context, key, default)
 
     return default
 
