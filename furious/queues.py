@@ -34,9 +34,12 @@ def select_queue(queue_group):
         return None
 
     queue_counts = get_config().get(QUEUE_COUNTS)
+    if not isinstance(queue_counts, dict):
+        raise Exception('%s config property must be a dict.' % QUEUE_COUNTS)
+
     queue_count = queue_counts.get(queue_group, 0)
 
-    if queue_count <= 0:
+    if not isinstance(queue_count, int) or queue_count <= 0:
         raise Exception('Queue group must have at least 1 queue.')
 
     queue_lists = _get_from_cache('queues', default={})
