@@ -79,10 +79,10 @@ def encode_exception(exception):
     This will grab the stack, then strip off the last two calls which are
     encode_exception and the function that called it.
     """
-    import traceback
+    import sys
     return AsyncException(unicode(exception),
                           exception.args,
-                          traceback.extract_stack()[:-2],
+                          sys.exc_info()[2],
                           exception)
 
 
@@ -94,7 +94,7 @@ def _process_results():
     if isinstance(async.result, AsyncException):
         error_callback = callbacks.get('error')
         if not error_callback:
-            raise async.result.exception
+            raise async.result.exception, None, async.result.traceback
 
         return _execute_callback(async, error_callback)
 

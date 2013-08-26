@@ -51,6 +51,8 @@ from ..job_utils import reference_to_path
 
 from .. import errors
 
+DEFAULT_TASK_BATCH_SIZE = 100
+
 
 class Context(object):
     """Furious context object.
@@ -62,6 +64,8 @@ class Context(object):
         self._tasks = []
         self._task_ids = []
         self._tasks_inserted = False
+        self._insert_success_count = 0
+        self._insert_failed_count = 0
 
         id = options.get('id')
         if not id:
@@ -83,6 +87,14 @@ class Context(object):
     def id(self):
         return self._id
 
+    @property
+    def insert_success(self):
+        return self._insert_success_count
+
+    @property
+    def insert_failed(self):
+        return self._insert_failed_count
+
     def __enter__(self):
         return self
 
@@ -92,7 +104,7 @@ class Context(object):
 
         return False
 
-    def _handle_tasks(self):
+    def _handle_tasks_insert(self, batch_size=None):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
             raise errors.ContextAlreadyStartedError(
@@ -100,8 +112,18 @@ class Context(object):
 
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
-            for batch in _task_batcher(tasks):
-                self._insert_tasks(batch, queue=queue)
+            for batch in _task_batcher(tasks, batch_size=batch_size):
+                inserted = self._insert_tasks(batch, queue=queue)
+                if isinstance(inserted, (int, long)):
+                    # Don't blow up on insert_tasks that don't return counts.
+                    self._insert_success_count += inserted
+                    self._insert_failed_count += len(batch) - inserted
+
+    def _handle_tasks(self):
+        """Convert all Async's into tasks, then insert them into queues.
+        Also mark all tasks inserted to ensure they are not reinserted later.
+        """
+        self._handle_tasks_insert()
 
         self._tasks_inserted = True
 
@@ -119,8 +141,8 @@ class Context(object):
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
 
-        Takes an Async object or the argumnets to construct an Async
-        object as argumnets.  Returns the newly added Async object.
+        Takes an Async object or the arguments to construct an Async
+        object as arguments.  Returns the newly added Async object.
         """
         from ..async import Async
         from ..batcher import Message
@@ -218,33 +240,39 @@ class Context(object):
 def _insert_tasks(tasks, queue, transactional=False):
     """Insert a batch of tasks into the specified queue. If an error occurs
     during insertion, split the batch and retry until they are successfully
-    inserted.
+    inserted. Return the number of successfully inserted tasks.
     """
     from google.appengine.api import taskqueue
 
     if not tasks:
-        return
+        return 0
 
     try:
         taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
+        return len(tasks)
     except (taskqueue.BadTaskStateError,
             taskqueue.TaskAlreadyExistsError,
             taskqueue.TombstonedTaskError,
             taskqueue.TransientError):
         count = len(tasks)
         if count <= 1:
-            return
+            return 0
 
-        _insert_tasks(tasks[:count / 2], queue, transactional)
-        _insert_tasks(tasks[count / 2:], queue, transactional)
+        inserted = _insert_tasks(tasks[:count / 2], queue, transactional)
+        inserted += _insert_tasks(tasks[count / 2:], queue, transactional)
+
+        return inserted
 
 
-def _task_batcher(tasks):
+def _task_batcher(tasks, batch_size=None):
     """Batches large task lists into groups of 100 so that they can all be
     inserted.
     """
     from itertools import izip_longest
 
-    args = [iter(tasks)] * 100
+    if not batch_size:
+        batch_size = DEFAULT_TASK_BATCH_SIZE
+
+    args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
 
