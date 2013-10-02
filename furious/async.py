@@ -68,6 +68,7 @@ The order of precedence is:
     4) options specified by @defaults decorator.
 """
 import copy
+from functools import partial
 from functools import wraps
 import json
 
@@ -289,31 +290,37 @@ class Async(object):
 
         return Task(**kwargs)
 
-    def start(self, transactional=False):
+    def start(self, transactional=False, async=False, rpc=None):
         """Insert the task into the requested queue, 'default' if non given.
 
-        If a TransientError is hit the task will re-insert the task.
-
-        If a TaskAlreadyExistsError or TombstonedTaskError is hit the task will
+        If a TransientError is hit the task will re-insert the task. If a
+        TaskAlreadyExistsError or TombstonedTaskError is hit the task will
         silently fail.
+
+        If the async flag is set, then the add will be done asynchronously and
+        the return value will be the rpc object; otherwise the return value is
+        the task itself. If the rpc kwarg is provided, but we're not in async
+        mode, then it is ignored.
         """
         from google.appengine.api import taskqueue
 
         task = self.to_task()
+        queue = taskqueue.Queue(name=self.get_queue())
+
+        add = queue.add
+        if async:
+            add = partial(queue.add_async, rpc=rpc)
 
         try:
-            taskqueue.Queue(name=self.get_queue()).add(
-                task, transactional=transactional)
-
+            ret = add(task, transactional=transactional)
         except taskqueue.TransientError:
-            taskqueue.Queue(name=self.get_queue()).add(
-                task, transactional=transactional)
-
+            ret = add(task, transactional=transactional)
         except (taskqueue.TaskAlreadyExistsError,
                 taskqueue.TombstonedTaskError):
             return
 
         # TODO: Return a "result" object.
+        return ret
 
     def __deepcopy__(self, *args):
         """In order to support callbacks being Async objects, we need to
