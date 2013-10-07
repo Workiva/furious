@@ -247,21 +247,22 @@ def _insert_tasks(tasks, queue, transactional=False):
     if not tasks:
         return 0
 
-    try:
-        taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
-        return len(tasks)
-    except (taskqueue.BadTaskStateError,
-            taskqueue.TaskAlreadyExistsError,
-            taskqueue.TombstonedTaskError,
-            taskqueue.TransientError):
-        count = len(tasks)
-        if count <= 1:
-            return 0
+    inserted = len(tasks)
 
-        inserted = _insert_tasks(tasks[:count / 2], queue, transactional)
-        inserted += _insert_tasks(tasks[count / 2:], queue, transactional)
+    # NOTE: I don't believe we need all these exceptions on here anymore, but
+    # I'm going to leave them just to be safe.
+    for task in tasks:
+        try:
+            taskqueue.Queue(name=queue).add_async(
+                task, transactional=transactional)
+        except (taskqueue.BadTaskStateError,
+                taskqueue.TaskAlreadyExistsError,
+                taskqueue.TombstonedTaskError,
+                taskqueue.TransientError):
+            # TODO: Not sure if this is correct anymore. Any thoughts?
+            inserted -= 1
 
-        return inserted
+    return inserted
 
 
 def _task_batcher(tasks, batch_size=None):
