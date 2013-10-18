@@ -273,6 +273,9 @@ def _task_batcher(tasks, batch_size=None):
     if not batch_size:
         batch_size = DEFAULT_TASK_BATCH_SIZE
 
+    # Ensure the batch size is under the task api limit.
+    batch_size = min(batch_size, 100)
+
     args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
 
