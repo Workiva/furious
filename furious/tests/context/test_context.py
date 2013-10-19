@@ -572,14 +572,47 @@ class TestTaskBatcher(unittest.TestCase):
         self.assertEqual(len(tasks), len(result[0]))
 
     def test_more_than_100_tasks(self):
-        """Ensure that when less than 100 tasks are passed in, only one batch
-        is returned with all the tasks in it.
+        """Ensure that when more than 100 tasks are passed in, that the
+        correct number of batches are returned with the tasks in them.
         """
         from furious.context.context import _task_batcher
 
         tasks = 'a' * 101
 
         result = list(_task_batcher(tasks))
+
+        self.assertEqual(2, len(result))
+        self.assertEqual(100, len(result[0]))
+        self.assertEqual(1, len(result[1]))
+
+    def test_tasks_with_small_batch_size(self):
+        """Ensure that when a batch_size parameter is smaller than 100,
+        that the correct number of batches are created with the tasks in them.
+        """
+        from furious.context.context import _task_batcher
+
+        tasks = 'a' * 101
+        batch_size = 30
+
+        result = list(_task_batcher(tasks, batch_size=batch_size))
+
+        self.assertEqual(4, len(result))
+        self.assertEqual(30, len(result[0]))
+        self.assertEqual(30, len(result[1]))
+        self.assertEqual(30, len(result[2]))
+        self.assertEqual(11, len(result[3]))
+
+    def test_more_than_100_tasks_with_large_batch_size(self):
+        """Ensure that when more than 100 tasks are passed in, and the
+        batch_size parameter is larger than 100, that batches with a max size
+        of 100 are returned with the tasks in them.
+        """
+        from furious.context.context import _task_batcher
+
+        tasks = 'a' * 101
+        batch_size = 2000
+
+        result = list(_task_batcher(tasks, batch_size=batch_size))
 
         self.assertEqual(2, len(result))
         self.assertEqual(100, len(result[0]))
