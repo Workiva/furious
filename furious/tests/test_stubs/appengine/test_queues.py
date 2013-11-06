@@ -828,21 +828,11 @@ class TestRunRandom(unittest.TestCase):
 
     @patch('furious.test_stubs.appengine.queues._run_random_task_from_queue')
     def test_run_tasks_in_queues(self, run_task_from_queue):
-        """Ensures that we run all tasks from unbalanced queues.
+        """Ensures that we run all tasks from popuplated queues.
         """
-
-        def run_side_effect(service, queue_name):
-            mock_tasks = self.test_queues.get(queue_name, [])
-            
-            task = None
-            if mock_tasks:
-                task = mock_tasks.pop()
-            
-            return task
-            
         queue_service = Mock()
 
-        run_task_from_queue.side_effect = run_side_effect
+        run_task_from_queue.side_effect = self._run_side_effect
 
         tasks_ran = run_random(queue_service, self.queue_names)
 
@@ -858,21 +848,11 @@ class TestRunRandom(unittest.TestCase):
 
     @patch('furious.test_stubs.appengine.queues._run_random_task_from_queue')
     def test_run_tasks_in_queues_greater_than_max(self, run_task_from_queue):
-        """Ensures that we run all tasks from unbalanced queues.
+        """Ensures that we only run as many tasks as the 'max_tasks'
         """
-
-        def run_side_effect(service, queue_name):
-            mock_tasks = self.test_queues.get(queue_name, [])
-            
-            task = None
-            if mock_tasks:
-                task = mock_tasks.pop()
-            
-            return task
-            
         queue_service = Mock()
 
-        run_task_from_queue.side_effect = run_side_effect
+        run_task_from_queue.side_effect = self._run_side_effect
 
         tasks_ran = run_random(queue_service, self.queue_names, max_tasks=3)
 
@@ -883,8 +863,24 @@ class TestRunRandom(unittest.TestCase):
             remaining_tasks += len(tasks)
         self.assertEqual(5, remaining_tasks)
 
+    def _run_side_effect(self, service, queue_name):
+        
+        mock_tasks = self.test_queues.get(queue_name, [])
+        
+        task = None
+        if mock_tasks:
+            task = mock_tasks.pop()
+        
+        return task
+        
+
 class TestRunRandomTaskFromQueue(unittest.TestCase):
     """Tests proper processing of tasks through _run_random_task_from_queue"""
+
+    def setUp(self):
+
+        self.test_queue = 'queue-ABC'
+        self.test_task = 'task-ABC'
     
     @patch('furious.test_stubs.appengine.queues._fetch_random_task_from_queue')
     def test_run_without_task(self, fetch_task):
@@ -893,51 +889,51 @@ class TestRunRandomTaskFromQueue(unittest.TestCase):
         fetch_task.return_value = None
 
         queue_service = Mock()
-        queue_name = 'queue-ABC'
         
-        result = _run_random_task_from_queue(queue_service, queue_name)
+        result = _run_random_task_from_queue(queue_service, self.test_queue)
         
         self.assertFalse(result)
         
-        fetch_task.assert_called_once_with(queue_service, queue_name)
+        fetch_task.assert_called_once_with(queue_service, self.test_queue)
     
     @patch('furious.test_stubs.appengine.queues._execute_task')
     @patch('furious.test_stubs.appengine.queues._fetch_random_task_from_queue')
     def test_run_with_task(self, fetch_task, execute_task):
         """Ensure that we handle a task run properly.
         """
-        task_name = 'task-ABC'
-        queue_name = 'queue-ABC'
-
-        task = {'name': task_name}
+        task = {'name': self.test_task}
         fetch_task.return_value = task
 
         queue_service = Mock()
         queue_service.DeleteTask = Mock()
         
-        result = _run_random_task_from_queue(queue_service, queue_name)
+        result = _run_random_task_from_queue(queue_service, self.test_queue)
         
         self.assertTrue(result)
         
-        fetch_task.assert_called_once_with(queue_service, queue_name)
+        fetch_task.assert_called_once_with(queue_service, self.test_queue)
         execute_task.assert_called_once_with(task)
-        queue_service.DeleteTask.assert_called_once_with(queue_name, task_name)
+        queue_service.DeleteTask.assert_called_once_with(
+            self.test_queue, self.test_task)
 
 class TestFetchRandomTaskFromQueue(unittest.TestCase):
     """Ensure tasks from queues are run randomly."""
 
+    def setUp(self):
+
+        self.test_queue = 'queue-ABC'
+
     def test_fetch_with_no_tasks(self):
         """Ensure None is returned when GetTasks returns None.
         """
-
         queue_service = Mock()
         queue_service.GetTasks.return_value = None
 
-        result = _fetch_random_task_from_queue(queue_service, "queue-ABC")
+        result = _fetch_random_task_from_queue(queue_service, self.test_queue)
 
         self.assertIsNone(result)
         
-        queue_service.GetTasks.assert_called_once_with("queue-ABC")
+        queue_service.GetTasks.assert_called_once_with(self.test_queue)
 
     @patch('random.choice')
     def test_fetch_with_tasks(self, choice):
@@ -948,9 +944,9 @@ class TestFetchRandomTaskFromQueue(unittest.TestCase):
 
         choice.return_value = 'b'
 
-        result = _fetch_random_task_from_queue(queue_service, "queue-ABC")
+        result = _fetch_random_task_from_queue(queue_service, self.test_queue)
 
         self.assertEqual('b', result)
         
-        queue_service.GetTasks.assert_called_once_with("queue-ABC")
+        queue_service.GetTasks.assert_called_once_with(self.test_queue)
 
