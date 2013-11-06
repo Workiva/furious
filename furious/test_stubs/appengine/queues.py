@@ -51,6 +51,7 @@ runner.run()
 import base64
 from collections import defaultdict
 import os
+import random
 import uuid
 
 from google.appengine.api import taskqueue
@@ -326,6 +327,80 @@ def _run(taskq_service, queue_names):
 
     return num_processed
 
+def run_random(queue_service, queues, random_seed=123, max_tasks=100):
+    """Run individual tasks in push queues.
+
+    :param queue_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queues: :class: `dict` of queue 'descriptions'
+    """
+    if not queues:
+        return 0
+
+    queue_count = len(queues)
+
+    num_processed = 0
+    
+    random.seed(random_seed)
+
+    while num_processed < max_tasks:
+
+        queue_index = random.randrange(queue_count)
+        queue_desc = queues[queue_index]
+        processed_queue_count = 0
+        
+        task_ran = False
+        
+        while not task_ran and processed_queue_count < queue_count:
+
+            # Only process from push queues.
+            if queue_desc.get('mode') == 'push':
+                queue_name = queue_desc['name']
+                task_ran = _run_random_task_from_queue(queue_service, queue_name)
+
+            if task_ran:
+                num_processed += 1
+            else:
+                queue_index += 1
+                queue_desc = queues[queue_index % queue_count]
+                processed_queue_count += 1
+
+        if not task_ran:
+            break
+
+    return num_processed
+
+def _run_random_task_from_queue(queue_service, queue_name):
+    """Attempts to run a random task from the queue identified
+    by queue_name.  Returns True if a task was ran otherwise
+    returns False.
+    """
+    task = _fetch_random_task_from_queue(queue_service, queue_name)
+    
+    if task and task.get('name'):
+        _execute_task(task)
+        
+        queue_service.DeleteTask(queue_name, task.get('name'))
+        
+        return True
+    
+    return False
+        
+
+def _fetch_random_task_from_queue(queue_service, queue_name):
+    """Returns a random task from the queue identified by queue_name
+    if there exists at least one task in the queue.
+    """
+    tasks = queue_service.GetTasks(queue_name)
+
+    if not tasks:
+        return None
+    
+    task = random.choice(tasks)
+
+    if not task:
+        return None
+    
+    return task
 
 ### Deprecated ###
 
