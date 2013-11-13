@@ -51,6 +51,7 @@ runner.run()
 import base64
 from collections import defaultdict
 import os
+import random
 import uuid
 
 from google.appengine.api import taskqueue
@@ -326,6 +327,106 @@ def _run(taskq_service, queue_names):
 
     return num_processed
 
+def run_random(queue_service, queues, random_seed=123, max_tasks=100):
+    """Run individual tasks in push queues randomly.  This will run by 
+    randomly picking a queue and then randomly picking a task from that queue.
+    Once the task is ran we pick a different random queue and random task 
+    until we've either exhausted the queues or we have ran the 'max_tasks'.
+    
+    This will only run tasks from 'push' queues.
+
+    :param queue_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queues: :class: `dict` of queue 'descriptions' where each
+        description is a 'dict' with at least 'mode' and 'name'.
+    :param random_seed: :class: 'int' to be used to seed random
+    :param max_tasks: :class: 'int' to indicate the max number of tasks
+        to be ran before we exit.
+    :returns: :class: 'int' with count of tasks ran
+    """
+    if not queues:
+        return 0
+
+    queue_count = len(queues)
+    
+    random.seed(random_seed)
+
+    # Run until we hit the task limit
+    num_processed = 0
+    while num_processed < max_tasks:
+
+        # Start by grabbing a random queue to run from
+        queue_index = random.randrange(queue_count)
+
+        # Grab the queue description
+        queue_desc = queues[queue_index]
+        processed_queue_count = 0
+        
+        # Keep trying to run a task until we either successfully run or
+        # we have ran through all of the queues.
+        task_ran = False
+        while not task_ran and processed_queue_count < queue_count:
+
+            # Only process from push queues.
+            if queue_desc.get('mode') == 'push':
+                queue_name = queue_desc['name']
+                task_ran = _run_random_task_from_queue(queue_service, queue_name)
+
+            if task_ran:
+                num_processed += 1
+            else:
+                # There isn't a task for the queue so we need to check the next
+                # queue in the list.
+                queue_index += 1
+                queue_desc = queues[queue_index % queue_count]
+                processed_queue_count += 1
+
+        # If we ran through all of the queues without running a task then 
+        # we can break out
+        if not task_ran:
+            break
+
+    return num_processed
+
+def _run_random_task_from_queue(queue_service, queue_name):
+    """Attempts to run a random task from the queue identified
+    by queue_name.  Returns True if a task was ran otherwise
+    returns False.
+
+    :param queue_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_name: :class: `basestring` with name of queue to run from.
+    :returns: :class: 'bool' true if we ran a task; false otherwise
+    """
+    task = _fetch_random_task_from_queue(queue_service, queue_name)
+    
+    if task and task.get('name'):
+        _execute_task(task)
+        
+        queue_service.DeleteTask(queue_name, task.get('name'))
+        
+        return True
+    
+    return False
+        
+
+def _fetch_random_task_from_queue(queue_service, queue_name):
+    """Returns a random task description from the queue identified by queue_name
+    if there exists at least one task in the queue.
+
+    :param queue_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_name: :class: `basestring` with name of queue to pull from.
+    :returns: :class: 'dict' containing the task description to run.
+    """
+    tasks = queue_service.GetTasks(queue_name)
+
+    if not tasks:
+        return None
+    
+    task = random.choice(tasks)
+
+    if not task:
+        return None
+    
+    return task
 
 ### Deprecated ###
 
