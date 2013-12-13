@@ -26,7 +26,7 @@ unit: clean
 	nosetests --with-coverage
 
 integrations:
-	nosetests --logging-level=ERROR -a slow
+	nosetests --logging-level=ERROR -a slow --with-coverage
 
-test: clean integrations
+test: clean unit integrations
 
