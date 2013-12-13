@@ -19,9 +19,9 @@ import time
 
 import logging
 
-from ..async import async_from_options
-from .. import context
-from ..processors import run_job
+from furious.async import async_from_options
+from furious import context
+from furious.processors import run_job
 
 
 def process_async_task(headers, request_body):

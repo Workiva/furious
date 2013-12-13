@@ -15,8 +15,8 @@
 #
 import webapp2
 
-from . import process_async_task
-from ..errors import AbortAndRestart
+from furious.handlers import process_async_task
+from furious.errors import AbortAndRestart
 
 
 class AsyncJobHandler(webapp2.RequestHandler):
