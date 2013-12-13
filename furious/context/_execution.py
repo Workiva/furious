@@ -29,9 +29,9 @@ Usage:
 
 """
 
-from . import _local
+from furious.context import _local
 
-from .. import errors
+from furious import errors
 
 
 __all__ = ["execution_context_from_async"]

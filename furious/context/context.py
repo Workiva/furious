@@ -44,12 +44,12 @@ Usage:
 
 import uuid
 
-from ..job_utils import decode_callbacks
-from ..job_utils import encode_callbacks
-from ..job_utils import path_to_reference
-from ..job_utils import reference_to_path
+from furious.job_utils import decode_callbacks
+from furious.job_utils import encode_callbacks
+from furious.job_utils import path_to_reference
+from furious.job_utils import reference_to_path
 
-from .. import errors
+from furious import errors
 
 DEFAULT_TASK_BATCH_SIZE = 100
 
@@ -144,8 +144,8 @@ class Context(object):
         Takes an Async object or the arguments to construct an Async
         object as arguments.  Returns the newly added Async object.
         """
-        from ..async import Async
-        from ..batcher import Message
+        from furious.async import Async
+        from furious.batcher import Message
 
         if self._tasks_inserted:
             raise errors.ContextAlreadyStartedError(
