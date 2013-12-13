@@ -21,7 +21,7 @@ import time
 from google.appengine.api import memcache
 from google.appengine.runtime.apiproxy_errors import DeadlineExceededError
 
-from .async import Async
+from furious.async import Async
 
 MESSAGE_DEFAULT_QUEUE = 'default-pull'
 MESSAGE_PROCESSOR_NAME = 'processor'
