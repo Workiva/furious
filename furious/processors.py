@@ -21,12 +21,12 @@ import logging
 
 from collections import namedtuple
 
-from .async import Async
-from .context import Context
-from .context import get_current_async
-from .errors import Abort
-from .errors import AbortAndRestart
-from .job_utils import path_to_reference
+from furious.async import Async
+from furious.context import Context
+from furious.context import get_current_async
+from furious.errors import Abort
+from furious.errors import AbortAndRestart
+from furious.job_utils import path_to_reference
 
 
 AsyncException = namedtuple('AsyncException', 'error args traceback exception')
