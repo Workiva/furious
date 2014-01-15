@@ -296,12 +296,16 @@ class Runner(object):
 
 def _execute_task(task):
     """Extract the body and header from the task and process it."""
+    if not task['url'].startswith('/_ah/queue/async'):
+        logging.info("Unable to run task for %s", task['url'])
+        return
 
     # Ensure each test looks like it is in a new request.
     os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
     # Decode the body and process the task.
     body = base64.b64decode(task['body'])
+
     return_code, func_path = process_async_task(dict(task['headers']), body)
 
     # TODO: Possibly do more with return_codes.
