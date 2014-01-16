@@ -46,8 +46,9 @@ class TestExecuteTask(unittest.TestCase):
         async_options = {'job': ('time.ctime', None, None)}
 
         body = base64.b64encode(json.dumps(async_options))
+        url = '/_ah/queue/async'
 
-        task = {'body': body, 'headers': {}}
+        task = {'url': url, 'body': body, 'headers': {}}
 
         _execute_task(task)
 
@@ -77,8 +78,9 @@ class TestExecuteTask(unittest.TestCase):
                                  args, kwargs)}
 
         body = base64.b64encode(json.dumps(async_options))
+        url = '/_ah/queue/async'
 
-        task = {'body': body, 'headers': {}}
+        task = {'url': url, 'body': body, 'headers': {}}
 
         _execute_task(task)
 
@@ -88,6 +90,19 @@ class TestExecuteTask(unittest.TestCase):
         # Make sure context cleanup worked
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
+
+    @patch('furious.test_stubs.appengine.queues.process_async_task')
+    def test_DOES_NOT_process_async_task_given_non_async_url(
+            self, process_async_task):
+        """When a task is passed to _execute_task, make sure it is not run if
+            it is not an aync url.
+        """
+        from furious.test_stubs.appengine.queues import _execute_task
+        task = {'url': '/_ah/queue/foo'}
+
+        _execute_task(task)
+
+        self.assertEqual(0, process_async_task.call_count)
 
 
 class TestRunQueue(unittest.TestCase):

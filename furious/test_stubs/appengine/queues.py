@@ -50,6 +50,7 @@ runner.run()
 
 import base64
 from collections import defaultdict
+import logging
 import os
 import random
 import uuid
