@@ -375,6 +375,8 @@ def _is_furious_task(task, non_furious_url_prefixes=None,
     for non_furious_url_prefix in non_furious_url_prefixes:
         if task_url.startswith(non_furious_url_prefix):
             if non_furious_hanlder:
+                logging.info("Passing %s to non Furious handler %s", task,
+                             non_furious_hanlder)
                 non_furious_hanlder(task)
 
             return False
