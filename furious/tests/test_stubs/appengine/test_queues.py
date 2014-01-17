@@ -28,6 +28,7 @@ from mock import patch
 from furious.test_stubs.appengine.queues import _fetch_random_task_from_queue
 from furious.test_stubs.appengine.queues import run_random
 from furious.test_stubs.appengine.queues import _run_random_task_from_queue
+from furious.test_stubs.appengine.queues import _is_furious_task
 
 
 class TestExecuteTask(unittest.TestCase):
@@ -91,19 +92,6 @@ class TestExecuteTask(unittest.TestCase):
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
-    @patch('furious.test_stubs.appengine.queues.process_async_task')
-    def test_DOES_NOT_process_async_task_given_non_async_url(
-            self, process_async_task):
-        """When a task is passed to _execute_task, make sure it is not run if
-            it is not an aync url.
-        """
-        from furious.test_stubs.appengine.queues import _execute_task
-        task = {'url': '/_ah/queue/foo'}
-
-        _execute_task(task)
-
-        self.assertEqual(0, process_async_task.call_count)
-
 
 class TestRunQueue(unittest.TestCase):
     """Ensure tasks from queues are run."""
@@ -123,7 +111,9 @@ class TestRunQueue(unittest.TestCase):
         num_processed = run_queue(queue_service, 'default')
 
         # Expect _execute_task() to be called for each task
-        expected_call_args_list = [call('task1'), call('task2'), call('task3')]
+        expected_call_args_list = [call('task1', None, None),
+                                   call('task2', None, None),
+                                   call('task3', None, None)]
 
         self.assertEquals(_execute_task.call_args_list,
                           expected_call_args_list)
@@ -186,10 +176,10 @@ class TestRunQueues(unittest.TestCase):
 
         # Expected 'default' and 'my_queue' to be the only queues processed
         # since others are pull queues.
-        expected_call_args_list = [call(queue_service, 'default'),
-                                   call(queue_service, 'my_queue'),
-                                   call(queue_service, 'default'),
-                                   call(queue_service, 'my_queue')]
+        expected_call_args_list = [call(queue_service, 'default', None, None),
+                                   call(queue_service, 'my_queue', None, None),
+                                   call(queue_service, 'default', None, None),
+                                   call(queue_service, 'my_queue', None, None)]
 
         # Ensure run_queue processes the push queues.
         self.assertEqual(run_queue.call_args_list, expected_call_args_list)
@@ -224,8 +214,8 @@ class TestRunQueues(unittest.TestCase):
 
         # Expect 'default' and 'my_queue' to be processed since the other one
         # is a pull queue.
-        expected_call_args_list = [call(queue_service, 'default'),
-                                   call(queue_service, 'my_queue')]
+        expected_call_args_list = [call(queue_service, 'default', None, None),
+                                   call(queue_service, 'my_queue', None, None)]
 
         # Ensure run_queue processes tries to process the push queues.
         self.assertEqual(run_queue.call_args_list,
@@ -260,10 +250,10 @@ class TestRunQueues(unittest.TestCase):
         # Expected 'default' and 'my_queue' to be processed.
         # They are processed twice each since messages were processed the
         # first iteration.
-        expected_call_args_list = [call(queue_service, 'default'),
-                                   call(queue_service, 'my_queue'),
-                                   call(queue_service, 'default'),
-                                   call(queue_service, 'my_queue')]
+        expected_call_args_list = [call(queue_service, 'default', None, None),
+                                   call(queue_service, 'my_queue', None, None),
+                                   call(queue_service, 'default', None, None),
+                                   call(queue_service, 'my_queue', None, None)]
 
         # Ensure run_queue processes the push queues.
         self.assertEqual(run_queue.call_args_list,
@@ -787,15 +777,16 @@ class TestAddTasks(unittest.TestCase):
         # Ensure pull queue task payload is the same as the original.
         self.assertEqual(returned_task_message.payload, message_task.payload)
 
+
 class TestRunRandom(unittest.TestCase):
     """Tests random processing of task queues."""
 
     def setUp(self):
 
         self.queue_names = [
-            {'name': 'a', 'mode': 'push'}, 
-            {'name': 'b', 'mode': 'push'}, 
-            {'name': 'c', 'mode': 'pull'}, 
+            {'name': 'a', 'mode': 'push'},
+            {'name': 'b', 'mode': 'push'},
+            {'name': 'c', 'mode': 'pull'},
             {'name': 'd', 'mode': 'push'}]
 
         self.test_queues = {
@@ -879,15 +870,15 @@ class TestRunRandom(unittest.TestCase):
         self.assertEqual(5, remaining_tasks)
 
     def _run_side_effect(self, service, queue_name):
-        
+
         mock_tasks = self.test_queues.get(queue_name, [])
-        
+
         task = None
         if mock_tasks:
             task = mock_tasks.pop()
-        
+
         return task
-        
+
 
 class TestRunRandomTaskFromQueue(unittest.TestCase):
     """Tests proper processing of tasks through _run_random_task_from_queue"""
@@ -896,7 +887,7 @@ class TestRunRandomTaskFromQueue(unittest.TestCase):
 
         self.test_queue = 'queue-ABC'
         self.test_task = 'task-ABC'
-    
+
     @patch('furious.test_stubs.appengine.queues._fetch_random_task_from_queue')
     def test_run_without_task(self, fetch_task):
         """Ensure that we don't run a task if fetch returns None.
@@ -904,13 +895,13 @@ class TestRunRandomTaskFromQueue(unittest.TestCase):
         fetch_task.return_value = None
 
         queue_service = Mock()
-        
+
         result = _run_random_task_from_queue(queue_service, self.test_queue)
-        
+
         self.assertFalse(result)
-        
+
         fetch_task.assert_called_once_with(queue_service, self.test_queue)
-    
+
     @patch('furious.test_stubs.appengine.queues._execute_task')
     @patch('furious.test_stubs.appengine.queues._fetch_random_task_from_queue')
     def test_run_with_task(self, fetch_task, execute_task):
@@ -921,15 +912,16 @@ class TestRunRandomTaskFromQueue(unittest.TestCase):
 
         queue_service = Mock()
         queue_service.DeleteTask = Mock()
-        
+
         result = _run_random_task_from_queue(queue_service, self.test_queue)
-        
+
         self.assertTrue(result)
-        
+
         fetch_task.assert_called_once_with(queue_service, self.test_queue)
         execute_task.assert_called_once_with(task)
         queue_service.DeleteTask.assert_called_once_with(
             self.test_queue, self.test_task)
+
 
 class TestFetchRandomTaskFromQueue(unittest.TestCase):
     """Ensure tasks from queues are run randomly."""
@@ -947,7 +939,7 @@ class TestFetchRandomTaskFromQueue(unittest.TestCase):
         result = _fetch_random_task_from_queue(queue_service, self.test_queue)
 
         self.assertIsNone(result)
-        
+
         queue_service.GetTasks.assert_called_once_with(self.test_queue)
 
     @patch('random.choice')
@@ -962,6 +954,65 @@ class TestFetchRandomTaskFromQueue(unittest.TestCase):
         result = _fetch_random_task_from_queue(queue_service, self.test_queue)
 
         self.assertEqual('b', result)
-        
+
         queue_service.GetTasks.assert_called_once_with(self.test_queue)
 
+
+class IsFuriousTaskTestCase(unittest.TestCase):
+
+    def test_no_furious_url_prefixes(self):
+        """Ensure if no non_furious_url_prefixes are passed in True is
+        returned.
+        """
+        task = {}
+        furious_url_prefixes = None
+        non_furious_hanlder = None
+
+        result = _is_furious_task(task, furious_url_prefixes,
+                                  non_furious_hanlder)
+
+        self.assertTrue(result)
+
+    def test_url_not_url_prefixes(self):
+        """Ensure task url not in non_furious_url_prefixes True is returned."""
+        task = {
+            'url': '/_ah/queue/async'
+        }
+        furious_url_prefixes = ('/_ah/queue/defer',)
+        non_furious_hanlder = None
+
+        result = _is_furious_task(task, furious_url_prefixes,
+                                  non_furious_hanlder)
+
+        self.assertTrue(result)
+
+    def test_url_in_url_prefixes_with_no_handler(self):
+        """Ensure task url not in furious_url_prefixes True is returned but the
+        handler is not called."""
+        task = {
+            'url': '/_ah/queue/defer'
+        }
+        furious_url_prefixes = ('/_ah/queue/defer',)
+        non_furious_hanlder = None
+
+        result = _is_furious_task(task, furious_url_prefixes,
+                                  non_furious_hanlder)
+
+        self.assertFalse(result)
+
+    def test_url_in_url_prefixes_with_handler(self):
+        """Ensure task url not in furious_url_prefixes True is returned and
+        the handler is called.
+        """
+        task = {
+            'url': '/_ah/queue/defer',
+        }
+        furious_url_prefixes = ('/_ah/queue/defer',)
+
+        non_furious_hanlder = Mock()
+
+        result = _is_furious_task(task, furious_url_prefixes,
+                                  non_furious_hanlder)
+
+        self.assertFalse(result)
+        non_furious_hanlder.assert_called_once_with(task)
