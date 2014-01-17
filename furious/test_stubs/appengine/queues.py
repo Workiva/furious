@@ -67,7 +67,7 @@ __all__ = ['run', 'run_queue', 'Runner', 'add_tasks', 'get_tasks',
 
 
 def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
-              non_furious_hanlder=None):
+              non_furious_handler=None):
     """Get the tasks from a queue.  Clear the queue, and run each task.
 
     If tasks are reinserted into this queue, this function needs to be called
@@ -77,7 +77,7 @@ def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
     :param queue_name: :class: `str`
     :param non_furious_url_prefixes: :class: `list` of url prefixes that the
                                  furious task runner will run.
-    :param non_furious_hanlder: :class: `func` handler for non furious tasks to
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
     """
 
@@ -89,7 +89,7 @@ def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
     num_processed = 0
 
     for task in tasks:
-        _execute_task(task, non_furious_url_prefixes, non_furious_hanlder)
+        _execute_task(task, non_furious_url_prefixes, non_furious_handler)
 
         num_processed += 1
 
@@ -97,7 +97,7 @@ def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
 
 
 def run(taskq_service=None, queue_names=None, max_iterations=None,
-        non_furious_url_prefixes=None, non_furious_hanlder=None):
+        non_furious_url_prefixes=None, non_furious_handler=None):
     """
     Run all the tasks in queues, limited by max_iterations.
 
@@ -110,7 +110,7 @@ def run(taskq_service=None, queue_names=None, max_iterations=None,
     :param max_iterations: :class: `int` maximum number of iterations to run.
     :param non_furious_url_prefixes: :class: `list` of url prefixes that the
                                  furious task runner will run.
-    :param non_furious_hanlder: :class: `func` handler for non furious tasks to
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
     """
     if not taskq_service:
@@ -127,7 +127,7 @@ def run(taskq_service=None, queue_names=None, max_iterations=None,
     while processed:
 
         processed = _run(taskq_service, queue_names, non_furious_url_prefixes,
-                         non_furious_hanlder)
+                         non_furious_handler)
         tasks_processed += processed
         iterations += 1
 
@@ -325,17 +325,17 @@ class Runner(object):
 
 
 def _execute_task(task, non_furious_url_prefixes=None,
-                  non_furious_hanlder=None):
+                  non_furious_handler=None):
     """Extract the body and header from the task and process it.
 
     :param task: :class: `taskqueue.Task`
     :param non_furious_url_prefixes: :class: `list` of url prefixes that the
                                  furious task runner will run.
-    :param non_furious_hanlder: :class: `func` handler for non furious tasks to
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
     """
     if not _is_furious_task(task, non_furious_url_prefixes,
-                            non_furious_hanlder):
+                            non_furious_handler):
         return
 
     # Ensure each test looks like it is in a new request.
@@ -355,16 +355,16 @@ def _execute_task(task, non_furious_url_prefixes=None,
 
 
 def _is_furious_task(task, non_furious_url_prefixes=None,
-                     non_furious_hanlder=None):
+                     non_furious_handler=None):
     """Return flag if task is a Furious task. If no non_furious_url_prefixes is
     passed in the task will be flagged as Furious. Otherwise it will compare
     the task url to the furious_url_prefix. If not a Furious task it will try
-    to run it within the non_furious_hanlder if one is handed in.
+    to run it within the non_furious_handler if one is handed in.
 
     :param task: :class: `taskqueue.Task`
     :param non_furious_url_prefixes: :class: `list` of url prefixes that the
                                  furious task runner will run.
-    :param non_furious_hanlder: :class: `func` handler for non furious tasks to
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
     """
     if not non_furious_url_prefixes:
@@ -374,10 +374,10 @@ def _is_furious_task(task, non_furious_url_prefixes=None,
 
     for non_furious_url_prefix in non_furious_url_prefixes:
         if task_url.startswith(non_furious_url_prefix):
-            if non_furious_hanlder:
+            if non_furious_handler:
                 logging.info("Passing %s to non Furious handler %s", task,
-                             non_furious_hanlder)
-                non_furious_hanlder(task)
+                             non_furious_handler)
+                non_furious_handler(task)
 
             return False
 
@@ -385,14 +385,14 @@ def _is_furious_task(task, non_furious_url_prefixes=None,
 
 
 def _run(taskq_service, queue_names, non_furious_url_prefixes=None,
-         non_furious_hanlder=None):
+         non_furious_handler=None):
     """Run individual tasks in push queues.
 
     :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
     :param queue_names: :class: `list` of queue name strings
     :param non_furious_url_prefixes: :class: `list` of url prefixes that the
                                  furious task runner will run.
-    :param non_furious_hanlder: :class: `func` handler for non furious tasks to
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
     """
 
@@ -402,7 +402,7 @@ def _run(taskq_service, queue_names, non_furious_url_prefixes=None,
     # TODO: Round robin instead of one queue at a time.
     for queue_name in queue_names:
         num_processed += run_queue(taskq_service, queue_name,
-                                   non_furious_url_prefixes, non_furious_hanlder)
+                                   non_furious_url_prefixes, non_furious_handler)
 
     return num_processed
 

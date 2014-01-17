@@ -966,10 +966,10 @@ class IsFuriousTaskTestCase(unittest.TestCase):
         """
         task = {}
         furious_url_prefixes = None
-        non_furious_hanlder = None
+        non_furious_handler = None
 
         result = _is_furious_task(task, furious_url_prefixes,
-                                  non_furious_hanlder)
+                                  non_furious_handler)
 
         self.assertTrue(result)
 
@@ -979,10 +979,10 @@ class IsFuriousTaskTestCase(unittest.TestCase):
             'url': '/_ah/queue/async'
         }
         furious_url_prefixes = ('/_ah/queue/defer',)
-        non_furious_hanlder = None
+        non_furious_handler = None
 
         result = _is_furious_task(task, furious_url_prefixes,
-                                  non_furious_hanlder)
+                                  non_furious_handler)
 
         self.assertTrue(result)
 
@@ -993,10 +993,10 @@ class IsFuriousTaskTestCase(unittest.TestCase):
             'url': '/_ah/queue/defer'
         }
         furious_url_prefixes = ('/_ah/queue/defer',)
-        non_furious_hanlder = None
+        non_furious_handler = None
 
         result = _is_furious_task(task, furious_url_prefixes,
-                                  non_furious_hanlder)
+                                  non_furious_handler)
 
         self.assertFalse(result)
 
@@ -1009,10 +1009,10 @@ class IsFuriousTaskTestCase(unittest.TestCase):
         }
         furious_url_prefixes = ('/_ah/queue/defer',)
 
-        non_furious_hanlder = Mock()
+        non_furious_handler = Mock()
 
         result = _is_furious_task(task, furious_url_prefixes,
-                                  non_furious_hanlder)
+                                  non_furious_handler)
 
         self.assertFalse(result)
-        non_furious_hanlder.assert_called_once_with(task)
+        non_furious_handler.assert_called_once_with(task)
