@@ -25,6 +25,10 @@ from mock import call
 from mock import Mock
 from mock import patch
 
+from furious.test_stubs.appengine.queues import _fetch_random_task_from_queue
+from furious.test_stubs.appengine.queues import run_random
+from furious.test_stubs.appengine.queues import _run_random_task_from_queue
+
 
 class TestExecuteTask(unittest.TestCase):
     """Ensure _execute_task runs the tasks."""
@@ -42,8 +46,9 @@ class TestExecuteTask(unittest.TestCase):
         async_options = {'job': ('time.ctime', None, None)}
 
         body = base64.b64encode(json.dumps(async_options))
+        url = '/_ah/queue/async'
 
-        task = {'body': body, 'headers': {}}
+        task = {'url': url, 'body': body, 'headers': {}}
 
         _execute_task(task)
 
@@ -73,8 +78,9 @@ class TestExecuteTask(unittest.TestCase):
                                  args, kwargs)}
 
         body = base64.b64encode(json.dumps(async_options))
+        url = '/_ah/queue/async'
 
-        task = {'body': body, 'headers': {}}
+        task = {'url': url, 'body': body, 'headers': {}}
 
         _execute_task(task)
 
@@ -84,6 +90,19 @@ class TestExecuteTask(unittest.TestCase):
         # Make sure context cleanup worked
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
+
+    @patch('furious.test_stubs.appengine.queues.process_async_task')
+    def test_DOES_NOT_process_async_task_given_non_async_url(
+            self, process_async_task):
+        """When a task is passed to _execute_task, make sure it is not run if
+            it is not an aync url.
+        """
+        from furious.test_stubs.appengine.queues import _execute_task
+        task = {'url': '/_ah/queue/foo'}
+
+        _execute_task(task)
+
+        self.assertEqual(0, process_async_task.call_count)
 
 
 class TestRunQueue(unittest.TestCase):
@@ -767,4 +786,182 @@ class TestAddTasks(unittest.TestCase):
 
         # Ensure pull queue task payload is the same as the original.
         self.assertEqual(returned_task_message.payload, message_task.payload)
+
+class TestRunRandom(unittest.TestCase):
+    """Tests random processing of task queues."""
+
+    def setUp(self):
+
+        self.queue_names = [
+            {'name': 'a', 'mode': 'push'}, 
+            {'name': 'b', 'mode': 'push'}, 
+            {'name': 'c', 'mode': 'pull'}, 
+            {'name': 'd', 'mode': 'push'}]
+
+        self.test_queues = {
+            'a': [{'name': '1'}, {'name': '2'}],
+            'b': [{'name': '4'}, {'name': '5'}],
+            'c': [{'name': '7'}, {'name': '9'}],
+            'd': [{'name': '11'}, {'name': '12'}]}
+
+    def test_run_without_queues(self):
+        """Ensure that we exit early if there aren't any queues.
+        """
+        queue_service = Mock()
+
+        tasks_ran = run_random(queue_service, None)
+
+        self.assertEqual(0, tasks_ran)
+
+    @patch('random.seed')
+    @patch('random.randrange')
+    @patch('furious.test_stubs.appengine.queues._run_random_task_from_queue')
+    def test_run_with_empty_queues(self, run_task_from_queue, random_range,
+                                   random_seed):
+        """Ensures that we hit all queue names when all queues are empty.
+        """
+        queue_service = Mock()
+
+        random_range.return_value = 1
+        run_task_from_queue.return_value = False
+
+        test_seed = 555
+
+        tasks_ran = run_random(queue_service, self.queue_names, test_seed)
+
+        self.assertEqual(0, tasks_ran)
+
+        random_seed.assert_called_once_with(test_seed)
+
+        self.assertEqual(3, run_task_from_queue.call_count)
+
+        index = 0
+        for queue_name in ['b', 'd', 'a']:
+            call_args = run_task_from_queue.call_args_list[index]
+            self.assertEqual(call(queue_service, queue_name), call_args)
+            index += 1
+
+    @patch('furious.test_stubs.appengine.queues._run_random_task_from_queue')
+    def test_run_tasks_in_queues(self, run_task_from_queue):
+        """Ensures that we run all tasks from popuplated queues.
+        """
+        queue_service = Mock()
+
+        run_task_from_queue.side_effect = self._run_side_effect
+
+        tasks_ran = run_random(queue_service, self.queue_names)
+
+        self.assertEqual(6, tasks_ran)
+
+        self.assertIsNotNone(self.test_queues.get('c'))
+        self.assertEqual(2, len(self.test_queues.get('c')))
+
+        for queue_name in ['a', 'b', 'd']:
+            tasks = self.test_queues.get(queue_name)
+            self.assertIsNotNone(tasks)
+            self.assertEqual(0, len(tasks))
+
+    @patch('furious.test_stubs.appengine.queues._run_random_task_from_queue')
+    def test_run_tasks_in_queues_greater_than_max(self, run_task_from_queue):
+        """Ensures that we only run as many tasks as the 'max_tasks'
+        """
+        queue_service = Mock()
+
+        run_task_from_queue.side_effect = self._run_side_effect
+
+        tasks_ran = run_random(queue_service, self.queue_names, max_tasks=3)
+
+        self.assertEqual(3, tasks_ran)
+
+        remaining_tasks = 0
+        for queue, tasks in self.test_queues.iteritems():
+            remaining_tasks += len(tasks)
+        self.assertEqual(5, remaining_tasks)
+
+    def _run_side_effect(self, service, queue_name):
+        
+        mock_tasks = self.test_queues.get(queue_name, [])
+        
+        task = None
+        if mock_tasks:
+            task = mock_tasks.pop()
+        
+        return task
+        
+
+class TestRunRandomTaskFromQueue(unittest.TestCase):
+    """Tests proper processing of tasks through _run_random_task_from_queue"""
+
+    def setUp(self):
+
+        self.test_queue = 'queue-ABC'
+        self.test_task = 'task-ABC'
+    
+    @patch('furious.test_stubs.appengine.queues._fetch_random_task_from_queue')
+    def test_run_without_task(self, fetch_task):
+        """Ensure that we don't run a task if fetch returns None.
+        """
+        fetch_task.return_value = None
+
+        queue_service = Mock()
+        
+        result = _run_random_task_from_queue(queue_service, self.test_queue)
+        
+        self.assertFalse(result)
+        
+        fetch_task.assert_called_once_with(queue_service, self.test_queue)
+    
+    @patch('furious.test_stubs.appengine.queues._execute_task')
+    @patch('furious.test_stubs.appengine.queues._fetch_random_task_from_queue')
+    def test_run_with_task(self, fetch_task, execute_task):
+        """Ensure that we handle a task run properly.
+        """
+        task = {'name': self.test_task}
+        fetch_task.return_value = task
+
+        queue_service = Mock()
+        queue_service.DeleteTask = Mock()
+        
+        result = _run_random_task_from_queue(queue_service, self.test_queue)
+        
+        self.assertTrue(result)
+        
+        fetch_task.assert_called_once_with(queue_service, self.test_queue)
+        execute_task.assert_called_once_with(task)
+        queue_service.DeleteTask.assert_called_once_with(
+            self.test_queue, self.test_task)
+
+class TestFetchRandomTaskFromQueue(unittest.TestCase):
+    """Ensure tasks from queues are run randomly."""
+
+    def setUp(self):
+
+        self.test_queue = 'queue-ABC'
+
+    def test_fetch_with_no_tasks(self):
+        """Ensure None is returned when GetTasks returns None.
+        """
+        queue_service = Mock()
+        queue_service.GetTasks.return_value = None
+
+        result = _fetch_random_task_from_queue(queue_service, self.test_queue)
+
+        self.assertIsNone(result)
+        
+        queue_service.GetTasks.assert_called_once_with(self.test_queue)
+
+    @patch('random.choice')
+    def test_fetch_with_tasks(self, choice):
+        """Ensure None is returned when GetTasks returns None.
+        """
+        queue_service = Mock()
+        queue_service.GetTasks.return_value = ['a', 'b', 'c']
+
+        choice.return_value = 'b'
+
+        result = _fetch_random_task_from_queue(queue_service, self.test_queue)
+
+        self.assertEqual('b', result)
+        
+        queue_service.GetTasks.assert_called_once_with(self.test_queue)
 
