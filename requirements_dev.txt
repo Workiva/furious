@@ -1,5 +1,5 @@
 nose
-rednose
+rednose==0.3
 mock
 coverage
 NoseGunit
