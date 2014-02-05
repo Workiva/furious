@@ -62,13 +62,33 @@ class TestConfigurationLoading(unittest.TestCase):
 
         example_yaml = str('secret_key: "blah"\n'
                            'persistence: bubble\n'
-                           'task_system: flah\n')
+                           'task_system: flah\n'
+                           'queue_counts:\n'
+                           '    queue-group: 5')
 
         my_config = _parse_yaml_config(example_yaml)
 
         self.assertEqual(my_config, {'secret_key': 'blah',
                                      'persistence': 'bubble',
-                                     'task_system': 'flah'})
+                                     'task_system': 'flah',
+                                     'queue_counts': {'queue-group': 5}})
+
+    def test_get_config_no_queue_counts(self):
+        """Ensure a config contents without queue_counts specified produces the
+        expected dictionary.
+        """
+        from furious.config import _parse_yaml_config
+
+        example_yaml = str('secret_key: "blah"\n'
+                           'persistence: bubble\n'
+                           'task_system: flah')
+
+        my_config = _parse_yaml_config(example_yaml)
+
+        self.assertEqual(my_config, {'secret_key': 'blah',
+                                     'persistence': 'bubble',
+                                     'task_system': 'flah',
+                                     'queue_counts': {}})
 
     def test_get_configured_persistence_exists(self):
         """Ensure a chosen persistence module is selected."""

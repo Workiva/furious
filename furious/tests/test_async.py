@@ -327,6 +327,25 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual('default', job.get_queue())
 
+    @patch('furious.async.select_queue')
+    def test_get_queue_group_queue(self, mock_select_queue):
+        """Ensure get_queue calls through to select_queue when a queue group
+        is given.
+        """
+        from furious.async import Async
+        from furious.async import ASYNC_DEFAULT_QUEUE
+
+        queue_group = 'foo-queue'
+        queue_count = 5
+
+        job = Async('nonexistant', queue_group=queue_group,
+                    queue_count=queue_count, default=ASYNC_DEFAULT_QUEUE)
+
+        expected = '%s-2' % queue_group
+        mock_select_queue.return_value = expected
+
+        self.assertEqual(expected, job.get_queue())
+
     def test_get_task_args(self):
         """Ensure get_task_args returns the job task_args."""
         from furious.async import Async

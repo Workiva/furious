@@ -22,6 +22,7 @@ from google.appengine.api import memcache
 from google.appengine.runtime.apiproxy_errors import DeadlineExceededError
 
 from .async import Async
+from .queues import select_queue
 
 MESSAGE_DEFAULT_QUEUE = 'default-pull'
 MESSAGE_PROCESSOR_NAME = 'processor'
@@ -46,6 +47,10 @@ class Message(object):
 
     def get_queue(self):
         """Return the queue the task should run in."""
+        queue_group = self._options.get('queue_group')
+        if queue_group:
+            return select_queue(queue_group)
+
         return self._options.get('queue', MESSAGE_DEFAULT_QUEUE)
 
     def get_task_args(self):

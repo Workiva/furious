@@ -4,6 +4,23 @@ queue:
   rate: 100/s
   bucket_size: 100
 
+# PUSH QUEUE GROUP
+- name: workers-0
+  rate: 100/s
+  bucket_size: 100
+
+- name: workers-1
+  rate: 100/s
+  bucket_size: 100
+
+- name: workers-2
+  rate: 100/s
+  bucket_size: 100
+
+- name: workers-3
+  rate: 100/s
+  bucket_size: 100
+
 # PULL QUEUES
 - name: default-pull
   mode: pull

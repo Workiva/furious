@@ -78,6 +78,8 @@ from .job_utils import get_function_path_and_options
 from .job_utils import path_to_reference
 from .job_utils import reference_to_path
 
+from .queues import select_queue
+
 from . import errors
 
 
@@ -260,6 +262,10 @@ class Async(object):
 
     def get_queue(self):
         """Return the queue the task should run in."""
+        queue_group = self._options.get('queue_group')
+        if queue_group:
+            return select_queue(queue_group)
+
         return self._options.get('queue', ASYNC_DEFAULT_QUEUE)
 
     def get_task_args(self):

@@ -478,7 +478,8 @@ class TestNamesFromQueueService(unittest.TestCase):
 
         names = get_push_queue_names(self.taskqueue_service)
 
-        self.assertEqual(names, ['default'])
+        self.assertEqual(names, ['default', 'workers-0', 'workers-1',
+                                 'workers-2', 'workers-3'])
 
     def test_get_queue_names(self):
         """Ensure the correct queue names are returned from get_queue_names."""
@@ -487,7 +488,8 @@ class TestNamesFromQueueService(unittest.TestCase):
 
         names = get_queue_names(self.taskqueue_service)
 
-        self.assertEqual(names, ['default', 'default-pull'])
+        self.assertEqual(names, ['default', 'default-pull', 'workers-0',
+                                 'workers-1', 'workers-2', 'workers-3'])
 
 
 @attr('slow')
