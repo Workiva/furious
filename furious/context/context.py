@@ -140,7 +140,7 @@ class Context(object):
         were not inserted.
         """
 
-        from .complete import handle_completion_start
+        from ..complete import handle_completion_start
 
         return handle_completion_start(self)
 

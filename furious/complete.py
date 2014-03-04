@@ -10,7 +10,7 @@ from .job_utils import decode_callbacks
 from .job_utils import get_function_path_and_options
 from .job_utils import encode_callbacks
 
-from .. import errors
+from . import errors
 
 
 def initialize_completion(node):
