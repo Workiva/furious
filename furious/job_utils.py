@@ -125,7 +125,11 @@ def path_to_reference(path):
 
 def is_async_dict(callback):
 
-    return callback.get('_type')
+    result = callback.get('_type')
+    if not result:
+        result = callback.get('job')
+
+    return result
 
 
 def is_context_dict(callback):
@@ -161,11 +165,13 @@ def decode_callbacks(encoded_callbacks):
 
     callbacks = {}
     for event, callback in encoded_callbacks.iteritems():
+        print 'decode callbacks'
         if isinstance(callback, dict):
             if is_async_dict(callback):
                 callback = Async.from_dict(callback)
-            if is_context_dict(callback):
+            elif is_context_dict(callback):
                 callback = Context.from_dict(callback)
+            print callback
         else:
             callback = path_to_reference(callback)
 

@@ -324,6 +324,7 @@ class TestContext(unittest.TestCase):
                         '_recursion': {'current': 0, 'max': 100},
                         '_type': 'furious.async.Async'}
 
+        print exec_callback
         self.assertEqual(check_callbacks, callbacks)
         self.assertEqual(correct_dict, exec_callback.to_dict())
 
