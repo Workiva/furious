@@ -1,7 +1,6 @@
 from kepler.api import mark_work_complete
 from kepler.api import setup_completion_callback
 from kepler.api import add_work_to_work_id
-from kepler.api import add_work_to_completion_id
 
 from .async import Async
 from .context.context import Context
