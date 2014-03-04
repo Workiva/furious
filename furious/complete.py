@@ -19,40 +19,27 @@ def initialize_completion(node):
     """
 
     work_ids = [node.id]
+    args = _gen_callback_args(node)
 
     completion_id = setup_completion_callback(
         work_ids=work_ids,
-        on_success=None,
+        on_success=execute_completion_callbacks,
+        callback_args=args,
         prefix="FURIOUS",
         entries_per_entity=20)
 
-    add_work(completion_id, node)
-
-    return completion_id
-
-
-def add_work(completion_id, node):
+    node.completion_id = completion_id
 
     if isinstance(node, Context):
         add_context_work(completion_id, node, node._tasks)
 
-    if isinstance(node, Async):
-        add_async_work(completion_id, node)
-
-
-def add_async_work(completion_id, async):
-
-    work_ids = [async.id]
-    async.completion_id = completion_id
-
-    args = _gen_callback_args(async)
-
-    add_work_to_completion_id(completion_id, work_ids,
-                              on_complete=execute_completion_callbacks,
-                              on_complete_args=args)
+    return completion_id
 
 
 def add_context_work(completion_id, parent, asyncs):
+
+    if len(asyncs) < 1:
+        return
 
     work_ids = []
     for async in asyncs:
