@@ -140,19 +140,9 @@ class Context(object):
         were not inserted.
         """
 
-        callbacks = self._options.get('callbacks')
+        from .complete import handle_completion_start
 
-        if not callbacks:
-            return
-
-        if not self.on_success or not self.on_failure:
-            return
-
-        # If we are in a context with a completion id then we need to add to it
-        # If we have a completion_id then we are adding to our id
-        # If we don't have a completion_id then we create a new graph
-        # We also need to add to each Async the completion_id for the context's
-        # id and make sure that we add it to the context's id
+        return handle_completion_start(self)
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
@@ -216,16 +206,6 @@ class Context(object):
     def completion_id(self, completion_id):
 
         self._options['completion_id'] = completion_id
-
-    @property
-    def parent_id(self):
-
-        return self._options.get('parent_id', None)
-
-    @parent_id.setter
-    def parent_id(self, parent_id):
-
-        self._options['parent_id'] = parent_id
 
     @property
     def on_success(self):

@@ -183,16 +183,6 @@ class Async(object):
         self._options['completion_id'] = completion_id
 
     @property
-    def parent_id(self):
-
-        return self._options.get('parent_id', None)
-
-    @parent_id.setter
-    def parent_id(self, parent_id):
-
-        self._options['parent_id'] = parent_id
-
-    @property
     def on_success(self):
 
         callbacks = self._options.get('callbacks')
@@ -353,9 +343,15 @@ class Async(object):
         mode, then it is ignored.
         """
 
-        self._handle_completion()
+        self._handle_completion_start()
 
         self._handle_start(transactional, async, rpc)
+
+    def _handle_completion_start(self):
+
+        from .complete import handle_completion_start
+
+        return handle_completion_start(self)
 
     def _handle_start(self, transactional=False, async=False, rpc=None):
 
