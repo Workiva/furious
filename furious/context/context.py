@@ -123,9 +123,36 @@ class Context(object):
         """Convert all Async's into tasks, then insert them into queues.
         Also mark all tasks inserted to ensure they are not reinserted later.
         """
+
+        self._handle_completion()
+
         self._handle_tasks_insert()
 
         self._tasks_inserted = True
+
+    def _handle_completion(self):
+        """ We need to ensure that if we have on_success or on_complete
+        related work that the appropriate completion graphs are
+        updated.
+
+        This assumes it will be run before tasks are actually inserted
+        so the completion graph may be based on tasks that actually
+        were not inserted.
+        """
+
+        callbacks = self._options.get('callbacks')
+
+        if not callbacks:
+            return
+
+        if not self.on_success or not self.on_failure:
+            return
+
+        # If we are in a context with a completion id then we need to add to it
+        # If we have a completion_id then we are adding to our id
+        # If we don't have a completion_id then we create a new graph
+        # We also need to add to each Async the completion_id for the context's
+        # id and make sure that we add it to the context's id
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
@@ -179,6 +206,55 @@ class Context(object):
                 'Specify a valid persistence_engine to load the context.')
 
         return cls.from_dict(persistence_engine.load_context(context_id))
+
+    @property
+    def completion_id(self):
+
+        return self._options.get('completion_id', None)
+
+    @completion_id.setter
+    def completion_id(self, completion_id):
+
+        self._options['completion_id'] = completion_id
+
+    @property
+    def parent_id(self):
+
+        return self._options.get('parent_id', None)
+
+    @parent_id.setter
+    def parent_id(self, parent_id):
+
+        self._options['parent_id'] = parent_id
+
+    @property
+    def on_success(self):
+
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_success')
+
+    @on_success.setter
+    def on_success(self, on_success):
+
+        callbacks = self._options.get('callbacks', {})
+
+        callbacks['on_success'] = on_success
+
+    @property
+    def on_failure(self):
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_failure')
+
+    @on_failure.setter
+    def on_failure(self, on_failure):
+
+        callbacks = self._options.get('callbacks', {})
+
+        callbacks['on_failure'] = on_failure
 
     def to_dict(self):
         """Return this Context as a dict suitable for json encoding."""
@@ -278,4 +354,3 @@ def _task_batcher(tasks, batch_size=None):
 
     args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
-

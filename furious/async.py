@@ -172,6 +172,56 @@ class Async(object):
         recursion_options = self._options.get('_recursion', {})
         return recursion_options.get('current', None)
 
+    @property
+    def completion_id(self):
+
+        return self._options.get('completion_id', None)
+
+    @completion_id.setter
+    def completion_id(self, completion_id):
+
+        self._options['completion_id'] = completion_id
+
+    @property
+    def parent_id(self):
+
+        return self._options.get('parent_id', None)
+
+    @parent_id.setter
+    def parent_id(self, parent_id):
+
+        self._options['parent_id'] = parent_id
+
+    @property
+    def on_success(self):
+
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_success')
+
+    @on_success.setter
+    def on_success(self, on_success):
+
+        callbacks = self._options.get('callbacks', {})
+
+        callbacks['on_success'] = on_success
+
+    @property
+    def on_failure(self):
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_failure')
+
+    @on_failure.setter
+    def on_failure(self, on_failure):
+
+        callbacks = self._options.get('callbacks', {})
+
+        callbacks['on_failure'] = on_failure
+
+
     def _initialize_recursion_depth(self):
         """Ensure recursion info is initialized, if not, initialize it."""
         from furious.context import get_current_async
@@ -302,6 +352,13 @@ class Async(object):
         the task itself. If the rpc kwarg is provided, but we're not in async
         mode, then it is ignored.
         """
+
+        self._handle_completion()
+
+        self._handle_start(transactional, async, rpc)
+
+    def _handle_start(self, transactional=False, async=False, rpc=None):
+
         from google.appengine.api import taskqueue
 
         task = self.to_task()
@@ -462,4 +519,3 @@ def _check_options(options):
 
     assert 'job' not in options
     #assert 'callbacks' not in options
-
