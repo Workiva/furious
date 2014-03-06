@@ -133,8 +133,10 @@ def is_async_dict(callback):
 
 
 def is_context_dict(callback):
+    result = callback.get('_task_ids')
 
-    return callback.get('_task_ids')
+    if result is not None:
+        return True
 
 
 def encode_callbacks(callbacks):
@@ -165,13 +167,11 @@ def decode_callbacks(encoded_callbacks):
 
     callbacks = {}
     for event, callback in encoded_callbacks.iteritems():
-        print 'decode callbacks'
         if isinstance(callback, dict):
             if is_async_dict(callback):
                 callback = Async.from_dict(callback)
             elif is_context_dict(callback):
                 callback = Context.from_dict(callback)
-            print callback
         else:
             callback = path_to_reference(callback)
 

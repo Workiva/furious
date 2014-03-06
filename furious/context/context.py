@@ -48,7 +48,7 @@ from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
 from ..job_utils import reference_to_path
-
+#from furious.complete import CompleteMixin
 from .. import errors
 
 DEFAULT_TASK_BATCH_SIZE = 100
@@ -104,6 +104,76 @@ class Context(object):
 
         return False
 
+    @property
+    def completion_id(self):
+
+        return self._options.get('completion_id', None)
+
+    @completion_id.setter
+    def completion_id(self, completion_id):
+
+        self._options['completion_id'] = completion_id
+
+    @property
+    def on_success(self):
+
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_success')
+
+    @on_success.setter
+    def on_success(self, on_success):
+        from furious.async import Async
+        callbacks = self._options.get('callbacks', {})
+
+        if not isinstance(on_success, (Async, Context)):
+            on_success = reference_to_path(on_success)
+
+        callbacks['on_success'] = on_success
+
+        self._options['callbacks'] = callbacks
+
+    @property
+    def on_failure(self):
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_failure')
+
+    @on_failure.setter
+    def on_failure(self, on_failure):
+        from furious.async import Async
+
+        callbacks = self._options.get('callbacks', {})
+
+        if not isinstance(on_failure, (Async, Context)):
+            on_failure = reference_to_path(on_failure)
+
+        callbacks['on_failure'] = on_failure
+
+        self._options['callbacks'] = callbacks
+
+    @property
+    def process_results(self):
+
+        process = self._options['_process_results']
+        if not process:
+            return None
+
+        if not callable(process):
+            return path_to_reference(process)
+
+        return process
+
+    @process_results.setter
+    def process_results(self, process):
+
+        if callable(process):
+            process = reference_to_path(process)
+
+        self._options['_process_results'] = process
+
     def _handle_tasks_insert(self, batch_size=None):
         """Convert all Async's into tasks, then insert them into queues."""
         if self._tasks_inserted:
@@ -131,7 +201,7 @@ class Context(object):
         self._tasks_inserted = True
 
     def _handle_completion(self):
-        """ We need to ensure that if we have on_success or on_complete
+        """ We need to ensure that if we have on_success or on_success
         related work that the appropriate completion graphs are
         updated.
 
@@ -196,45 +266,6 @@ class Context(object):
                 'Specify a valid persistence_engine to load the context.')
 
         return cls.from_dict(persistence_engine.load_context(context_id))
-
-    @property
-    def completion_id(self):
-
-        return self._options.get('completion_id', None)
-
-    @completion_id.setter
-    def completion_id(self, completion_id):
-
-        self._options['completion_id'] = completion_id
-
-    @property
-    def on_success(self):
-
-        callbacks = self._options.get('callbacks')
-
-        if callbacks:
-            return callbacks.get('on_success')
-
-    @on_success.setter
-    def on_success(self, on_success):
-
-        callbacks = self._options.get('callbacks', {})
-
-        callbacks['on_success'] = on_success
-
-    @property
-    def on_failure(self):
-        callbacks = self._options.get('callbacks')
-
-        if callbacks:
-            return callbacks.get('on_failure')
-
-    @on_failure.setter
-    def on_failure(self, on_failure):
-
-        callbacks = self._options.get('callbacks', {})
-
-        callbacks['on_failure'] = on_failure
 
     def to_dict(self):
         """Return this Context as a dict suitable for json encoding."""

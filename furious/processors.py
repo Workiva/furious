@@ -86,6 +86,16 @@ def encode_exception(exception):
                           exception)
 
 
+def _process_completion_result():
+    from furious.complete import mark_async_complete
+    async = get_current_async()
+
+    if isinstance(async.result, AsyncException):
+        mark_async_complete(async, True, async.result)
+
+    mark_async_complete(async)
+
+
 def _process_results():
     """Process the results from an Async job."""
     async = get_current_async()

@@ -192,13 +192,20 @@ class Async(object):
 
     @on_success.setter
     def on_success(self, on_success):
+        from furious.context.context import Context
 
         callbacks = self._options.get('callbacks', {})
 
+        if not isinstance(on_success, (Async, Context)):
+            on_success = reference_to_path(on_success)
+
         callbacks['on_success'] = on_success
+
+        self._options['callbacks'] = callbacks
 
     @property
     def on_failure(self):
+
         callbacks = self._options.get('callbacks')
 
         if callbacks:
@@ -206,11 +213,36 @@ class Async(object):
 
     @on_failure.setter
     def on_failure(self, on_failure):
+        from furious.context.context import Context
 
         callbacks = self._options.get('callbacks', {})
 
+        if not isinstance(on_failure, (Async, Context)):
+            on_failure = reference_to_path(on_failure)
+
         callbacks['on_failure'] = on_failure
 
+        self._options['callbacks'] = callbacks
+
+    @property
+    def process_results(self):
+
+        process = self._options['_process_results']
+        if not process:
+            return None
+
+        if not callable(process):
+            return path_to_reference(process)
+
+        return process
+
+    @process_results.setter
+    def process_results(self, process):
+
+        if callable(process):
+            process = reference_to_path(process)
+
+        self._options['_process_results'] = process
 
     def _initialize_recursion_depth(self):
         """Ensure recursion info is initialized, if not, initialize it."""
@@ -452,6 +484,7 @@ def async_from_options(options):
 
 def encode_async_options(async):
     """Encode Async options for JSON encoding."""
+
     options = copy.deepcopy(async._options)
 
     options['_type'] = reference_to_path(async.__class__)
@@ -466,7 +499,6 @@ def encode_async_options(async):
     callbacks = async._options.get('callbacks')
     if callbacks:
         options['callbacks'] = encode_callbacks(callbacks)
-
     return options
 
 

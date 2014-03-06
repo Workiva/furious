@@ -4,4 +4,4 @@ mock
 coverage
 NoseGunit
 nose-exclude
-git+ssh://git@github.com/WebFilings/wf-kepler.git@71158ba897524521ec71912426512ad1099eed3a#egg=kepler
+git+ssh://git@github.com/WebFilings/wf-kepler.git@4bb3451199ed0cb7df4c3effd70a7987df5b5f94#egg=kepler

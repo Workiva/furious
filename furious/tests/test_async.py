@@ -435,7 +435,6 @@ class TestAsync(unittest.TestCase):
         }
 
         callbacks = async_job.get_callbacks()
-        print callbacks
         exec_callback = callbacks.pop('exec')
 
         correct_options = {'job': ('dir', None, None),
@@ -443,7 +442,6 @@ class TestAsync(unittest.TestCase):
                            '_type': 'furious.async.Async'}
 
         self.assertEqual(check_callbacks, callbacks)
-        print exec_callback
         self.assertEqual(correct_options, exec_callback.to_dict())
 
     def test_reconstitution(self):
