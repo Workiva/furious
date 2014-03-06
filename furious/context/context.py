@@ -48,7 +48,6 @@ from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
 from ..job_utils import reference_to_path
-#from furious.complete import CompleteMixin
 from .. import errors
 
 DEFAULT_TASK_BATCH_SIZE = 100
