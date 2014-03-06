@@ -72,6 +72,7 @@ from functools import partial
 from functools import wraps
 import json
 
+from .complete import handle_completion_start
 from .job_utils import decode_callbacks
 from .job_utils import encode_callbacks
 from .job_utils import get_function_path_and_options
@@ -372,15 +373,9 @@ class Async(object):
         mode, then it is ignored.
         """
 
-        self._handle_completion_start()
+        handle_completion_start(self)
 
         self._handle_start(transactional, async, rpc)
-
-    def _handle_completion_start(self):
-
-        from .complete import handle_completion_start
-
-        return handle_completion_start(self)
 
     def _handle_start(self, transactional=False, async=False, rpc=None):
 

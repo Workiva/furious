@@ -44,6 +44,7 @@ Usage:
 
 import uuid
 
+from ..complete import handle_completion_start
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
@@ -171,25 +172,11 @@ class Context(object):
         Also mark all tasks inserted to ensure they are not reinserted later.
         """
 
-        self._handle_completion()
+        handle_completion_start(self)
 
         self._handle_tasks_insert()
 
         self._tasks_inserted = True
-
-    def _handle_completion(self):
-        """ We need to ensure that if we have on_success or on_success
-        related work that the appropriate completion graphs are
-        updated.
-
-        This assumes it will be run before tasks are actually inserted
-        so the completion graph may be based on tasks that actually
-        were not inserted.
-        """
-
-        from ..complete import handle_completion_start
-
-        return handle_completion_start(self)
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
