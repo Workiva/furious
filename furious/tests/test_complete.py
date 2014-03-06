@@ -169,6 +169,21 @@ class TestExecuteCompletionCallbacksTestCase(unittest.TestCase):
 
         self.assertTrue(start.called)
 
+    @patch('furious.async.Async.start')
+    def test_callbacks_async_failure(self, start):
+
+        success_async = Async(target=simple_test)
+        async = Async(target=simple_test)
+        async.on_success = success_async
+        async.on_failure = simple_test
+
+        callbacks = async._options.get('callbacks')
+        encoded_callbacks = encode_callbacks(callbacks)
+
+        execute_completion_callbacks(encoded_callbacks, True, "Exception")
+
+        self.assertTrue(start.called)
+
     @patch('furious.context.context.Context.start')
     @patch('furious.async.Async.start')
     def test_callbacks_context(self, a_start, c_start):

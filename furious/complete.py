@@ -109,7 +109,7 @@ def _process_completion_result():
     async = get_current_async()
 
     if isinstance(async.result, AsyncException):
-        mark_async_complete(async, True, async.result)
+        mark_async_complete(async, True, {'exception': async.result})
 
     mark_async_complete(async)
 
@@ -119,7 +119,7 @@ def mark_async_complete(async, failed=False, failed_payload=None):
     mark_work_complete(async.completion_id, async.id, failed, failed_payload)
 
 
-def execute_completion_callbacks(callbacks, failed=False, failed_kwargs=None):
+def execute_completion_callbacks(callbacks, failed=False, exception=None):
 
     if not callbacks:
         return
@@ -129,18 +129,14 @@ def execute_completion_callbacks(callbacks, failed=False, failed_kwargs=None):
 
     if failed:
         callback = callbacks.get('on_failure')
+        # TODO: Figure out how to merge the exception information into the
+        # actual callback so that the failure function gets it.
+        logging.info(exception)
     else:
         callback = callbacks.get('on_success')
 
-    _execute_callback(callback)
-
-
-def _execute_callback(callback):
-
     if not callback:
         return
-
-    print 'callback', callback
 
     if isinstance(callback, (Context, Async)):
         callback.start()
