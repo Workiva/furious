@@ -124,10 +124,9 @@ class Context(object):
 
     @on_success.setter
     def on_success(self, on_success):
-        from furious.async import Async
         callbacks = self._options.get('callbacks', {})
 
-        if not isinstance(on_success, (Async, Context)):
+        if callable(on_success):
             on_success = reference_to_path(on_success)
 
         callbacks['on_success'] = on_success
@@ -143,36 +142,15 @@ class Context(object):
 
     @on_failure.setter
     def on_failure(self, on_failure):
-        from furious.async import Async
 
         callbacks = self._options.get('callbacks', {})
 
-        if not isinstance(on_failure, (Async, Context)):
+        if callable(on_failure):
             on_failure = reference_to_path(on_failure)
 
         callbacks['on_failure'] = on_failure
 
         self._options['callbacks'] = callbacks
-
-    @property
-    def process_results(self):
-
-        process = self._options['_process_results']
-        if not process:
-            return None
-
-        if not callable(process):
-            return path_to_reference(process)
-
-        return process
-
-    @process_results.setter
-    def process_results(self, process):
-
-        if callable(process):
-            process = reference_to_path(process)
-
-        self._options['_process_results'] = process
 
     def _handle_tasks_insert(self, batch_size=None):
         """Convert all Async's into tasks, then insert them into queues."""

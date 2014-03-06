@@ -192,11 +192,10 @@ class Async(object):
 
     @on_success.setter
     def on_success(self, on_success):
-        from furious.context.context import Context
 
         callbacks = self._options.get('callbacks', {})
 
-        if not isinstance(on_success, (Async, Context)):
+        if callable(on_success):
             on_success = reference_to_path(on_success)
 
         callbacks['on_success'] = on_success
@@ -213,11 +212,10 @@ class Async(object):
 
     @on_failure.setter
     def on_failure(self, on_failure):
-        from furious.context.context import Context
 
         callbacks = self._options.get('callbacks', {})
 
-        if not isinstance(on_failure, (Async, Context)):
+        if callable(on_failure):
             on_failure = reference_to_path(on_failure)
 
         callbacks['on_failure'] = on_failure
@@ -227,13 +225,15 @@ class Async(object):
     @property
     def process_results(self):
 
-        process = self._options['_process_results']
+        process = self._options.get('_process_results')
         if not process:
+            print 'no process'
             return None
 
         if not callable(process):
+            print 'path_to_reference'
             return path_to_reference(process)
-
+        print 'asycn', process
         return process
 
     @process_results.setter

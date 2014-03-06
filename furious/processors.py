@@ -64,7 +64,7 @@ def run_job():
     except Exception as e:
         async.result = encode_exception(e)
 
-    results_processor = async_options.get('_process_results')
+    results_processor = async.process_results
     if not results_processor:
         results_processor = _process_results
 
@@ -84,16 +84,6 @@ def encode_exception(exception):
                           exception.args,
                           sys.exc_info()[2],
                           exception)
-
-
-def _process_completion_result():
-    from furious.complete import mark_async_complete
-    async = get_current_async()
-
-    if isinstance(async.result, AsyncException):
-        mark_async_complete(async, True, async.result)
-
-    mark_async_complete(async)
 
 
 def _process_results():
