@@ -44,7 +44,6 @@ Usage:
 
 import uuid
 
-from ..complete import handle_completion_start
 from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
@@ -172,6 +171,7 @@ class Context(object):
         Also mark all tasks inserted to ensure they are not reinserted later.
         """
 
+        from ..complete import handle_completion_start
         handle_completion_start(self)
 
         self._handle_tasks_insert()

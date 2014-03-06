@@ -72,7 +72,6 @@ from functools import partial
 from functools import wraps
 import json
 
-from .complete import handle_completion_start
 from .job_utils import decode_callbacks
 from .job_utils import encode_callbacks
 from .job_utils import get_function_path_and_options
@@ -372,6 +371,7 @@ class Async(object):
         the task itself. If the rpc kwarg is provided, but we're not in async
         mode, then it is ignored.
         """
+        from .complete import handle_completion_start
 
         handle_completion_start(self)
 
