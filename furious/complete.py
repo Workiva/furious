@@ -55,7 +55,7 @@ def add_context_work(completion_id, parent, asyncs, args=None):
 
     """
 
-    if len(asyncs) < 1:
+    if not asyncs:
         return
 
     work_ids = []
@@ -97,7 +97,7 @@ def handle_completion_start(node):
     if not callbacks:
         return
 
-    if not node.on_success and not node.on_failure:
+    if not (node.on_success or node.on_failure):
         return
 
     # If we are in a Context or an Async with a completion id

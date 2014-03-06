@@ -227,13 +227,10 @@ class Async(object):
 
         process = self._options.get('_process_results')
         if not process:
-            print 'no process'
             return None
 
         if not callable(process):
-            print 'path_to_reference'
             return path_to_reference(process)
-        print 'asycn', process
         return process
 
     @process_results.setter
