@@ -79,15 +79,13 @@ def handle_completion_start(node):
     if not callbacks:
         return
 
-    if not node.on_success or not node.on_failure:
+    if not node.on_success and not node.on_failure:
         return
 
     # If we are in a context with a completion id then we need to add to it
     current_context = None
     try:
-
         current_context = get_current_context()
-
     except errors.NotInContextError:
         logging.debug('no context')
 
@@ -140,7 +138,6 @@ def execute_completion_callbacks(callbacks, failed=False, failed_kwargs=None):
 def _execute_callback(callback):
 
     if not callback:
-        print 'no callback'
         return
 
     print 'callback', callback
