@@ -64,7 +64,7 @@ def run_job():
     except Exception as e:
         async.result = encode_exception(e)
 
-    results_processor = async_options.get('_process_results')
+    results_processor = async.process_results
     if not results_processor:
         results_processor = _process_results
 

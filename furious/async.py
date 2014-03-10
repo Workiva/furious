@@ -172,6 +172,75 @@ class Async(object):
         recursion_options = self._options.get('_recursion', {})
         return recursion_options.get('current', None)
 
+    @property
+    def completion_id(self):
+
+        return self._options.get('completion_id', None)
+
+    @completion_id.setter
+    def completion_id(self, completion_id):
+
+        self._options['completion_id'] = completion_id
+
+    @property
+    def on_success(self):
+
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_success')
+
+    @on_success.setter
+    def on_success(self, on_success):
+
+        callbacks = self._options.get('callbacks', {})
+
+        if callable(on_success):
+            on_success = reference_to_path(on_success)
+
+        callbacks['on_success'] = on_success
+
+        self._options['callbacks'] = callbacks
+
+    @property
+    def on_failure(self):
+
+        callbacks = self._options.get('callbacks')
+
+        if callbacks:
+            return callbacks.get('on_failure')
+
+    @on_failure.setter
+    def on_failure(self, on_failure):
+
+        callbacks = self._options.get('callbacks', {})
+
+        if callable(on_failure):
+            on_failure = reference_to_path(on_failure)
+
+        callbacks['on_failure'] = on_failure
+
+        self._options['callbacks'] = callbacks
+
+    @property
+    def process_results(self):
+
+        process = self._options.get('_process_results')
+        if not process:
+            return None
+
+        if not callable(process):
+            return path_to_reference(process)
+        return process
+
+    @process_results.setter
+    def process_results(self, process):
+
+        if callable(process):
+            process = reference_to_path(process)
+
+        self._options['_process_results'] = process
+
     def _initialize_recursion_depth(self):
         """Ensure recursion info is initialized, if not, initialize it."""
         from furious.context import get_current_async
@@ -302,6 +371,14 @@ class Async(object):
         the task itself. If the rpc kwarg is provided, but we're not in async
         mode, then it is ignored.
         """
+        from .complete import handle_completion_start
+
+        handle_completion_start(self)
+
+        self._handle_start(transactional, async, rpc)
+
+    def _handle_start(self, transactional=False, async=False, rpc=None):
+
         from google.appengine.api import taskqueue
 
         task = self.to_task()
@@ -399,6 +476,7 @@ def async_from_options(options):
 
 def encode_async_options(async):
     """Encode Async options for JSON encoding."""
+
     options = copy.deepcopy(async._options)
 
     options['_type'] = reference_to_path(async.__class__)
@@ -413,7 +491,6 @@ def encode_async_options(async):
     callbacks = async._options.get('callbacks')
     if callbacks:
         options['callbacks'] = encode_callbacks(callbacks)
-
     return options
 
 
@@ -462,4 +539,3 @@ def _check_options(options):
 
     assert 'job' not in options
     #assert 'callbacks' not in options
-

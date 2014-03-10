@@ -123,9 +123,26 @@ def path_to_reference(path):
             'Unable to find function "%s".' % (path,))
 
 
+def is_async_dict(callback):
+
+    result = callback.get('_type')
+    if not result:
+        result = callback.get('job')
+
+    return result
+
+
+def is_context_dict(callback):
+    result = callback.get('_task_ids')
+
+    if result is not None:
+        return True
+
+
 def encode_callbacks(callbacks):
     """Encode callbacks to as a dict suitable for JSON encoding."""
     from .async import Async
+    from .context import Context
 
     if not callbacks:
         return
@@ -135,7 +152,7 @@ def encode_callbacks(callbacks):
         if callable(callback):
             callback, _ = get_function_path_and_options(callback)
 
-        elif isinstance(callback, Async):
+        elif isinstance(callback, (Context, Async)):
             callback = callback.to_dict()
 
         encoded_callbacks[event] = callback
@@ -146,15 +163,18 @@ def encode_callbacks(callbacks):
 def decode_callbacks(encoded_callbacks):
     """Decode the callbacks to an executable form."""
     from .async import Async
+    from .context import Context
 
     callbacks = {}
     for event, callback in encoded_callbacks.iteritems():
         if isinstance(callback, dict):
-            callback = Async.from_dict(callback)
+            if is_async_dict(callback):
+                callback = Async.from_dict(callback)
+            elif is_context_dict(callback):
+                callback = Context.from_dict(callback)
         else:
             callback = path_to_reference(callback)
 
         callbacks[event] = callback
 
     return callbacks
-

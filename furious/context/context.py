@@ -48,13 +48,16 @@ from ..job_utils import decode_callbacks
 from ..job_utils import encode_callbacks
 from ..job_utils import path_to_reference
 from ..job_utils import reference_to_path
-
 from .. import errors
+
+#from furious.complete.mixins import CompleteMixin
 
 DEFAULT_TASK_BATCH_SIZE = 100
 
 
+#class Context(object, CompleteMixin):
 class Context(object):
+
     """Furious context object.
 
     NOTE: Use the module's new function to get a context, do not manually
@@ -95,6 +98,16 @@ class Context(object):
     def insert_failed(self):
         return self._insert_failed_count
 
+    @property
+    def callbacks(self):
+
+        return self._options.get('callbacks', {})
+
+    @callbacks.setter
+    def callbacks(self, callbacks):
+
+        self._options['callbacks'] = callbacks
+
     def __enter__(self):
         return self
 
@@ -123,6 +136,10 @@ class Context(object):
         """Convert all Async's into tasks, then insert them into queues.
         Also mark all tasks inserted to ensure they are not reinserted later.
         """
+
+        from ..complete import handle_completion_start
+        handle_completion_start(self)
+
         self._handle_tasks_insert()
 
         self._tasks_inserted = True
@@ -278,4 +295,3 @@ def _task_batcher(tasks, batch_size=None):
 
     args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
-
