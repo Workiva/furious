@@ -1,23 +1,22 @@
 import logging
 
 from kepler.api import mark_work_complete
-from kepler.api import setup_completion_callback
 from kepler.api import add_work_to_work_id
 
-from .async import Async
-from .context.context import Context
-from .context import get_current_context
-from .context import get_current_async
+from furious.async import Async
+from furious.context.context import Context
+from furious.context import get_current_context
+from furious.context import get_current_async
 
-from .job_utils import decode_callbacks
-from .job_utils import encode_callbacks
-from .job_utils import get_function_path_and_options
-from .job_utils import reference_to_path
+from furious.job_utils import decode_callbacks
+from furious.job_utils import encode_callbacks
+from furious.job_utils import get_function_path_and_options
+from furious.job_utils import reference_to_path
 
-from . import errors
+from furious import errors
 
 
-def initialize_completion(node):
+def initialize_completion(engine, node):
     """ Will create the initial completion graph with Kepler and then
     add any children required to it.
 
@@ -27,12 +26,12 @@ def initialize_completion(node):
     work_ids = [node.id]
     args = _gen_callback_args(node)
 
-    completion_id = setup_completion_callback(
+    completion_id = engine.start_work(
         work_ids=work_ids,
         on_success=completion_callback,
-        callback_args=args,
-        prefix="FURIOUS",
-        entries_per_entity=20)
+        callback_kwargs=args)
+#        prefix="FURIOUS",
+#        entries_per_entity=20)
 
     node.completion_id = completion_id
 

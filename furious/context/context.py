@@ -50,10 +50,14 @@ from ..job_utils import path_to_reference
 from ..job_utils import reference_to_path
 from .. import errors
 
+#from furious.complete.mixins import CompleteMixin
+
 DEFAULT_TASK_BATCH_SIZE = 100
 
 
+#class Context(object, CompleteMixin):
 class Context(object):
+
     """Furious context object.
 
     NOTE: Use the module's new function to get a context, do not manually
@@ -94,6 +98,16 @@ class Context(object):
     def insert_failed(self):
         return self._insert_failed_count
 
+    @property
+    def callbacks(self):
+
+        return self._options.get('callbacks', {})
+
+    @callbacks.setter
+    def callbacks(self, callbacks):
+
+        self._options['callbacks'] = callbacks
+
     def __enter__(self):
         return self
 
@@ -102,54 +116,6 @@ class Context(object):
             self._handle_tasks()
 
         return False
-
-    @property
-    def completion_id(self):
-
-        return self._options.get('completion_id', None)
-
-    @completion_id.setter
-    def completion_id(self, completion_id):
-
-        self._options['completion_id'] = completion_id
-
-    @property
-    def on_success(self):
-
-        callbacks = self._options.get('callbacks')
-
-        if callbacks:
-            return callbacks.get('on_success')
-
-    @on_success.setter
-    def on_success(self, on_success):
-        callbacks = self._options.get('callbacks', {})
-
-        if callable(on_success):
-            on_success = reference_to_path(on_success)
-
-        callbacks['on_success'] = on_success
-
-        self._options['callbacks'] = callbacks
-
-    @property
-    def on_failure(self):
-        callbacks = self._options.get('callbacks')
-
-        if callbacks:
-            return callbacks.get('on_failure')
-
-    @on_failure.setter
-    def on_failure(self, on_failure):
-
-        callbacks = self._options.get('callbacks', {})
-
-        if callable(on_failure):
-            on_failure = reference_to_path(on_failure)
-
-        callbacks['on_failure'] = on_failure
-
-        self._options['callbacks'] = callbacks
 
     def _handle_tasks_insert(self, batch_size=None):
         """Convert all Async's into tasks, then insert them into queues."""
