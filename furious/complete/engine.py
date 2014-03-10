@@ -18,13 +18,23 @@ class CompletionEngine(object):
 
         return self._start(work_ids, on_success, callback_kwargs, kwargs)
 
-    def add_work(self):
+    def add_work(self, completion_id, work_ids, **kwargs):
 
-        return self._add
+        if not self._add:
+            if not self._engine:
+                self._prepare_default_engine()
 
-    def mark_work_complete(self):
+            self._add = self._engine.add_work
 
-        return self.mark
+        return self._add(completion_id, work_ids, **kwargs)
+
+    def mark_work_complete(self, completion_id, work_id, **kwargs):
+
+        if not self._mark:
+            if not self._engine:
+                self._prepare_default_engine()
+
+        return self._mark(completion_id, work_id, kwargs)
 
     def _prepare_default_engine(self):
 

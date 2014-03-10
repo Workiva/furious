@@ -1,8 +1,5 @@
 import logging
 
-from kepler.api import mark_work_complete
-from kepler.api import add_work_to_work_id
-
 from furious.async import Async
 from furious.context.context import Context
 from furious.context import get_current_context
@@ -13,10 +10,8 @@ from furious.job_utils import encode_callbacks
 from furious.job_utils import get_function_path_and_options
 from furious.job_utils import reference_to_path
 
-from furious import errors
 
-
-def initialize_completion(engine, node):
+def initialize_completion(node):
     """ Will create the initial completion graph with Kepler and then
     add any children required to it.
 
@@ -26,12 +21,12 @@ def initialize_completion(engine, node):
     work_ids = [node.id]
     args = _gen_callback_args(node)
 
-    completion_id = engine.start_work(
+    completion_id = node.completion_engine.start_work(
         work_ids=work_ids,
         on_success=completion_callback,
-        callback_kwargs=args)
-#        prefix="FURIOUS",
-#        entries_per_entity=20)
+        callback_kwargs=args,
+        prefix="FURIOUS",
+        entries_per_entity=20)
 
     node.completion_id = completion_id
 
@@ -39,12 +34,13 @@ def initialize_completion(engine, node):
         node.process_results = _process_completion_result
 
     if isinstance(node, Context):
-        add_context_work(completion_id, node, node._tasks, args)
+        add_work(node.completion_engine, completion_id, node,
+                 node._tasks, args)
 
     return completion_id
 
 
-def add_context_work(completion_id, parent, asyncs, args=None):
+def add_work(engine, completion_id, parent, asyncs, args=None):
     """Handles adding more work to the graph underneath an Async or a Context.
 
     :param completion_id: :class: `str`
@@ -68,9 +64,9 @@ def add_context_work(completion_id, parent, asyncs, args=None):
 
     # The completion_callback will handle decoding the actual Async or Context
     # to run after the work is finished.
-    add_work_to_work_id(completion_id, parent.id, work_ids,
-                        on_success=completion_callback,
-                        on_success_args=args)
+    engine.add_work(completion_id, work_ids, parent_id=parent.id,
+                    on_success=completion_callback,
+                    on_success_args=args)
 
 
 def _gen_callback_args(node):
@@ -85,62 +81,26 @@ def _gen_callback_args(node):
     return args
 
 
-def handle_completion_start(node):
-    """ This will ensure that if there is any competion graph work to be done
-    when an Async or a Context is 'started' that the work will be done before
-    we insert any tasks.
-
-    """
-    callbacks = node._options.get('callbacks')
-
-    if not callbacks:
-        return
-
-    if not (node.on_success or node.on_failure):
-        return
-
-    # If we are in a Context or an Async with a completion id
-    # then we need to add to that completion graph
-    current_context = None
-    try:
-        current_context = get_current_context()
-
-        if not current_context:
-            current_context = get_current_async()
-
-    except errors.NotInContextError:
-        logging.debug('no context')
-
-    # not in a context or an async
-    # need to build a new completion graph
-    if not current_context or not current_context.completion_id:
-        initialize_completion(node)
-        return
-
-    # in a context or part of an async
-    # add to the existing completion graph
-    if isinstance(node, Context):
-        add_context_work(current_context.completion_id, node, node._tasks)
-    else:
-        add_context_work(
-            current_context.completion_id, current_context, [node])
-
-
-def _process_completion_result():
+def _process_completion_result(engine=None):
     """When the async is finished being run it will call a process results
     function that has been set in the options. This will do the work of
     marking the Async complete in the completion graph.
 
     """
+    from furious.complete.engine import CompletionEngine
     from furious.processors import AsyncException
+
+    if not engine:
+        engine = CompletionEngine()
 
     async = get_current_async()
 
     if isinstance(async.result, AsyncException):
         payload = {'exception': async.result}
-        mark_work_complete(async.completion_id, async.id, True, payload)
+        engine.mark_work_complete(async.completion_id, async.id,
+                                  fail=True, payload=payload)
 
-    mark_work_complete(async.completion_id, async.id)
+    engine.mark_work_complete(async.completion_id, async.id)
 
 
 def execute_completion_callbacks(callbacks, failed=False, exception=None):
