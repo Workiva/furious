@@ -29,9 +29,9 @@ Usage:
 
 """
 
-from . import _local
+from furious.context import _local
 
-from .. import errors
+from furious import errors
 
 
 __all__ = ["execution_context_from_async"]
@@ -57,7 +57,7 @@ class _ExecutionContext(object):
     """
     def __init__(self, async):
         """Initialize a context with an async task."""
-        from ..async import Async
+        from furious.async import Async
 
         if not isinstance(async, Async):
             raise TypeError("async must be an Async instance.")

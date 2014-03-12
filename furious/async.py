@@ -72,13 +72,13 @@ from functools import partial
 from functools import wraps
 import json
 
-from .job_utils import decode_callbacks
-from .job_utils import encode_callbacks
-from .job_utils import get_function_path_and_options
-from .job_utils import path_to_reference
-from .job_utils import reference_to_path
+from furious.job_utils import decode_callbacks
+from furious.job_utils import encode_callbacks
+from furious.job_utils import get_function_path_and_options
+from furious.job_utils import path_to_reference
+from furious.job_utils import reference_to_path
 
-from . import errors
+from furious import errors
 
 
 __all__ = ['ASYNC_DEFAULT_QUEUE', 'ASYNC_ENDPOINT', 'Async', 'defaults']
@@ -353,7 +353,7 @@ class Async(object):
             self._persistence_engine = path_to_reference(persistence_engine)
             return
 
-        from .config import get_default_persistence_engine
+        from furious.config import get_default_persistence_engine
 
         self._persistence_engine = get_default_persistence_engine()
 

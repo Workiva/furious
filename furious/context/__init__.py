@@ -38,12 +38,12 @@ Usage:
 
 """
 
-from . import _local
-from .context import Context
+from furious.context import _local
+from furious.context.context import Context
 
-from . import _execution
+from furious.context import _execution
 
-from .. import errors
+from furious import errors
 
 
 execution_context_from_async = _execution.execution_context_from_async
