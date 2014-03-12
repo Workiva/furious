@@ -155,6 +155,17 @@ class Async(object):
         self._executing = False
         self._executed = True
 
+        if self._options.get('persist_result'):
+            self._persist_result()
+
+    def _persist_result(self):
+        """Store this Async's result in persistent storage."""
+
+        self._prepare_persistence_engine()
+
+        return self._persistence_engine.store_async_result(
+            self.id, self.result)
+
     @property
     def _function_path(self):
         return self.job[0]
@@ -362,13 +373,6 @@ class Async(object):
         """Return this Async's ID value."""
         import uuid
         return uuid.uuid4().hex
-
-    def persist_result(self):
-        """Store this Async's result in persistent storage."""
-        self._prepare_persistence_engine()
-
-        return self._persistence_engine.store_async_result(
-            self.id, self.result)
 
     def _increment_recursion_level(self):
         """Increment current_depth based on either defaults or the enclosing
