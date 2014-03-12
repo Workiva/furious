@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup_args = dict(
     name='furious',
-    version='0.9.2',
+    version='0.9.5',
     license='Apache',
     description='Furious is a lightweight library that wraps Google App Engine'
                 'taskqueues to make building dynamic workflows easy.',
