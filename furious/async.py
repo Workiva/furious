@@ -160,7 +160,6 @@ class Async(object):
 
     def _persist_result(self):
         """Store this Async's result in persistent storage."""
-
         self._prepare_persistence_engine()
 
         return self._persistence_engine.store_async_result(
