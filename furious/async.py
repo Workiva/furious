@@ -108,6 +108,8 @@ class Async(object):
 
         self._initialize_recursion_depth()
 
+        self._id = self._get_id()
+
         self._execution_context = None
 
         self._executing = False
@@ -367,11 +369,21 @@ class Async(object):
 
         self._persistence_engine = get_default_persistence_engine()
 
+    def _get_id(self):
+        """If this async has no id, generate one."""
+        id = self._options.get('id')
+        if id:
+            return id
+
+        import uuid
+        id = uuid.uuid4().hex
+        self.update_options(id=id)
+        return id
+
     @property
     def id(self):
         """Return this Async's ID value."""
-        import uuid
-        return uuid.uuid4().hex
+        return self._id
 
     def _increment_recursion_level(self):
         """Increment current_depth based on either defaults or the enclosing

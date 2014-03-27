@@ -183,12 +183,34 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(job, async_job.job)
 
+    @mock.patch('uuid.uuid4', autospec=True)
+    def test_generates_id(self, uuid_patch):
+        """Ensure an id is auto-generated if not specified."""
+        from furious.async import Async
+
+        id = 'random-id'
+        uuid_patch.return_value.hex = id
+
+        job = Async('somehting')
+
+        self.assertEqual(job.id, id)
+        self.assertEqual(job.get_options()['id'], id)
+
+    def test_uses_given_id(self):
+        """Ensure an id passed in is used."""
+        from furious.async import Async
+
+        job = Async('somehting', id='superrandom')
+
+        self.assertEqual(job.id, 'superrandom')
+        self.assertEqual(job.get_options()['id'], 'superrandom')
+
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
         from furious.async import Async
         from furious.async import defaults
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'thing'}
 
         @defaults(**options.copy())
         def some_function():
@@ -206,16 +228,17 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
         from furious.async import defaults
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong'}
 
         @defaults(**options.copy())
         def some_function():
             pass
 
-        job = Async(some_function, value=17, other='abc')
+        job = Async(some_function, value=17, other='abc', id='correct')
 
         options['value'] = 17
         options['other'] = 'abc'
+        options['id'] = 'correct'
 
         options['job'] = ("furious.tests.test_async.some_function", None, None)
         options['_recursion'] = {'current': 0, 'max': 100}
@@ -249,7 +272,7 @@ class TestAsync(unittest.TestCase):
         """Ensure update_options updates the options."""
         from furious.async import Async
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'xx'}
 
         job = Async("nonexistant")
         job.update_options(**options.copy())
@@ -264,14 +287,15 @@ class TestAsync(unittest.TestCase):
         """Ensure update_options supersedes the options set in init."""
         from furious.async import Async
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong'}
 
         job = Async("nonexistant", **options.copy())
 
-        job.update_options(value=23, other='stuff')
+        job.update_options(value=23, other='stuff', id='right')
 
         options['value'] = 23
         options['other'] = 'stuff'
+        options['id'] = 'right'
 
         options['job'] = ("nonexistant", None, None)
 
@@ -361,7 +385,7 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'other': 'zzz', 'nested': 1}
         headers = {'some': 'thing', 'fun': 1}
-        options = {'headers': headers, 'task_args': task_args}
+        options = {'headers': headers, 'task_args': task_args, 'id': 'me'}
 
         job = Async('nonexistant', **options.copy())
 
@@ -375,11 +399,12 @@ class TestAsync(unittest.TestCase):
         """Ensure to_dict correctly encodes callbacks."""
         from furious.async import Async
 
-        options = {'callbacks': {
-            'success': self.__class__.test_to_dict_with_callbacks,
-            'failure': "failure_function",
-            'exec': Async(target=dir)
-        }}
+        options = {'id': 'anident',
+                   'callbacks': {
+                       'success': self.__class__.test_to_dict_with_callbacks,
+                       'failure': "failure_function",
+                       'exec': Async(target=dir, id='subidnet'),
+                   }}
 
         job = Async('nonexistant', **options.copy())
 
@@ -389,6 +414,7 @@ class TestAsync(unittest.TestCase):
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "failure_function",
             'exec': {'job': ('dir', None, None),
+                     'id': 'subidnet',
                      '_recursion': {'current': 0, 'max': 100},
                      '_type': 'furious.async.Async'}
         }
@@ -422,7 +448,7 @@ class TestAsync(unittest.TestCase):
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('dir', None, None)}
+            'exec': {'job': ('dir', None, None), 'id': 'petey'}
         }
 
         options = {'job': job, 'callbacks': callbacks}
@@ -438,6 +464,7 @@ class TestAsync(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         correct_options = {'job': ('dir', None, None),
+                           'id': 'petey',
                            '_recursion': {'current': 0, 'max': 100},
                            '_type': 'furious.async.Async'}
 
@@ -453,6 +480,7 @@ class TestAsync(unittest.TestCase):
         task_args = {'other': 'zzz', 'nested': 1}
         options = {
             'job': job,
+            'id': 'someid',
             'headers': headers,
             'task_args': task_args,
             'persistence_engine': 'furious.extras.appengine.ndb_persistence',
@@ -489,7 +517,8 @@ class TestAsync(unittest.TestCase):
         expected_url = "%s/%s" % (ASYNC_ENDPOINT, 'test')
 
         task_args = {'eta': eta_posix}
-        options = {'job': job, 'headers': headers, 'task_args': task_args}
+        options = {'job': job, 'headers': headers, 'task_args': task_args,
+                   'id': 'ident'}
 
         task = Async.from_dict(options).to_task()
 

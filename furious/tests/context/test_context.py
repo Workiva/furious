@@ -249,7 +249,7 @@ class TestContext(unittest.TestCase):
             'callbacks': {
                 'success': self.__class__.test_to_dict_with_callbacks,
                 'failure': "failure_function",
-                'exec': Async(target=dir)
+                'exec': Async(target=dir, id='blargh')
             }
         }
 
@@ -266,6 +266,7 @@ class TestContext(unittest.TestCase):
                             "TestContext.test_to_dict_with_callbacks"),
                 'failure': "failure_function",
                 'exec': {'job': ('dir', None, None),
+                         'id': 'blargh',
                          '_recursion': {'current': 0, 'max': 100},
                          '_type': 'furious.async.Async'}
             }
@@ -307,7 +308,7 @@ class TestContext(unittest.TestCase):
             'success': ("furious.tests.context.test_context."
                         "TestContext.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('id', None, None)}
+            'exec': {'job': ('id', None, None), 'id': 'myid'}
         }
 
         context = Context.from_dict({'callbacks': callbacks})
@@ -321,6 +322,7 @@ class TestContext(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         correct_dict = {'job': ('id', None, None),
+                        'id': 'myid',
                         '_recursion': {'current': 0, 'max': 100},
                         '_type': 'furious.async.Async'}
 
