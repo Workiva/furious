@@ -560,6 +560,47 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(123, job.result)
         self.assertTrue(job.executed)
 
+    def test_setting_result_does_not_call_persist(self):
+        """Ensure setting the result doesn't call persist result if not in
+        persist mode.
+        """
+        from furious.async import Async
+
+        result = "here be the results."
+
+        persistence_engine = mock.Mock()
+
+        job = Async(target=dir)
+
+        # Manually set the persistence_engine so that the Async doesn't try to
+        # reload the mock persistence_engine.
+        job._persistence_engine = persistence_engine
+
+        job.executing = True
+        job.result = result
+
+        self.assertEqual(persistence_engine.store_async_result.call_count, 0)
+
+    def test_setting_result_calls_persist(self):
+        """Ensure setting the result calls the persis_result method."""
+        from furious.async import Async
+
+        result = "here be the results."
+
+        persistence_engine = mock.Mock()
+
+        job = Async(target=dir, persist_result=True)
+
+        # Manually set the persistence_engine so that the Async doesn't try to
+        # reload the mock persistence_engine.
+        job._persistence_engine = persistence_engine
+
+        job.executing = True
+        job.result = result
+
+        persistence_engine.store_async_result.assert_called_once_with(job.id,
+                                                                      result)
+
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_transient_error(self, queue_mock):
         """Ensure the task retries if a transient error is hit."""
