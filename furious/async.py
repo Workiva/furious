@@ -259,6 +259,9 @@ class Async(object):
             options['persistence_engine'] = reference_to_path(
                 options['persistence_engine'])
 
+        if 'id' in options:
+            self._id = options['id']
+
         self._options.update(options)
 
     def get_callbacks(self):

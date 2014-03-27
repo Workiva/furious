@@ -205,6 +205,16 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(job.id, 'superrandom')
         self.assertEqual(job.get_options()['id'], 'superrandom')
 
+    def test_update_id(self):
+        """Ensure using update options to update an id works."""
+        from furious.async import Async
+
+        job = Async('somehting')
+        job.update_options(id='newid')
+
+        self.assertEqual(job.id, 'newid')
+        self.assertEqual(job.get_options()['id'], 'newid')
+
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
         from furious.async import Async
