@@ -18,7 +18,7 @@ import json
 
 import unittest
 
-from mock import patch
+import mock
 
 
 class TestDefaultsDecorator(unittest.TestCase):
@@ -560,7 +560,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(123, job.result)
         self.assertTrue(job.executed)
 
-    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_transient_error(self, queue_mock):
         """Ensure the task retries if a transient error is hit."""
         from google.appengine.api.taskqueue import TransientError
@@ -581,7 +581,7 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(2, queue_mock.return_value.add.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_task_already_exists_error_error(self, queue_mock):
         """Ensure the task returns if a task already exists error is hit."""
         from google.appengine.api.taskqueue import TaskAlreadyExistsError
@@ -595,7 +595,7 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_tombstoned_task_error_error(self, queue_mock):
         """Ensure the task returns if a tombstoned task error is hit."""
         from google.appengine.api.taskqueue import TombstonedTaskError
@@ -609,7 +609,7 @@ class TestAsync(unittest.TestCase):
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_runs_successfully(self, queue_mock):
         """Ensure the Task is inserted into the specified queue."""
         from furious.async import Async
@@ -623,7 +623,7 @@ class TestAsync(unittest.TestCase):
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_task_transactional(self, queue_add_mock):
         """Ensure the task is added transactional when start is
         called with transactional."""
@@ -637,7 +637,7 @@ class TestAsync(unittest.TestCase):
         self.assertIn('transactional', call_kwargs)
         self.assertTrue(call_kwargs['transactional'])
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_task_non_transactional(self, queue_add_mock):
         """Ensure the task is added transactional when start is
         called with transactional."""
@@ -651,7 +651,7 @@ class TestAsync(unittest.TestCase):
         self.assertIn('transactional', call_kwargs)
         self.assertFalse(call_kwargs['transactional'])
 
-    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
     def test_start_async_no_rpc(self, queue_add_async_mock):
         """Ensure that when the task is called with async=True, that the
         add_async method is called with the default rpc=None.
@@ -664,7 +664,7 @@ class TestAsync(unittest.TestCase):
         self.assertTrue(queue_add_async_mock.called)
         self.assertEqual(None, queue_add_async_mock.call_args[1]['rpc'])
 
-    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
     def test_start_async_with_rpc(self, queue_add_async_mock):
         """Ensure that when the task is called with async=True and an rpc is
         provided, that the add_async method is called with the correct rpc.
