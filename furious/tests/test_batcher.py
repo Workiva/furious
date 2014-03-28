@@ -318,7 +318,8 @@ class MessageProcessorTestCase(unittest.TestCase):
         task_retry_object = Mock()
         task_retry.return_value = task_retry_object
 
-        processor = MessageProcessor('something', queue='test_queue')
+        processor = MessageProcessor('something', queue='test_queue',
+                                     id='someid')
 
         processor.to_task()
 
@@ -327,7 +328,8 @@ class MessageProcessorTestCase(unittest.TestCase):
             'headers': {},
             'payload': json.dumps({
                 'queue': 'test_queue',
-                'job': ["something", None, None],
+                'job': ("something", None, None),
+                'id': 'someid',
                 'task_args': {
                     'countdown': 30,
                     'name': 'processor-processor-current-batch-3'
