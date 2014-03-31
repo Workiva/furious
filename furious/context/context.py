@@ -134,6 +134,16 @@ class Context(object):
 
         self._tasks_inserted = True
 
+        # QUESTION: Should the persist happen before or after the task
+        # insertion?  I feel like this is something that will alter the
+        # behavior of the tasks themselves by adding a callback (check context
+        # complete) to each Async's callback stack.
+
+        # If we are able to and there is a reason to persist... persist.
+        callbacks = self._options.get('callbacks')
+        if self._persistence_engine and callbacks:
+            self.persist()
+
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
         task_map = {}
