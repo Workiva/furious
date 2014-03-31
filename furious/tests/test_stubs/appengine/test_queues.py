@@ -176,10 +176,10 @@ class TestRunQueues(unittest.TestCase):
 
         # Expected 'default' and 'my_queue' to be the only queues processed
         # since others are pull queues.
-        expected_call_args_list = [call(queue_service, 'default', None, None),
-                                   call(queue_service, 'my_queue', None, None),
-                                   call(queue_service, 'default', None, None),
-                                   call(queue_service, 'my_queue', None, None)]
+        expected_call_args_list = [call(queue_service, 'default', None, None, False),
+                                   call(queue_service, 'my_queue', None, None, False),
+                                   call(queue_service, 'default', None, None, False),
+                                   call(queue_service, 'my_queue', None, None, False)]
 
         # Ensure run_queue processes the push queues.
         self.assertEqual(run_queue.call_args_list, expected_call_args_list)
@@ -214,8 +214,8 @@ class TestRunQueues(unittest.TestCase):
 
         # Expect 'default' and 'my_queue' to be processed since the other one
         # is a pull queue.
-        expected_call_args_list = [call(queue_service, 'default', None, None),
-                                   call(queue_service, 'my_queue', None, None)]
+        expected_call_args_list = [call(queue_service, 'default', None, None, False),
+                                   call(queue_service, 'my_queue', None, None, False)]
 
         # Ensure run_queue processes tries to process the push queues.
         self.assertEqual(run_queue.call_args_list,
@@ -250,10 +250,10 @@ class TestRunQueues(unittest.TestCase):
         # Expected 'default' and 'my_queue' to be processed.
         # They are processed twice each since messages were processed the
         # first iteration.
-        expected_call_args_list = [call(queue_service, 'default', None, None),
-                                   call(queue_service, 'my_queue', None, None),
-                                   call(queue_service, 'default', None, None),
-                                   call(queue_service, 'my_queue', None, None)]
+        expected_call_args_list = [call(queue_service, 'default', None, None, False),
+                                   call(queue_service, 'my_queue', None, None, False),
+                                   call(queue_service, 'default', None, None, False),
+                                   call(queue_service, 'my_queue', None, None, False)]
 
         # Ensure run_queue processes the push queues.
         self.assertEqual(run_queue.call_args_list,
