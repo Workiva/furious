@@ -76,6 +76,30 @@ class TestContext(unittest.TestCase):
 
         self.assertTrue(Context().id)
 
+    @patch('uuid.uuid4', autospec=True)
+    def test_id_added_to_options(self, uuid_patch):
+        """Ensure random context id gets added to options."""
+        from furious.context import Context
+
+        id = 'random-id'
+        uuid_patch.return_value.hex = id
+
+        context = Context()
+
+        self.assertEqual(context.id, id)
+        self.assertEqual(context._options['id'], id)
+
+    def test_context_gets_one_id(self):
+        """Ensure a new Context gets an id only generated once."""
+        from furious.context import Context
+
+        context = Context()
+
+        id1 = context.id
+        id2 = context.id
+        self.assertEqual(id1, id2)
+        self.assertEqual(context.id, id1)
+
     def test_context_gets_assigned_id(self):
         """Ensure a new Context keeps its assigned id."""
         from furious.context import Context
@@ -224,6 +248,7 @@ class TestContext(unittest.TestCase):
         options = {
             'persistence_engine': 'persistence_engine',
             'unkown': True,
+            'id': 'anid'
         }
 
         context = Context(**copy.deepcopy(options))
@@ -233,6 +258,7 @@ class TestContext(unittest.TestCase):
             'insert_tasks': 'furious.context.context._insert_tasks',
             '_tasks_inserted': False,
             '_task_ids': [],
+            'id': 'anid'
         })
 
         self.assertEqual(options, context.to_dict())
@@ -245,6 +271,7 @@ class TestContext(unittest.TestCase):
         from furious.context import Context
 
         options = {
+            'id': 'someid',
             'persistence_engine': 'persistence_engine',
             'callbacks': {
                 'success': self.__class__.test_to_dict_with_callbacks,
@@ -257,6 +284,7 @@ class TestContext(unittest.TestCase):
 
         # This stuff gets dumped out by to_dict().
         options.update({
+            'id': 'someid',
             'insert_tasks': 'furious.context.context._insert_tasks',
             'persistence_engine': 'persistence_engine',
             '_tasks_inserted': False,

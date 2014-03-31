@@ -67,11 +67,6 @@ class Context(object):
         self._insert_success_count = 0
         self._insert_failed_count = 0
 
-        id = options.get('id')
-        if not id:
-            id = uuid.uuid4().hex
-        self._id = id
-
         self._persistence_engine = options.get('persistence_engine', None)
         if self._persistence_engine:
             options['persistence_engine'] = reference_to_path(
@@ -79,9 +74,21 @@ class Context(object):
 
         self._options = options
 
+        self._id = self._get_id()
+
         self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
         if not callable(self._insert_tasks):
             raise TypeError('You must provide a valid insert_tasks function.')
+
+    def _get_id(self):
+        """If this async has no id, generate one."""
+        id = self._options.get('id')
+        if id:
+            return id
+
+        id = uuid.uuid4().hex
+        self._options['id'] = id
+        return id
 
     @property
     def id(self):
