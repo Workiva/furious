@@ -91,15 +91,14 @@ def _process_results():
     async = get_current_async()
     callbacks = async.get_callbacks()
 
-    if isinstance(async.result, AsyncException):
-        error_callback = callbacks.get('error')
-        if not error_callback:
+    if not isinstance(async.result, AsyncException):
+        callback = callbacks.get('success')
+    else:
+        callback = callbacks.get('error')
+        if not callback:
             raise async.result.exception, None, async.result.traceback
 
-        return _execute_callback(async, error_callback)
-
-    success_callback = callbacks.get('success')
-    return _execute_callback(async, success_callback)
+    return _execute_callback(async, callback)
 
 
 def _execute_callback(async, callback):
