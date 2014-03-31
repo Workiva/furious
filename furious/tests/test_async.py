@@ -196,6 +196,17 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(job.id, id)
         self.assertEqual(job.get_options()['id'], id)
 
+    def test_generates_one_id(self):
+        """Ensure only one random id is auto-generated if not specified."""
+        from furious.async import Async
+
+        job = Async('somehting')
+
+        id1 = job.id
+        id2 = job.id
+        self.assertEqual(id1, id2)
+        self.assertEqual(job.id, id1)
+
     def test_uses_given_id(self):
         """Ensure an id passed in is used."""
         from furious.async import Async
