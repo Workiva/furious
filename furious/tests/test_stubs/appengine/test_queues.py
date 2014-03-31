@@ -300,6 +300,44 @@ class TestRunQueuesIntegration(unittest.TestCase):
 
         self.assertEqual(2, ctime.call_count)
 
+    @patch('time.ctime')
+    def test_run_with_retries(self, ctime):
+        """
+        Ensure tasks are retries when they raise an exception.
+        Ensure 10 retries are made - 11 total calls.
+        """
+
+        from furious.async import Async
+        from furious.test_stubs.appengine.queues import run as run_queues
+
+        # Count the task runs.
+        global call_count
+        call_count = 0
+
+        def task_call():
+            """The function our task will call."""
+
+            num_retries = int(os.environ.get('HTTP_X_APPENGINE_TASKRETRYCOUNT'))
+            global call_count
+            # Ensure the num_retries env var is incremented each time.
+            self.assertEqual(num_retries, call_count)
+            call_count += 1
+            # Raise an Exception to retry until max retries are reached.
+            raise Exception()
+
+        ctime.side_effect = task_call
+
+        # Enqueue our task that will fail.
+        async = Async(target='time.ctime')
+        async.start()
+
+        # Run the tasks in the queue
+        run_queues(self.taskqueue_service, enable_retries=True)
+
+        # By default app engine will run the task 11 times.  10 retries
+        # after the # initial run.
+        self.assertEqual(11, call_count)
+
 
 @attr('slow')
 class TestPurgeTasks(unittest.TestCase):
