@@ -338,6 +338,93 @@ class TestRunQueuesIntegration(unittest.TestCase):
         # after the # initial run.
         self.assertEqual(11, call_count)
 
+    @patch('time.ctime')
+    @patch('time.asctime')
+    @patch('time.accept2dyear')
+    def test_run_with_retries_and_retries_reset(self, accept2dyear, asctime,
+                                                ctime):
+        """
+        Ensure tasks retry counts are separate between asyncs.
+        Ensure tasks retry counts are reset once an Async is successful.
+        """
+
+        from furious.async import Async
+        from furious.test_stubs.appengine.queues import run as run_queues
+
+        # Count the task runs.
+        self.async1_call_count = 0
+        self.async2_call_count = 0
+        self.async3_call_count = 0
+        self.async1_retries_env = 0
+        self.async2_retries_env = 0
+        self.async3_retries_env = 0
+
+        def task_call_task1():
+            """The function task1 will call."""
+
+            int(os.environ.get('HTTP_X_APPENGINE_TASKRETRYCOUNT'))
+
+            self.async1_call_count += 1
+
+            if self.async1_call_count < 2:
+                # Fail once.
+                raise Exception()
+
+            self.async1_retries_env = int(
+                os.environ.get('HTTP_X_APPENGINE_TASKRETRYCOUNT'))
+
+        def task_call_task3():
+            """The function task3 will call."""
+
+            self.async3_call_count += 1
+
+            self.async3_retries_env = int(
+                os.environ.get('HTTP_X_APPENGINE_TASKRETRYCOUNT'))
+
+        def task_call_task2():
+            """The function task2 will call."""
+
+            self.async2_call_count += 1
+
+            if self.async2_call_count < 3:
+                # Fail twice.
+                raise Exception()
+
+            self.async2_retries_env = int(
+                os.environ.get('HTTP_X_APPENGINE_TASKRETRYCOUNT'))
+
+            async3 = Async(target='time.accept2dyear')
+            async3.start()
+
+        ctime.side_effect = task_call_task1
+        asctime.side_effect = task_call_task2
+        accept2dyear.side_effect = task_call_task3
+
+        # Enqueue our task that will fail.
+        async1 = Async(target='time.ctime')
+        async1.start()
+
+        async2 = Async(target='time.asctime')
+        async2.start()
+
+        # Run the tasks in the queue
+        run_queues(self.taskqueue_service, enable_retries=True)
+
+        self.assertEqual(self.async1_call_count, 2)
+        self.assertEqual(self.async2_call_count, 3)
+        self.assertEqual(self.async3_call_count, 1)
+        self.assertEqual(self.async1_retries_env, 1)
+        self.assertEqual(self.async2_retries_env, 2)
+        self.assertEqual(self.async3_retries_env, 0)
+
+        # Clear
+        del self.async1_call_count
+        del self.async2_call_count
+        del self.async3_call_count
+        del self.async1_retries_env
+        del self.async2_retries_env
+        del self.async3_retries_env
+
 
 @attr('slow')
 class TestPurgeTasks(unittest.TestCase):
