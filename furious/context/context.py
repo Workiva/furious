@@ -67,10 +67,7 @@ class Context(object):
         self._insert_success_count = 0
         self._insert_failed_count = 0
 
-        self._persistence_engine = options.get('persistence_engine', None)
-        if self._persistence_engine:
-            options['persistence_engine'] = reference_to_path(
-                self._persistence_engine)
+        self._persistence_engine = None
 
         self._options = options
 
@@ -148,7 +145,12 @@ class Context(object):
         """Return the tasks for this Context, grouped by queue."""
         task_map = {}
 
+        callbacks = self._options.get('callbacks')
         for async in self._tasks:
+            # add completion
+            if callbacks:
+                # TODO: Need to  determine if we have to pass the context id
+                async.get_options()['_check_context'] = self.id
             queue = async.get_queue()
             task = async.to_task()
             task_map.setdefault(queue, []).append(task)
@@ -180,8 +182,27 @@ class Context(object):
         if self._tasks:
             self._handle_tasks()
 
+    def _prepare_persistence_engine(self):
+        """Load the specified persistence engine, or the default if none is
+        set.
+        """
+        if self._persistence_engine:
+            return
+
+        persistence_engine = self._options.get('persistence_engine')
+        if persistence_engine:
+            self._persistence_engine = path_to_reference(persistence_engine)
+            return
+
+        from furious.config import get_default_persistence_engine
+
+        self._persistence_engine = get_default_persistence_engine()
+
     def persist(self):
         """Store the context."""
+
+        self._prepare_persistence_engine()
+
         if not self._persistence_engine:
             raise RuntimeError(
                 'Specify a valid persistence_engine to persist this context.')
@@ -295,4 +316,3 @@ def _task_batcher(tasks, batch_size=None):
 
     args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
-

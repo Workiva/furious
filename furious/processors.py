@@ -72,6 +72,10 @@ def run_job():
     if isinstance(processor_result, (Async, Context)):
         processor_result.start()
 
+    check_context = async_options.get('_check_context')
+    if check_context:
+        _check_context()
+
 
 def encode_exception(exception):
     """Encode exception to a form that can be passed around and serialized.
@@ -101,6 +105,14 @@ def _process_results():
     return _execute_callback(async, callback)
 
 
+def _check_context():
+    """Start checking if a context is complete"""
+
+    # This will execute the completion check
+    async = get_current_async()
+    async.persist()
+
+
 def _execute_callback(async, callback):
     """Execute the given callback or insert the Async callback, or if no
     callback is given return the async.result.
@@ -114,4 +126,3 @@ def _execute_callback(async, callback):
         return callback.start()
 
     return callback()
-
