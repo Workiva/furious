@@ -83,7 +83,7 @@ def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
                                  furious task runner will run.
     :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
-    :param enable_retries: :bool: whether to enable task retries.
+    :type enable_retries: bool
     """
 
     if enable_retries:
@@ -177,7 +177,7 @@ def run(taskq_service=None, queue_names=None, max_iterations=None,
                                  furious task runner will run.
     :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
-    :param enable_retries: :bool: whether to enable task retries.
+    :type enable_retries: bool
     """
     if not taskq_service:
         taskq_service = apiproxy.GetStub('taskqueue')
@@ -493,7 +493,7 @@ def _run(taskq_service, queue_names, non_furious_url_prefixes=None,
                                  furious task runner will run.
     :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
-    :param enable_retries: :bool: whether to enable task retries.
+    :type enable_retries: bool
     """
 
     num_processed = 0
