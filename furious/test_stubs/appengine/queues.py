@@ -153,7 +153,8 @@ def _retry_or_delete(task, task_response, queue, queue_service, queue_name):
     if retry.CanRetry(task_response.retry_count() + 1, 0):
         # Increment retries.  We ignore the delay when running tasks.
         now_eta_usec = time.time() * 1e6
-        queue.PostponeTask(task_response, now_eta_usec + 10)
+        eta_usec = task.get('eta_usec') or now_eta_usec
+        queue.PostponeTask(task_response, eta_usec + 10)
     else:
         # Can't retry, likely reached the max retry count.
         queue_service.DeleteTask(queue_name, task.get('name'))
