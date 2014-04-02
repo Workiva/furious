@@ -111,11 +111,19 @@ def run_queue_enable_retries(
         non_furious_handler=None):
     """
     Run the tasks in a queue with AE task retries and retry limit.
+
     Ignores delays to start tasks.
     Only deletes the task if task doesn't raise an exception or it has
     reached the max number of retries.
     Uses internal App Engine SDK calls, so run_queue() is be more
     stable if retries are not important.
+
+    :param queue_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_name: :class: `str`
+    :param non_furious_url_prefixes: :class: `list` of url prefixes that the
+     furious task runner will run.
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
+     run within.
     """
 
     queue = queue_service._GetGroup().GetQueue(queue_name)
@@ -146,7 +154,18 @@ def run_queue_enable_retries(
 
 
 def _retry_or_delete(task, task_response, queue, queue_service, queue_name):
-    """Increment task retry count or delete if it has reached max retries."""
+    """
+    Increment task retry count or delete if it has reached max retries.
+
+    :type task: dict Task as a dictionary.
+    :param task_response: :class:
+     `taskqueue.taskqueue_service_pb.TaskQueueQueryTasksResponse_Task`
+    :param queue: :class:
+     `google.appengine.api.taskqueue.taskqueue_stub._Queue`
+    :param queue_service: :class:
+     `google.appengine.api.taskqueue_stub.TaskQueueServiceStub`
+    :type queue_name: str The name of the queue
+    """
 
     # See if task can retry, delete otherwise.
     retry = taskqueue_stub.Retry(task_response, queue)
