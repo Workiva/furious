@@ -143,14 +143,19 @@ class Context(object):
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
+        from furious.async import Async
+
         task_map = {}
 
         callbacks = self._options.get('callbacks')
+
+        complete = Async(self.completion_engine.check_context_complete,
+                         args=[self.id])
+
         for async in self._tasks:
-            # add completion
             if callbacks:
-                # TODO: Need to  determine if we have to pass the context id
-                async.get_options()['_check_context'] = self.id
+                async.get_options()['_check_context'] = complete
+
             queue = async.get_queue()
             task = async.to_task()
             task_map.setdefault(queue, []).append(task)
@@ -197,6 +202,23 @@ class Context(object):
         from furious.config import get_default_persistence_engine
 
         self._persistence_engine = get_default_persistence_engine()
+
+    def _prepare_completion_engine(self):
+        """Load the specified completion engine, or the default if none is
+        set.
+        """
+
+        if self._completion_engine:
+            return
+
+        completion_engine = self._options.get('completion_engine')
+        if completion_engine:
+            self._completion_engine = path_to_reference(completion_engine)
+            return
+
+        from furious.config import get_default_completion_engine
+
+        self._completion_engine = get_default_completion_engine()
 
     def persist(self):
         """Store the context."""
