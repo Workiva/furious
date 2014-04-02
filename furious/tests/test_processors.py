@@ -269,6 +269,105 @@ class TestRunJob(unittest.TestCase):
         logging.getLogger().removeHandler(AbortLogHandler())
 
 
+class TestHandleResults(unittest.TestCase):
+    """Test that _handle_results does the Right Things."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    @patch('furious.processors._process_results')
+    def test_defaults_to_process_results(self, processor_mock):
+        """Ensure _handle_results calls _process_results if not given."""
+        from furious.processors import _handle_results
+
+        _handle_results({})
+
+        processor_mock.assert_called_once_with()
+
+    def test_runs_given_function(self):
+        """Ensure _handle_results calls the given results processor."""
+        from furious.processors import _handle_results
+
+        processor = Mock()
+
+        _handle_results({'_process_results': processor})
+
+        processor.assert_called_once_with()
+
+    def test_runs_returned_async(self):
+        """Ensure _handle_results runs Async returned by results processor."""
+        from furious.async import Async
+        from furious.processors import _handle_results
+
+        processor = Mock()
+        processor.return_value = Mock(spec=Async)
+
+        _handle_results({'_process_results': processor})
+
+        processor.return_value.start.assert_called_once_with()
+
+    def test_starts_returned_context(self):
+        """Ensure _handle_results starts Context returned by results processor.
+        """
+        from furious.context.context import Context
+        from furious.processors import _handle_results
+
+        processor = Mock()
+        processor.return_value = Mock(spec=Context)
+
+        _handle_results({'_process_results': processor})
+
+        processor.return_value.start.assert_called_once_with()
+
+
+class TestContextCompletionChecker(unittest.TestCase):
+    """Test that _handle_context_completion_check does the Right Things."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def test_no_comletion(self):
+        """Ensure does not fail if there's no completion checker."""
+        from furious.processors import _handle_context_completion_check
+
+        _handle_context_completion_check({})
+
+    def test_checker_called_with_id(self):
+        """Ensure checker called with id as argument."""
+        from furious.processors import _handle_context_completion_check
+
+        checker = Mock()
+
+        _handle_context_completion_check(
+            {'_id': 'blahblah', '_context_checker': checker})
+
+        checker.assert_called_once_with('blahblah')
+
+    def test_async_checker_called_with_id(self):
+        """Ensure an Async checker called with id as argument."""
+        from furious.async import Async
+        from furious.processors import _handle_context_completion_check
+
+        checker = Mock(spec=Async)
+
+        _handle_context_completion_check(
+            {'_id': 'someid', '_context_checker': checker})
+
+        checker.update_options.assert_called_once_with(args=['someid'])
+        checker.start.assert_called_once_with()
+
+        # Make sure didn't try to "call" the Async.
+        self.assertEqual(checker.call_count, 0)
+
+
 def _fake_async_returning_target(async_to_return):
     return async_to_return
 
