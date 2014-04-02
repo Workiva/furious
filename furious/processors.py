@@ -82,10 +82,6 @@ def _handle_results(options):
     if isinstance(processor_result, (Async, Context)):
         processor_result.start()
 
-    check_context = async_options.get('_check_context')
-    if check_context:
-        _check_context()
-
 
 def _handle_context_completion_check(options):
     """If options specifies a completion check function, execute it."""
@@ -132,14 +128,6 @@ def _process_results():
             raise async.result.exception, None, async.result.traceback
 
     return _execute_callback(async, callback)
-
-
-def _check_context():
-    """Start checking if a context is complete"""
-
-    # This will execute the completion check
-    async = get_current_async()
-    async.persist()
 
 
 def _execute_callback(async, callback):
