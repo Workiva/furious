@@ -324,6 +324,50 @@ class TestHandleResults(unittest.TestCase):
         processor.return_value.start.assert_called_once_with()
 
 
+class TestContextCompletionChecker(unittest.TestCase):
+    """Test that _handle_context_completion_check does the Right Things."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def test_no_comletion(self):
+        """Ensure does not fail if there's no completion checker."""
+        from furious.processors import _handle_context_completion_check
+
+        _handle_context_completion_check({})
+
+    def test_checker_called_with_id(self):
+        """Ensure checker called with id as argument."""
+        from furious.processors import _handle_context_completion_check
+
+        checker = Mock()
+
+        _handle_context_completion_check(
+            {'_id': 'blahblah', '_context_checker': checker})
+
+        checker.assert_called_once_with('blahblah')
+
+    def test_async_checker_called_with_id(self):
+        """Ensure an Async checker called with id as argument."""
+        from furious.async import Async
+        from furious.processors import _handle_context_completion_check
+
+        checker = Mock(spec=Async)
+
+        _handle_context_completion_check(
+            {'_id': 'someid', '_context_checker': checker})
+
+        checker.update_options.assert_called_once_with(args=['someid'])
+        checker.start.assert_called_once_with()
+
+        # Make sure didn't try to "call" the Async.
+        self.assertEqual(checker.call_count, 0)
+
+
 def _fake_async_returning_target(async_to_return):
     return async_to_return
 
