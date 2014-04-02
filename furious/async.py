@@ -160,6 +160,17 @@ class Async(object):
         if self._options.get('persist_result'):
             self._persist_result()
 
+    def persist(self):
+        """Store the Async."""
+
+        self._prepare_persistence_engine()
+
+        if not self._persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to persist this context.')
+
+        return self._persistence_engine.store_async(self)
+
     def _persist_result(self):
         """Store this Async's result in persistent storage."""
         self._prepare_persistence_engine()
