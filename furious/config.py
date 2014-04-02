@@ -140,6 +140,7 @@ def default_config():
     return {'secret_key':
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
+            'completion': 'ndb',
             'task_system': 'appengine_taskqueue'}
 
 
