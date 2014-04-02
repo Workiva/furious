@@ -149,6 +149,7 @@ class Context(object):
 
         callbacks = self._options.get('callbacks')
 
+        self._prepare_completion_engine()
         complete = Async(self.completion_engine.check_context_complete,
                          args=[self.id])
 

@@ -24,6 +24,10 @@ PERSISTENCE_MODULES = {
     'ndb': 'furious.extras.appengine.ndb_persistence'
 }
 
+COMPLETION_MODULES = {
+    'ndb': 'furious.extras.appengine.ndb_persistence'
+}
+
 
 class BadModulePathError(Exception):
     """Invalid module path."""
@@ -48,6 +52,11 @@ class MissingYamlFile(Exception):
 def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
     """Return the default persistence engine set in furious.yaml."""
     return _get_configured_module('persistence', known_modules=known_modules)
+
+
+def get_default_completion_engine(known_modules=COMPLETION_MODULES):
+    """Return the default completion engine set in furious.yaml."""
+    return _get_configured_module('completion', known_modules=known_modules)
 
 
 def _get_configured_module(option_name, known_modules=None):
