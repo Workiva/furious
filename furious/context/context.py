@@ -68,6 +68,7 @@ class Context(object):
         self._insert_failed_count = 0
 
         self._persistence_engine = None
+        self._completion_engine = None
 
         self._options = options
 
