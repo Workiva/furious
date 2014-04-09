@@ -178,6 +178,21 @@ class TestContext(unittest.TestCase):
         self.assertEqual(10, ctx.insert_success)
 
     @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
+    def test_added_asyncs_get_context_id(self, queue_mock):
+        """Ensure Asyncs added to context get context id."""
+        from furious.async import Async
+        from furious.context import Context
+
+        asyncs = [Async('test', id=i) for i in xrange(100, 110)]
+
+        with Context() as ctx:
+            for async in asyncs:
+                ctx.add(async)
+                self.assertEqual(ctx.id, async.get_options()['_context_id'])
+
+        self.assertEqual(10, ctx.insert_success)
+
+    @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
     def test_added_to_correct_queue(self, queue_mock):
         """Ensure jobs are added to the correct queue."""
         from furious.context import Context

@@ -171,6 +171,8 @@ class Context(object):
         if not isinstance(target, (Async, Message)):
             target = Async(target, args, kwargs, **options)
 
+        target.update_options(_context_id=self.id)
+
         self._tasks.append(target)
 
         return target
