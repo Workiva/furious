@@ -155,9 +155,12 @@ def _parse_yaml_config(config_data=None):
     data_map = default_config()
 
     # If we were given config data to use, use it.  Otherwise, see if there is
-    # a furious.yaml to read the config from.
-    config_data = config_data or _load_yaml_config()
+    # a furious.yaml to read the config from.  Note that the empty string will
+    # result in the default config being used.
     if config_data is None:
+        config_data = _load_yaml_config()
+
+    if not config_data:
         logging.debug("No custom furious config, using default config.")
         return data_map
 
