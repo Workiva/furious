@@ -119,6 +119,8 @@ class Async(object):
 
         self._result = None
 
+        self._context_checker = None
+
     @property
     def executed(self):
         return self._executed
@@ -431,6 +433,10 @@ def encode_async_options(async):
     callbacks = async._options.get('callbacks')
     if callbacks:
         options['callbacks'] = encode_callbacks(callbacks)
+
+    if '_context_checker' in options:
+        _checker = options.pop('_context_checker')
+        options['__context_checker'] = reference_to_path(_checker)
 
     return options
 
