@@ -903,6 +903,16 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(
             5, options['task_args']['retry_options']['task_retry_limit'])
 
+    def test_context_checker_encoded(self):
+        """Ensure the _context_checker is correctly encoded in options dict."""
+        from furious.async import Async
+        from furious.async import encode_async_options
+
+        async_job = Async("something", _context_checker=dir)
+        options = encode_async_options(async_job)
+
+        self.assertEqual('dir', options['__context_checker'])
+
     def test_retry_value_is_decodable(self):
         """Ensure that from_dict is the inverse of to_dict when retry options
         are given.
