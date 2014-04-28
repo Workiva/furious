@@ -24,6 +24,10 @@ PERSISTENCE_MODULES = {
     'ndb': 'furious.extras.appengine.ndb_persistence'
 }
 
+LOGGING_MODULES = {
+    'gae_logging': 'furious.extras.appengine.logger'
+}
+
 
 class BadModulePathError(Exception):
     """Invalid module path."""
@@ -48,6 +52,11 @@ class MissingYamlFile(Exception):
 def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
     """Return the default persistence engine set in furious.yaml."""
     return _get_configured_module('persistence', known_modules=known_modules)
+
+
+def get_default_logging_engine(known_modules=LOGGING_MODULES):
+    """Return the default logging engine set in furious.yaml."""
+    return _get_configured_module('logging', known_modules=known_modules)
 
 
 def _get_configured_module(option_name, known_modules=None):
@@ -131,12 +140,14 @@ def default_config():
     return {'secret_key':
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
-            'task_system': 'appengine_taskqueue'}
+            'task_system': 'appengine_taskqueue',
+            'logging': 'gae_logging'}
 
 
 def _load_yaml_config(path=None):
     """Open and return the yaml contents."""
     furious_yaml_path = path or find_furious_yaml()
+
     if furious_yaml_path is None:
         logging.debug("furious.yaml not found.")
         return None

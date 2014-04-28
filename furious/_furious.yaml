@@ -1,1 +1,4 @@
 persistence: ndb
+logging: gae_logging
+log_sockets: False
+log_socket_connection: ('127.0.0.1', 1200)
