@@ -60,7 +60,7 @@ def run_job():
 
         # QUESTION: In this eventuality, we should probably tell the context we
         # are "complete" and let it handle completion checking.
-        _handle_context_completion_check(async_options)
+        _handle_context_completion_check(async)
         return
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
@@ -69,7 +69,7 @@ def run_job():
         async.result = encode_exception(e)
 
     _handle_results(async_options)
-    _handle_context_completion_check(async_options)
+    _handle_context_completion_check(async)
 
 
 def _handle_results(options):
@@ -83,23 +83,17 @@ def _handle_results(options):
         processor_result.start()
 
 
-def _handle_context_completion_check(options):
+def _handle_context_completion_check(async):
     """If options specifies a completion check function, execute it."""
-    checker = options.get('_context_checker')
+    checker = async.get_options().get('_context_checker')
+
     if not checker:
+        logging.debug('no checker defined.')
         return
 
-    # Get this Async's id.
-    async_id = options.get('_id')
-
-    if isinstance(checker, Async):
-        # Update the context complete checker with the id of this Async.
-        checker.update_options(args=[async_id])
-        checker.start()
-        return
 
     # Call the context complete checker with the id of this Async.
-    checker(async_id)
+    checker(async)
 
 
 def encode_exception(exception):
