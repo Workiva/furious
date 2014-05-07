@@ -913,6 +913,22 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual('dir', options['__context_checker'])
 
+    def test_context_checker_encoded_and_decoded(self):
+        """Ensure the _context_checker is correctly encoded to and decoded from
+        an Async options dict.
+        """
+        from furious.async import Async
+
+        async_job = Async("something", _context_checker=dir)
+
+        encoded_async = async_job.to_dict()
+        self.assertEqual(encoded_async['__context_checker'], 'dir')
+
+        new_async_job = Async.from_dict(encoded_async)
+        self.assertEqual(new_async_job.get_options()['_context_checker'], dir)
+
+        self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
     def test_retry_value_is_decodable(self):
         """Ensure that from_dict is the inverse of to_dict when retry options
         are given.
