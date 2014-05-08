@@ -83,7 +83,24 @@ def context_completion_checker(async):
 
     context.exec_event_handler('complete')
 
+    try:
+        from furious.async import Async
+        Async(_cleanup_markers, args=[context_id, task_ids]).start()
+    except:
+        pass
+
     return True
+
+
+def _cleanup_markers(context_id, task_ids):
+    """Delete the FuriousAsyncMarker entities corresponding to ids."""
+    logging.debug("Cleanup %d markers for Context %s",
+                  len(task_ids), context_id)
+
+    # TODO: Handle exceptions and retries here.
+    ndb.delete_multi([ndb.Key(FuriousAsyncMarker, id) for id in task_ids])
+
+    logging.debug("Markers cleaned.")
 
 
 def store_context(context):
