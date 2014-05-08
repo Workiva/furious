@@ -337,7 +337,7 @@ class TestContext(unittest.TestCase):
         context = Context.from_dict(options)
 
         self.assertEqual(123456, context.id)
-        self.assertEqual([1, 2, 3, 4], context._task_ids)
+        self.assertEqual([1, 2, 3, 4], context.task_ids)
         self.assertEqual(True, context._tasks_inserted)
         self.assertEqual('avalue', context._options.get('random_option'))
         self.assertEqual(_insert_tasks, context._insert_tasks)

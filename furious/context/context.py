@@ -62,7 +62,6 @@ class Context(object):
     """
     def __init__(self, **options):
         self._tasks = []
-        self._task_ids = []
         self._tasks_inserted = False
         self._insert_success_count = 0
         self._insert_failed_count = 0
@@ -73,6 +72,9 @@ class Context(object):
                 self._persistence_engine)
 
         self._options = options
+
+        if '_task_ids' not in self._options:
+            self._options['_task_ids'] = []
 
         self._id = self._get_id()
 
@@ -93,6 +95,10 @@ class Context(object):
     @property
     def id(self):
         return self._id
+
+    @property
+    def task_ids(self):
+        return self._options['_task_ids']
 
     @property
     def insert_success(self):
@@ -174,6 +180,7 @@ class Context(object):
         target.update_options(_context_id=self.id)
 
         self._tasks.append(target)
+        self._options['_task_ids'].append(target.id)
 
         return target
 
@@ -214,7 +221,6 @@ class Context(object):
 
         options.update({
             '_tasks_inserted': self._tasks_inserted,
-            '_task_ids': [async.id for async in self._tasks]
         })
 
         callbacks = self._options.get('callbacks')
@@ -231,7 +237,6 @@ class Context(object):
         context_options = copy.deepcopy(context_options_dict)
 
         tasks_inserted = context_options.pop('_tasks_inserted', False)
-        task_ids = context_options.pop('_task_ids', [])
 
         insert_tasks = context_options.pop('insert_tasks', None)
         if insert_tasks:
@@ -251,7 +256,6 @@ class Context(object):
         context = cls(**context_options)
 
         context._tasks_inserted = tasks_inserted
-        context._task_ids = task_ids
 
         return context
 
