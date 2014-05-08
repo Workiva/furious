@@ -53,6 +53,32 @@ class FuriousAsyncMarker(ndb.Model):
     pass
 
 
+def context_completion_checker(async):
+    """Check if all Async jobs within a Context have been run."""
+    context_id = async.context_id
+    logging.debug("Check completion for: %s", context_id)
+
+    context = FuriousContext.from_id(context_id)
+    logging.debug("Loaded context.")
+
+    task_ids = context.task_ids
+    logging.debug(task_ids)
+
+    offset = 10
+    for index in xrange(0, len(task_ids), offset):
+        keys = [ndb.Key(FuriousAsyncMarker, id)
+                for id in task_ids[index:index + offset]]
+
+        markers = ndb.get_multi(keys)
+
+        if not all(markers):
+            logging.debug("Not all Async's complete")
+            return False
+
+    logging.debug("All Async's complete!!")
+    return True
+
+
 def store_context(context):
     """Persist a Context object to the datastore."""
     logging.debug("Attempting to store Context %s.", context.id)
