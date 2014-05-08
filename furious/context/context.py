@@ -188,7 +188,7 @@ class Context(object):
             raise RuntimeError(
                 'Specify a valid persistence_engine to persist this context.')
 
-        return self._persistence_engine.store_context(self.id, self.to_dict())
+        return self._persistence_engine.store_context(self)
 
     @classmethod
     def load(cls, context_id, persistence_engine):

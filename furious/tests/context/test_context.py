@@ -408,8 +408,7 @@ class TestContext(unittest.TestCase):
 
         context.persist()
 
-        persistence_engine.store_context.assert_called_once_with(
-            context.id, context.to_dict())
+        persistence_engine.store_context.assert_called_once_with(context)
 
     def test_load_context(self):
         """Calling load with an engine attempts to load the Context."""
