@@ -167,12 +167,6 @@ class Async(object):
         return self._persistence_engine.store_async_result(
             self.id, self.result)
 
-    def _persist_marker(self):
-        """Mark this Async as complete using persistence engine."""
-        self._prepare_persistence_engine()
-
-        return self._persistence_engine.store_async_marker(self)
-
     @property
     def _function_path(self):
         return self.job[0]
