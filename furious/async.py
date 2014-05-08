@@ -384,6 +384,17 @@ class Async(object):
         return id
 
     @property
+    def context_id(self):
+        """If this async has a context id, return it; else raise
+        NotInContextError.
+        """
+        context_id = self._options.get('_context_id')
+        if context_id:
+            return context_id
+
+        raise errors.NotInContextError("Context ID not set.")
+
+    @property
     def id(self):
         """Return this Async's ID value."""
         return self._id

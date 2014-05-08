@@ -226,6 +226,27 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(job.id, 'newid')
         self.assertEqual(job.get_options()['id'], 'newid')
 
+    def test_context_id(self):
+        """Ensure context_id returns the context_id."""
+        from furious.async import Async
+
+        job = Async('somehting')
+        job.update_options(_context_id='blarghahahaha')
+        self.assertEqual(job.context_id, 'blarghahahaha')
+
+    def test_no_context_id(self):
+        """Ensure calling context_id when none exists raises error."""
+        from furious.async import Async
+        from furious.errors import NotInContextError
+
+        job = Async('somehting')
+        try:
+            job.context_id
+        except NotInContextError:
+            return
+
+        raise AssertionError('NotInContextError was not raised.')
+
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
         from furious.async import Async
