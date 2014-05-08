@@ -46,6 +46,18 @@ class FuriousContext(ndb.Model):
 
         return Context.from_dict(entity.context)
 
+
+def store_context(context):
+    """Persist a Context object to the datastore."""
+    logging.debug("Attempting to store Context %s.", context.id)
+
+    entity = FuriousContext.from_context(context)
+
+    # TODO: Handle exceptions and retries here.
+    key = entity.put()
+
+    logging.debug("Stored Context with key: %s.", key)
+
 def store_async_result(async):
     """Persist the Async's result to the datastore."""
     pass
