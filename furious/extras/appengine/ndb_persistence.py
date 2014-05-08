@@ -59,12 +59,15 @@ def store_context(context):
 
     logging.debug("Stored Context with key: %s.", key)
 
+
 def store_async_result(async):
     """Persist the Async's result to the datastore."""
+    logging.debug("Storing result for %s", async)
     pass
 
 
 def store_async_marker(async):
     """Persist a marker indicating the Async ran to the datastore."""
+    logging.debug("Storing marker for %s", async)
     pass
 
