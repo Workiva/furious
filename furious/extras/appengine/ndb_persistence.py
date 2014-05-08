@@ -76,6 +76,9 @@ def context_completion_checker(async):
             return False
 
     logging.debug("All Async's complete!!")
+
+    context.exec_event_handler('complete')
+
     return True
 
 
