@@ -170,6 +170,47 @@ class Context(object):
 
         return task_map
 
+    def _prepare_persistence_engine(self):
+        """Load the specified persistence engine, or the default if none is
+        set.
+        """
+        if self._persistence_engine:
+            return
+
+        persistence_engine = self._options.get('persistence_engine')
+        if persistence_engine:
+            self._persistence_engine = path_to_reference(persistence_engine)
+            return
+
+        from furious.config import get_default_persistence_engine
+
+        self._persistence_engine = get_default_persistence_engine()
+
+    def set_event_handler(self, event, handler):
+        """Add an Async to be run on event."""
+        # QUESTION: Should we raise an exception if `event` is not in some
+        # known event-type list?
+
+        self._prepare_persistence_engine()
+
+        callbacks = self._options.get('callbacks', {})
+        callbacks[event] = handler
+        self._options['callbacks'] = callbacks
+
+    def exec_event_handler(self, event):
+        """Execute the Async set to be run on event."""
+        # QUESTION: Should we raise an exception if `event` is not in some
+        # known event-type list?
+
+        callbacks = self._options.get('callbacks', {})
+
+        handler = callbacks[event]
+
+        if not handler:
+            raise Exception('Handler not defined!!!')
+
+        handler.start()
+
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
 
