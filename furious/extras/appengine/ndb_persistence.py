@@ -17,6 +17,7 @@
 persistence operations backed by the App Engine ndb library.
 """
 
+import logging
 
 from google.appengine.ext import ndb
 
