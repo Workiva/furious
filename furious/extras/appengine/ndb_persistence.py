@@ -55,6 +55,10 @@ class FuriousAsyncMarker(ndb.Model):
 
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
+    # First, mark this async as complete.
+    store_async_marker(async)
+
+    # Now, check for other Async markers in this Context.
     context_id = async.context_id
     logging.debug("Check completion for: %s", context_id)
 
