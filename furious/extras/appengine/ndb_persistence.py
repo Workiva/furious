@@ -48,6 +48,11 @@ class FuriousContext(ndb.Model):
         return Context.from_dict(entity.context)
 
 
+class FuriousAsyncMarker(ndb.Model):
+    """This entity serves as a 'complete' marker."""
+    pass
+
+
 def store_context(context):
     """Persist a Context object to the datastore."""
     logging.debug("Attempting to store Context %s.", context.id)
@@ -68,6 +73,10 @@ def store_async_result(async):
 
 def store_async_marker(async):
     """Persist a marker indicating the Async ran to the datastore."""
-    logging.debug("Storing marker for %s", async)
-    pass
+    logging.debug("Attempting to mark Async %s complete.", async.id)
+
+    # TODO: Handle exceptions and retries here.
+    key = FuriousAsyncMarker(id=async.id).put()
+
+    logging.debug("Marked Async complete using marker: %s.", key)
 
