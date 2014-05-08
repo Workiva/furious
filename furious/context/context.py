@@ -153,9 +153,18 @@ class Context(object):
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
         task_map = {}
+        _checker = None
+
+        # Ask the persistence engine for an Async to use for checking if the
+        # context is complete.
+        if self._persistence_engine:
+            _checker = self._persistence_engine.context_completion_checker
 
         for async in self._tasks:
             queue = async.get_queue()
+            if _checker:
+                async.update_options(_context_checker=_checker)
+
             task = async.to_task()
             task_map.setdefault(queue, []).append(task)
 
