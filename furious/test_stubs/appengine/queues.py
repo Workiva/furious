@@ -50,13 +50,17 @@ runner.run()
 
 import base64
 from collections import defaultdict
+import datetime
 import logging
 import os
 import random
+import time
+import traceback
 import uuid
 
 from google.appengine.api import taskqueue
 from google.appengine.api.apiproxy_stub_map import apiproxy
+from google.appengine.api.taskqueue import taskqueue_stub
 
 from furious.context._local import _clear_context
 from furious.handlers import process_async_task
@@ -67,7 +71,7 @@ __all__ = ['run', 'run_queue', 'Runner', 'add_tasks', 'get_tasks',
 
 
 def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
-              non_furious_handler=None):
+              non_furious_handler=None, enable_retries=False):
     """Get the tasks from a queue.  Clear the queue, and run each task.
 
     If tasks are reinserted into this queue, this function needs to be called
@@ -79,7 +83,13 @@ def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
                                  furious task runner will run.
     :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
+    :type enable_retries: bool Whether to enable task retries.
     """
+
+    if enable_retries:
+        return run_queue_enable_retries(
+            taskq_service, queue_name, non_furious_url_prefixes=None,
+            non_furious_handler=None)
 
     # Get tasks and clear them
     tasks = taskq_service.GetTasks(queue_name)
@@ -96,8 +106,82 @@ def run_queue(taskq_service, queue_name, non_furious_url_prefixes=None,
     return num_processed
 
 
+def run_queue_enable_retries(
+        queue_service, queue_name, non_furious_url_prefixes=None,
+        non_furious_handler=None):
+    """
+    Run the tasks in a queue with AE task retries and retry limit.
+
+    Ignores delays to start tasks.
+    Only deletes the task if task doesn't raise an exception or it has
+    reached the max number of retries.
+    Uses internal App Engine SDK calls, so run_queue() is be more
+    stable if retries are not important.
+
+    :param queue_service: :class: `taskqueue_stub.TaskQueueServiceStub`
+    :param queue_name: :class: `str`
+    :param non_furious_url_prefixes: :class: `list` of url prefixes that the
+     furious task runner will run.
+    :param non_furious_handler: :class: `func` handler for non furious tasks to
+     run within.
+    """
+
+    queue = queue_service._GetGroup().GetQueue(queue_name)
+    task_responses = [task_response for (_, _, task_response)
+                      in queue._sorted_by_eta]
+
+    num_processed = 0
+
+    for task_response in task_responses:
+
+        now = datetime.datetime.utcnow()
+        task_dict = taskqueue_stub.QueryTasksResponseToDict(
+            queue_name, task_response, now)
+
+        success = _execute_wrapped_task(
+            task_dict, queue_service, queue_name,
+            non_furious_url_prefixes, non_furious_handler)
+
+        if success:
+            queue_service.DeleteTask(queue_name, task_dict.get('name'))
+        else:
+            _retry_or_delete(
+                task_dict, task_response, queue, queue_service, queue_name)
+
+        num_processed += 1
+
+    return num_processed
+
+
+def _retry_or_delete(task, task_response, queue, queue_service, queue_name):
+    """
+    Increment task retry count or delete if it has reached max retries.
+
+    :type task: dict Task as a dictionary.
+    :param task_response: :class:
+     `taskqueue.taskqueue_service_pb.TaskQueueQueryTasksResponse_Task`
+    :param queue: :class:
+     `google.appengine.api.taskqueue.taskqueue_stub._Queue`
+    :param queue_service: :class:
+     `google.appengine.api.taskqueue_stub.TaskQueueServiceStub`
+    :type queue_name: str The name of the queue
+    """
+
+    # See if task can retry, delete otherwise.
+    retry = taskqueue_stub.Retry(task_response, queue)
+    if retry.CanRetry(task_response.retry_count() + 1, 0):
+        # Increment retries.  We ignore the delay when running tasks.
+        now_eta_usec = time.time() * 1e6
+        eta_usec = task.get('eta_usec') or now_eta_usec
+        queue.PostponeTask(task_response, eta_usec + 10)
+    else:
+        # Can't retry, likely reached the max retry count.
+        queue_service.DeleteTask(queue_name, task.get('name'))
+
+
 def run(taskq_service=None, queue_names=None, max_iterations=None,
-        non_furious_url_prefixes=None, non_furious_handler=None):
+        non_furious_url_prefixes=None, non_furious_handler=None,
+        enable_retries=False):
     """
     Run all the tasks in queues, limited by max_iterations.
 
@@ -112,6 +196,7 @@ def run(taskq_service=None, queue_names=None, max_iterations=None,
                                  furious task runner will run.
     :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
+    :type enable_retries: bool Whether to enable task retries.
     """
     if not taskq_service:
         taskq_service = apiproxy.GetStub('taskqueue')
@@ -127,7 +212,7 @@ def run(taskq_service=None, queue_names=None, max_iterations=None,
     while processed:
 
         processed = _run(taskq_service, queue_names, non_furious_url_prefixes,
-                         non_furious_handler)
+                         non_furious_handler, enable_retries)
         tasks_processed += processed
         iterations += 1
 
@@ -324,6 +409,39 @@ class Runner(object):
         return run_queue(self.taskq_service, queue_name)
 
 
+def _execute_wrapped_task(task_dict, queue_service, queue_name,
+                          non_furious_url_prefixes=None,
+                          non_furious_handler=None):
+    """
+    Wrap _execute_task in a try/except.
+
+    Also, set number of retries in the environment.
+    Return True if task executes normally, False if it fails.
+    """
+
+    # Set retry count in environment.
+    header_dict = dict(task_dict['headers'])
+    os.environ['HTTP_X_APPENGINE_TASKRETRYCOUNT'] = header_dict.get(
+        'X-AppEngine-TaskRetryCount', '0')
+
+    success = False
+    try:
+        _execute_task(
+            task_dict, non_furious_url_prefixes=non_furious_url_prefixes,
+            non_furious_handler=non_furious_handler)
+        success = True
+
+    except Exception, e:
+        # Tests for Abort don't allow logging.exception here, so only log as a
+        # warning and include the traceback.
+        stack = traceback.format_exc()
+        logging.warning("%s\n%s" % (repr(e), repr(stack)))
+
+    del os.environ['HTTP_X_APPENGINE_TASKRETRYCOUNT']
+
+    return success
+
+
 def _execute_task(task, non_furious_url_prefixes=None,
                   non_furious_handler=None):
     """Extract the body and header from the task and process it.
@@ -385,7 +503,7 @@ def _is_furious_task(task, non_furious_url_prefixes=None,
 
 
 def _run(taskq_service, queue_names, non_furious_url_prefixes=None,
-         non_furious_handler=None):
+         non_furious_handler=None, enable_retries=False):
     """Run individual tasks in push queues.
 
     :param taskq_service: :class: `taskqueue_stub.TaskQueueServiceStub`
@@ -394,6 +512,7 @@ def _run(taskq_service, queue_names, non_furious_url_prefixes=None,
                                  furious task runner will run.
     :param non_furious_handler: :class: `func` handler for non furious tasks to
                                 run within.
+    :type enable_retries: bool Whether to enable task retries.
     """
 
     num_processed = 0
@@ -402,7 +521,8 @@ def _run(taskq_service, queue_names, non_furious_url_prefixes=None,
     # TODO: Round robin instead of one queue at a time.
     for queue_name in queue_names:
         num_processed += run_queue(taskq_service, queue_name,
-                                   non_furious_url_prefixes, non_furious_handler)
+                                   non_furious_url_prefixes,
+                                   non_furious_handler, enable_retries)
 
     return num_processed
 
