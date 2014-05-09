@@ -17,6 +17,7 @@
 import json
 import logging
 import time
+import uuid
 
 from google.appengine.api import memcache
 from google.appengine.runtime.apiproxy_errors import DeadlineExceededError
@@ -35,6 +36,8 @@ class Message(object):
         self._options = {}
 
         self.update_options(**options)
+
+        self._id = self._get_id()
 
     def get_options(self):
         """Return this message's configuration options."""
@@ -93,6 +96,21 @@ class Message(object):
             options['task_args']['eta'] = time.mktime(eta.timetuple())
 
         return options
+
+    def _get_id(self):
+        """If this message has no id, generate one."""
+        id = self._options.get('id')
+        if id:
+            return id
+
+        id = uuid.uuid4().hex
+        self.update_options(id=id)
+        return id
+
+    @property
+    def id(self):
+        """Return this Message's ID value."""
+        return self._id
 
     @classmethod
     def from_dict(cls, message):
