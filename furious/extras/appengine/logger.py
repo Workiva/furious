@@ -42,17 +42,19 @@ def log_task_info(task_info):
 def log_async(async, task_info=None):
     import socket
 
-    connection_address = get_config().get('log_socket_connection')
+    connection_address = get_config().get('log_socket_address')
+    connection_port = int(get_config().get('log_socket_port', 1200))
 
     if not connection_address:
         logging.info("No connection address to log output.")
         return
 
     try:
-        logging.info("Sending logs to %s:%s", connection_address)
+        logging.info("Sending logs to %s:%s", connection_address,
+                     connection_port)
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(connection_address)
+        s.connect((connection_address, connection_port))
 
         # TODO: Handle payload size.
         payload = {

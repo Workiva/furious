@@ -141,7 +141,10 @@ def default_config():
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
             'task_system': 'appengine_taskqueue',
-            'logging': 'gae_logging'}
+            'logging': 'gae_logging',
+            'log_sockets': True,
+            'log_socket_address': '127.0.0.1',
+            'log_socket_port': 1200}
 
 
 def _load_yaml_config(path=None):
