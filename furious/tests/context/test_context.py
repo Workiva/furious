@@ -287,11 +287,12 @@ class TestContext(unittest.TestCase):
 
         options = {
             'id': 'someid',
+            'context_id': 'contextid',
             'persistence_engine': 'persistence_engine',
             'callbacks': {
                 'success': self.__class__.test_to_dict_with_callbacks,
                 'failure': "failure_function",
-                'exec': Async(target=dir, id='blargh')
+                'exec': Async(target=dir, id='blargh', context_id='contextid')
             }
         }
 
@@ -310,6 +311,7 @@ class TestContext(unittest.TestCase):
                 'failure': "failure_function",
                 'exec': {'job': ('dir', None, None),
                          'id': 'blargh',
+                         'context_id': 'contextid',
                          '_recursion': {'current': 0, 'max': 100},
                          '_type': 'furious.async.Async'}
             }
@@ -351,7 +353,8 @@ class TestContext(unittest.TestCase):
             'success': ("furious.tests.context.test_context."
                         "TestContext.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('id', None, None), 'id': 'myid'}
+            'exec': {'job': ('id', None, None), 'id': 'myid',
+                     'context_id': 'contextid'}
         }
 
         context = Context.from_dict({'callbacks': callbacks})
@@ -366,6 +369,7 @@ class TestContext(unittest.TestCase):
 
         correct_dict = {'job': ('id', None, None),
                         'id': 'myid',
+                        'context_id': 'contextid',
                         '_recursion': {'current': 0, 'max': 100},
                         '_type': 'furious.async.Async'}
 
@@ -379,6 +383,7 @@ class TestContext(unittest.TestCase):
         options = {
             'id': 123098,
             'insert_tasks': 'furious.context.context._insert_tasks',
+            'context_id': 'contextid',
             'persistence_engine':
             'furious.job_utils.get_function_path_and_options',
             '_tasks_inserted': True,

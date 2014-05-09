@@ -373,6 +373,7 @@ class MessageProcessorTestCase(unittest.TestCase):
                     'max': 100
                 },
                 '_type': 'furious.batcher.MessageProcessor',
+                'context_id': None
             }),
             'countdown': 30,
             'name': 'processor-processor-current-batch-3',
