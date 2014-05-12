@@ -53,16 +53,24 @@ class FuriousAsyncMarker(ndb.Model):
     pass
 
 
+class FuriousCompletionMarker(ndb.Model):
+
+    complete = ndb.BooleanProperty(default=False, indexed=False)
+
+
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
     # First, mark this async as complete.
     store_async_marker(async)
-
     # Now, check for other Async markers in this Context.
     context_id = async.context_id
     logging.debug("Check completion for: %s", context_id)
 
     context = FuriousContext.from_id(context_id)
+    marker = FuriousCompletionMarker.get_by_id(context_id)
+    if marker and marker.complete:
+        logging.info("Context %s already complete" % context_id)
+        return
     logging.debug("Loaded context.")
 
     task_ids = context.task_ids
@@ -79,6 +87,11 @@ def context_completion_checker(async):
             logging.debug("Not all Async's complete")
             return False
 
+    first_complete = _mark_context_complete(marker, context_id)
+
+    if not first_complete:
+        return
+
     logging.debug("All Async's complete!!")
 
     context.exec_event_handler('complete')
@@ -92,13 +105,36 @@ def context_completion_checker(async):
     return True
 
 
+@ndb.transactional
+def _mark_context_complete(marker, context_id):
+    """Transactionally 'complete' the context."""
+
+    current = None
+    if not marker:
+        current = FuriousCompletionMarker(id=context_id)
+    else:
+        current = marker.key.get()
+
+    if current and current.complete:
+        return False
+
+    current.complete = True
+
+    current.put()
+
+    return True
+
+
 def _cleanup_markers(context_id, task_ids):
     """Delete the FuriousAsyncMarker entities corresponding to ids."""
     logging.debug("Cleanup %d markers for Context %s",
                   len(task_ids), context_id)
 
     # TODO: Handle exceptions and retries here.
-    ndb.delete_multi([ndb.Key(FuriousAsyncMarker, id) for id in task_ids])
+    delete_entities = [ndb.Key(FuriousAsyncMarker, id) for id in task_ids]
+    delete_entities.append(ndb.Key(FuriousCompletionMarker, context_id))
+
+    ndb.delete_multi(delete_entities)
 
     logging.debug("Markers cleaned.")
 
@@ -110,7 +146,8 @@ def store_context(context):
     entity = FuriousContext.from_context(context)
 
     # TODO: Handle exceptions and retries here.
-    key = entity.put()
+    marker = FuriousCompletionMarker(id=context.id)
+    key, _ = ndb.put_multi((entity, marker))
 
     logging.debug("Stored Context with key: %s.", key)
 
@@ -129,4 +166,3 @@ def store_async_marker(async):
     key = FuriousAsyncMarker(id=async.id).put()
 
     logging.debug("Marked Async complete using marker: %s.", key)
-
