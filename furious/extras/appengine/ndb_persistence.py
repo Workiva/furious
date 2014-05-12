@@ -109,10 +109,9 @@ def context_completion_checker(async):
 def _mark_context_complete(marker, context_id):
     """Transactionally 'complete' the context."""
 
-    current = None
-    if not marker:
-        current = FuriousCompletionMarker(id=context_id)
-    else:
+    current = FuriousCompletionMarker(id=context_id)
+
+    if marker:
         current = marker.key.get()
 
     if current and current.complete:
