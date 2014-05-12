@@ -114,6 +114,9 @@ def _mark_context_complete(marker, context_id):
     if marker:
         current = marker.key.get()
 
+    if not current:
+        return False
+
     if current and current.complete:
         return False
 
