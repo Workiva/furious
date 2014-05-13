@@ -24,6 +24,8 @@ from itertools import imap
 from itertools import izip
 from itertools import izip_longest
 
+from random import shuffle
+
 from google.appengine.ext import ndb
 
 
@@ -83,8 +85,11 @@ def context_completion_checker(async):
     context.exec_event_handler('complete')
 
     try:
+        # TODO: If tracking results we may not want to auto cleanup and instead
+        # wait until the results have been accessed.
         from furious.async import Async
-        Async(_cleanup_markers, args=[context_id, task_ids]).start()
+        Async(_cleanup_markers, args=[context_id, task_ids],
+              task_args={'countdown': 7200}).start()
     except:
         pass
 
@@ -92,6 +97,12 @@ def context_completion_checker(async):
 
 
 def _check_markers(task_ids):
+    """Returns a flag for markers being found for the task_ids. If all task ids
+    have markers True will be returned. Otherwise it will return False as soon
+    as a None result is hit.
+    """
+    shuffle(task_ids)
+
     offset = 10
     for index in xrange(0, len(task_ids), offset):
         keys = [ndb.Key(FuriousAsyncMarker, id)
@@ -134,14 +145,14 @@ def store_context(context):
     logging.debug("Stored Context with key: %s.", key)
 
 
-def store_async_result(async):
+def store_async_result(async_id, async_result):
     """Persist the Async's result to the datastore."""
-    logging.debug("Storing result for %s", async)
+    logging.debug("Storing result for %s", async_id)
 
     key = FuriousAsyncMarker(
-        id=async.id, result=json.dumps(async.result)).put()
+        id=async_id, result=json.dumps(async_result)).put()
 
-    logging.debug("Setting Async result %s using marker: %s.", async.result,
+    logging.debug("Setting Async result %s using marker: %s.", async_result,
                   key)
 
 
@@ -163,6 +174,7 @@ def store_async_marker(async):
 
 
 def iter_results(context):
+    """Yield out the results found on the markers for the context task ids."""
     for futures in iget_batches(context.task_ids):
         for key, future in futures:
             task = future.get_result()
@@ -174,6 +186,9 @@ def iter_results(context):
 
 
 def iget_batches(task_ids, batch_size=10):
+    """Yield out a map of the keys and futures in batches of the batch size
+    passed in.
+    """
     make_key = lambda _id: ndb.Key(FuriousAsyncMarker, _id)
     key_batches = izip_longest(*[imap(make_key, task_ids)] * batch_size)
 

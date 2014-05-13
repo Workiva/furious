@@ -321,6 +321,8 @@ class Context(object):
         return context
 
     def iter_results(self):
+        """Yield out the results found on the markers for the context task ids.
+        """
         if not self._persistence_engine:
             raise RuntimeError(
                 'Specify a valid persistence_engine to persist this context.')
