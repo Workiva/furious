@@ -165,8 +165,7 @@ class Async(object):
         """Store this Async's result in persistent storage."""
         self._prepare_persistence_engine()
 
-        return self._persistence_engine.store_async_result(
-            self.id, self.result)
+        return self._persistence_engine.store_async_result(self)
 
     @property
     def _function_path(self):

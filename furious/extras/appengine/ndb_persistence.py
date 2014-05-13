@@ -17,7 +17,11 @@
 persistence operations backed by the App Engine ndb library.
 """
 
+import json
 import logging
+
+from itertools import izip_longest
+from itertools import imap
 
 from google.appengine.ext import ndb
 
@@ -50,13 +54,12 @@ class FuriousContext(ndb.Model):
 
 class FuriousAsyncMarker(ndb.Model):
     """This entity serves as a 'complete' marker."""
-    pass
+
+    result = ndb.JsonProperty(indexed=False, compressed=True)
 
 
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
-    # First, mark this async as complete.
-    store_async_marker(async)
 
     # Now, check for other Async markers in this Context.
     context_id = async.context_id
@@ -66,6 +69,8 @@ def context_completion_checker(async):
     logging.debug("Loaded context.")
 
     task_ids = context.task_ids
+    task_ids.remove(async.id)
+
     logging.debug(task_ids)
 
     offset = 10
@@ -77,6 +82,7 @@ def context_completion_checker(async):
 
         if not all(markers):
             logging.debug("Not all Async's complete")
+            store_async_marker(async)
             return False
 
     logging.debug("All Async's complete!!")
@@ -103,6 +109,11 @@ def _cleanup_markers(context_id, task_ids):
     logging.debug("Markers cleaned.")
 
 
+def load_context(id):
+    """Load a Context object by it's id."""
+    return FuriousContext.from_id(id)
+
+
 def store_context(context):
     """Persist a Context object to the datastore."""
     logging.debug("Attempting to store Context %s.", context.id)
@@ -118,15 +129,45 @@ def store_context(context):
 def store_async_result(async):
     """Persist the Async's result to the datastore."""
     logging.debug("Storing result for %s", async)
-    pass
+
+    key = FuriousAsyncMarker(
+        id=async.id, result=json.dumps(async.result)).put()
+
+    logging.debug("Setting Async result %s using marker: %s.", async.result,
+                  key)
 
 
 def store_async_marker(async):
     """Persist a marker indicating the Async ran to the datastore."""
     logging.debug("Attempting to mark Async %s complete.", async.id)
 
+    # QUESTION: Do we trust if the marker had a flag result to just trust it?
+    marker = FuriousAsyncMarker.get_by_id(async.id)
+
+    if marker:
+        logging.debug("Marker already exists for %s.", async.id)
+        return
+
     # TODO: Handle exceptions and retries here.
     key = FuriousAsyncMarker(id=async.id).put()
 
     logging.debug("Marked Async complete using marker: %s.", key)
 
+
+def iter_results(context):
+    for futures in iget_batches(context.task_ids):
+        for future in futures:
+            task = future.get_result()
+
+            if not (task and task.result):
+                yield
+
+            yield json.loads(task.result)
+
+
+def iget_batches(task_ids, batch_size=10):
+    make_key = lambda _id: ndb.Key(FuriousAsyncMarker, _id)
+    key_batches = izip_longest(*[imap(make_key, task_ids)] * batch_size)
+
+    for keys in key_batches:
+        yield ndb.get_multi_async(filter(None, keys))

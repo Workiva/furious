@@ -656,7 +656,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(persistence_engine.store_async_result.call_count, 0)
 
     def test_setting_result_calls_persist(self):
-        """Ensure setting the result calls the persis_result method."""
+        """Ensure setting the result calls the persist_result method."""
         from furious.async import Async
 
         result = "here be the results."

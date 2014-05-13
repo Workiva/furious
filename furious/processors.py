@@ -91,7 +91,6 @@ def _handle_context_completion_check(async):
         logging.debug('no checker defined.')
         return
 
-
     # Call the context complete checker with the id of this Async.
     checker(async)
 
