@@ -20,8 +20,9 @@ persistence operations backed by the App Engine ndb library.
 import json
 import logging
 
-from itertools import izip_longest
 from itertools import imap
+from itertools import izip
+from itertools import izip_longest
 
 from google.appengine.ext import ndb
 
@@ -60,6 +61,7 @@ class FuriousAsyncMarker(ndb.Model):
 
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
+    store_async_marker(async)
 
     # Now, check for other Async markers in this Context.
     context_id = async.context_id
@@ -73,17 +75,8 @@ def context_completion_checker(async):
 
     logging.debug(task_ids)
 
-    offset = 10
-    for index in xrange(0, len(task_ids), offset):
-        keys = [ndb.Key(FuriousAsyncMarker, id)
-                for id in task_ids[index:index + offset]]
-
-        markers = ndb.get_multi(keys)
-
-        if not all(markers):
-            logging.debug("Not all Async's complete")
-            store_async_marker(async)
-            return False
+    if not _check_markers(task_ids):
+        return False
 
     logging.debug("All Async's complete!!")
 
@@ -94,6 +87,21 @@ def context_completion_checker(async):
         Async(_cleanup_markers, args=[context_id, task_ids]).start()
     except:
         pass
+
+    return True
+
+
+def _check_markers(task_ids):
+    offset = 10
+    for index in xrange(0, len(task_ids), offset):
+        keys = [ndb.Key(FuriousAsyncMarker, id)
+                for id in task_ids[index:index + offset]]
+
+        markers = ndb.get_multi(keys)
+
+        if not all(markers):
+            logging.debug("Not all Async's complete")
+            return False
 
     return True
 
@@ -156,13 +164,13 @@ def store_async_marker(async):
 
 def iter_results(context):
     for futures in iget_batches(context.task_ids):
-        for future in futures:
+        for key, future in futures:
             task = future.get_result()
 
             if not (task and task.result):
-                yield
-
-            yield json.loads(task.result)
+                yield key.id(), None
+            else:
+                yield key.id(), json.loads(task.result)
 
 
 def iget_batches(task_ids, batch_size=10):
@@ -170,4 +178,6 @@ def iget_batches(task_ids, batch_size=10):
     key_batches = izip_longest(*[imap(make_key, task_ids)] * batch_size)
 
     for keys in key_batches:
-        yield ndb.get_multi_async(filter(None, keys))
+        keys = filter(None, keys)
+
+        yield izip(keys, ndb.get_multi_async(keys))

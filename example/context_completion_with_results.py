@@ -32,6 +32,8 @@ class ContextCompletionHandler(webapp2.RequestHandler):
         from furious.async import Async
         from furious import context
 
+        count = self.request.get('tasks', 5)
+
         # Create a new furious Context.
         with context.new(persist_async_results=True) as ctx:
             # Set a completion event handler.
@@ -39,7 +41,7 @@ class ContextCompletionHandler(webapp2.RequestHandler):
                                   Async(context_complete, args=[ctx.id]))
 
             # Insert some Asyncs.
-            for i in xrange(20):
+            for i in xrange(int(count)):
                 ctx.add(target=async_worker, args=[ctx.id, i])
                 logging.info('Added job %d to context.', i)
 
@@ -65,7 +67,6 @@ def context_complete(id):
     from furious.context import get_current_async
     from furious.context import Context
 
-    # TODO: Get completion results.
     async = get_current_async()
     if not (async and async.context_id):
         return id
