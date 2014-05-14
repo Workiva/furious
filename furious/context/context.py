@@ -149,6 +149,12 @@ class Context(object):
         # behavior of the tasks themselves by adding a callback (check context
         # complete) to each Async's callback stack.
 
+        # I think we should persist before hand but do the
+        # context_completion_checker options change to each async before we
+        # persist so it would require a minor refactor of the interaction
+        # between _get_tasks_by_queue and _handle_tasks_insert and would
+        # require changes to auto_context.py as well
+
         # If we are able to and there is a reason to persist... persist.
         callbacks = self._options.get('callbacks')
         if self._persistence_engine and callbacks:
@@ -178,6 +184,9 @@ class Context(object):
         """Load the specified persistence engine, or the default if none is
         set.
         """
+
+        from furious.config import get_default_persistence_engine
+
         if self._persistence_engine:
             return
 
@@ -185,8 +194,6 @@ class Context(object):
         if persistence_engine:
             self._persistence_engine = path_to_reference(persistence_engine)
             return
-
-        from furious.config import get_default_persistence_engine
 
         self._persistence_engine = get_default_persistence_engine()
 
