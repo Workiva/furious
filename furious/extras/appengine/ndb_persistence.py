@@ -34,6 +34,8 @@ class FuriousContextNotFoundError(Exception):
 
 
 class FuriousContext(ndb.Model):
+    """NDB entity to store a Furious Context as JSON."""
+
     context = ndb.JsonProperty(indexed=False, compressed=True)
 
     @classmethod
@@ -62,6 +64,7 @@ class FuriousAsyncMarker(ndb.Model):
 
 
 class FuriousCompletionMarker(ndb.Model):
+    """This entity serves as a 'complete' marker for the entire context."""
 
     complete = ndb.BooleanProperty(default=False, indexed=False)
 
@@ -104,6 +107,7 @@ def _check_markers(task_ids):
     have markers True will be returned. Otherwise it will return False as soon
     as a None result is hit.
     """
+
     shuffle(task_ids)
 
     offset = 10
@@ -138,13 +142,13 @@ def _mark_context_complete(marker, context):
     current.complete = True
     current.put()
 
-
     return True
 
 
 def _insert_post_complete_tasks(context):
+    """Insert the event's asyncs and cleanup tasks."""
 
-    logging.debug("All Async's complete!!")
+    logging.debug("Context %s is complete." % str(context.id))
 
     # Async event handlers
     context.exec_event_handler('complete')
@@ -162,6 +166,7 @@ def _insert_post_complete_tasks(context):
 
 def _cleanup_markers(context_id, task_ids):
     """Delete the FuriousAsyncMarker entities corresponding to ids."""
+
     logging.debug("Cleanup %d markers for Context %s",
                   len(task_ids), context_id)
 
@@ -176,11 +181,13 @@ def _cleanup_markers(context_id, task_ids):
 
 def load_context(id):
     """Load a Context object by it's id."""
+
     return FuriousContext.from_id(id)
 
 
 def store_context(context):
     """Persist a Context object to the datastore."""
+
     logging.debug("Attempting to store Context %s.", context.id)
 
     entity = FuriousContext.from_context(context)
@@ -194,6 +201,7 @@ def store_context(context):
 
 def store_async_result(async_id, async_result):
     """Persist the Async's result to the datastore."""
+
     logging.debug("Storing result for %s", async_id)
 
     key = FuriousAsyncMarker(
@@ -205,6 +213,7 @@ def store_async_result(async_id, async_result):
 
 def store_async_marker(async):
     """Persist a marker indicating the Async ran to the datastore."""
+
     logging.debug("Attempting to mark Async %s complete.", async.id)
 
     # QUESTION: Do we trust if the marker had a flag result to just trust it?
@@ -222,6 +231,7 @@ def store_async_marker(async):
 
 def iter_results(context):
     """Yield out the results found on the markers for the context task ids."""
+
     for futures in iget_batches(context.task_ids):
         for key, future in futures:
             task = future.get_result()
@@ -236,6 +246,7 @@ def iget_batches(task_ids, batch_size=10):
     """Yield out a map of the keys and futures in batches of the batch size
     passed in.
     """
+
     make_key = lambda _id: ndb.Key(FuriousAsyncMarker, _id)
     key_batches = izip_longest(*[imap(make_key, task_ids)] * batch_size)
 
