@@ -32,6 +32,8 @@ class ContextEventsHandler(webapp2.RequestHandler):
         from furious.async import Async
         from furious import context
 
+        count = self.request.get('tasks', 5)
+
         # Create a new furious Context.
         with context.new() as ctx:
             # Set a completion event handler.
@@ -39,7 +41,7 @@ class ContextEventsHandler(webapp2.RequestHandler):
                                   Async(context_complete, args=[ctx.id]))
 
             # Insert some Asyncs.
-            for i in xrange(5):
+            for i in xrange(count):
                 ctx.add(target=async_worker, args=[ctx.id, i])
                 logging.info('Added job %d to context.', i)
 
@@ -58,9 +60,9 @@ def async_worker(*args, **kwargs):
     return args
 
 
-def context_complete(id):
+def context_complete(context_id):
     """Log out that the context is complete."""
-    logging.info('Context %s is.......... DONE.', id)
+    logging.info('Context %s is.......... DONE.', context_id)
 
-    return id
+    return context_id
 
