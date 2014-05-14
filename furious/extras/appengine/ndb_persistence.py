@@ -161,7 +161,7 @@ def _mark_context_complete(marker, context):
 def _insert_post_complete_tasks(context):
     """Insert the event's asyncs and cleanup tasks."""
 
-    logging.debug("Context %s is complete." % str(context.id))
+    logging.debug("Context %s is complete.", context.id)
 
     # Async event handlers
     context.exec_event_handler('complete')
@@ -199,7 +199,9 @@ def load_context(id):
 
 
 def store_context(context):
-    """Persist a Context object to the datastore."""
+    """Persist a furious.context.Context object to the datastore by loading it
+    into a FuriousContext ndb.Model.
+    """
 
     logging.debug("Attempting to store Context %s.", context.id)
 
