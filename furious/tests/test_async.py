@@ -231,28 +231,23 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
 
         job = Async('somehting')
-        job.update_options(_context_id='blarghahahaha')
+        job.update_options(context_id='blarghahahaha')
         self.assertEqual(job.context_id, 'blarghahahaha')
 
     def test_no_context_id(self):
-        """Ensure calling context_id when none exists raises error."""
+        """Ensure calling context_id when none exists returns None."""
         from furious.async import Async
-        from furious.errors import NotInContextError
 
         job = Async('somehting')
-        try:
-            job.context_id
-        except NotInContextError:
-            return
-
-        raise AssertionError('NotInContextError was not raised.')
+        self.assertIsNone(job.context_id)
 
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
         from furious.async import Async
         from furious.async import defaults
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'thing'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'thing',
+                   'context_id': None}
 
         @defaults(**options.copy())
         def some_function():
@@ -270,7 +265,8 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
         from furious.async import defaults
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong',
+                   'context_id': None}
 
         @defaults(**options.copy())
         def some_function():
@@ -314,7 +310,8 @@ class TestAsync(unittest.TestCase):
         """Ensure update_options updates the options."""
         from furious.async import Async
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'xx'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'xx',
+                   'context_id': None}
 
         job = Async("nonexistant")
         job.update_options(**options.copy())
@@ -329,7 +326,8 @@ class TestAsync(unittest.TestCase):
         """Ensure update_options supersedes the options set in init."""
         from furious.async import Async
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong',
+                   'context_id': None}
 
         job = Async("nonexistant", **options.copy())
 
@@ -427,7 +425,8 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'other': 'zzz', 'nested': 1}
         headers = {'some': 'thing', 'fun': 1}
-        options = {'headers': headers, 'task_args': task_args, 'id': 'me'}
+        options = {'headers': headers, 'task_args': task_args, 'id': 'me',
+                   'context_id': None}
 
         job = Async('nonexistant', **options.copy())
 
@@ -442,6 +441,7 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
 
         options = {'id': 'anident',
+                   'context_id': 'contextid',
                    'callbacks': {
                        'success': self.__class__.test_to_dict_with_callbacks,
                        'failure': "failure_function",
@@ -457,6 +457,7 @@ class TestAsync(unittest.TestCase):
             'failure': "failure_function",
             'exec': {'job': ('dir', None, None),
                      'id': 'subidnet',
+                     'context_id': None,
                      '_recursion': {'current': 0, 'max': 100},
                      '_type': 'furious.async.Async'}
         }
@@ -507,6 +508,7 @@ class TestAsync(unittest.TestCase):
 
         correct_options = {'job': ('dir', None, None),
                            'id': 'petey',
+                           'context_id': None,
                            '_recursion': {'current': 0, 'max': 100},
                            '_type': 'furious.async.Async'}
 
@@ -528,6 +530,7 @@ class TestAsync(unittest.TestCase):
             'persistence_engine': 'furious.extras.appengine.ndb_persistence',
             '_recursion': {'current': 1, 'max': 100},
             '_type': 'furious.async.Async',
+            'context_id': None
         }
 
         async_job = Async.from_dict(options)
@@ -560,7 +563,7 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'eta': eta_posix}
         options = {'job': job, 'headers': headers, 'task_args': task_args,
-                   'id': 'ident'}
+                   'id': 'ident', 'context_id': 'contextid'}
 
         task = Async.from_dict(options).to_task()
 
@@ -653,7 +656,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(persistence_engine.store_async_result.call_count, 0)
 
     def test_setting_result_calls_persist(self):
-        """Ensure setting the result calls the persis_result method."""
+        """Ensure setting the result calls the persist_result method."""
         from furious.async import Async
 
         result = "here be the results."

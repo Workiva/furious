@@ -108,6 +108,10 @@ class Context(object):
     def insert_failed(self):
         return self._insert_failed_count
 
+    @property
+    def persist_async_results(self):
+        return self._options.get('persist_async_results', False)
+
     def __enter__(self):
         return self
 
@@ -229,6 +233,9 @@ class Context(object):
 
         target.update_options(_context_id=self.id)
 
+        if self.persist_async_results:
+            target.update_options(persist_result=True)
+
         self._tasks.append(target)
         self._options['_task_ids'].append(target.id)
 
@@ -248,13 +255,17 @@ class Context(object):
         return self._persistence_engine.store_context(self)
 
     @classmethod
-    def load(cls, context_id, persistence_engine):
+    def load(cls, context_id, persistence_engine=None):
         """Load and instantiate a Context from the persistence_engine."""
+        if not persistence_engine:
+            from furious.config import get_default_persistence_engine
+            persistence_engine = get_default_persistence_engine()
+
         if not persistence_engine:
             raise RuntimeError(
                 'Specify a valid persistence_engine to load the context.')
 
-        return cls.from_dict(persistence_engine.load_context(context_id))
+        return persistence_engine.load_context(context_id)
 
     def to_dict(self):
         """Return this Context as a dict suitable for json encoding."""
@@ -308,6 +319,15 @@ class Context(object):
         context._tasks_inserted = tasks_inserted
 
         return context
+
+    def iter_results(self):
+        """Yield out the results found on the markers for the context task ids.
+        """
+        if not self._persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to persist this context.')
+
+        return self._persistence_engine.iter_results(self)
 
 
 def _insert_tasks(tasks, queue, transactional=False):

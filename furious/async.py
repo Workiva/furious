@@ -108,6 +108,7 @@ class Async(object):
 
         self._initialize_recursion_depth()
 
+        self._context_id = self._get_context_id()
         self._id = self._get_id()
 
         self._execution_context = None
@@ -164,8 +165,8 @@ class Async(object):
         """Store this Async's result in persistent storage."""
         self._prepare_persistence_engine()
 
-        return self._persistence_engine.store_async_result(
-            self.id, self.result)
+        return self._persistence_engine.store_async_result(self.id,
+                                                           self.result)
 
     @property
     def _function_path(self):
@@ -384,17 +385,6 @@ class Async(object):
         return id
 
     @property
-    def context_id(self):
-        """If this async has a context id, return it; else raise
-        NotInContextError.
-        """
-        context_id = self._options.get('_context_id')
-        if context_id:
-            return context_id
-
-        raise errors.NotInContextError("Context ID not set.")
-
-    @property
     def id(self):
         """Return this Async's ID value."""
         return self._id
@@ -415,6 +405,35 @@ class Async(object):
         # Increment and store
         self.update_options(_recursion={'current': current_depth,
                                         'max': max_depth})
+
+    @property
+    def context_id(self):
+        """Return this Async's Context Id if it exists."""
+        if not self._context_id:
+            self._context_id = self._get_context_id()
+
+        return self._context_id
+
+    def _get_context_id(self):
+        """If this async is in a context set the context id."""
+        context_id = self._options.get('context_id')
+
+        if context_id:
+            return context_id
+
+        from furious.context import get_current_context
+
+        try:
+            context = get_current_context()
+        except errors.NotInContextError:
+            context = None
+
+        if context:
+            context_id = context.id
+
+        self.update_options(context_id=context_id)
+
+        return context_id
 
 
 def async_from_options(options):

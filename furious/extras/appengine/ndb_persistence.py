@@ -17,7 +17,14 @@
 persistence operations backed by the App Engine ndb library.
 """
 
+import json
 import logging
+
+from itertools import imap
+from itertools import izip
+from itertools import izip_longest
+
+from random import shuffle
 
 from google.appengine.ext import ndb
 
@@ -50,7 +57,8 @@ class FuriousContext(ndb.Model):
 
 class FuriousAsyncMarker(ndb.Model):
     """This entity serves as a 'complete' marker."""
-    pass
+
+    result = ndb.JsonProperty(indexed=False, compressed=True)
 
 
 class FuriousCompletionMarker(ndb.Model):
@@ -60,7 +68,6 @@ class FuriousCompletionMarker(ndb.Model):
 
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
-    # First, mark this async as complete.
     store_async_marker(async)
     # Now, check for other Async markers in this Context.
     context_id = async.context_id
@@ -74,7 +81,35 @@ def context_completion_checker(async):
     logging.debug("Loaded context.")
 
     task_ids = context.task_ids
+    task_ids.remove(async.id)
+
     logging.debug(task_ids)
+
+    if not _check_markers(task_ids):
+        return False
+
+    logging.debug("All Async's complete!!")
+
+    context.exec_event_handler('complete')
+
+    try:
+        # TODO: If tracking results we may not want to auto cleanup and instead
+        # wait until the results have been accessed.
+        from furious.async import Async
+        Async(_cleanup_markers, args=[context_id, task_ids],
+              task_args={'countdown': 7200}).start()
+    except:
+        pass
+
+    return True
+
+
+def _check_markers(task_ids):
+    """Returns a flag for markers being found for the task_ids. If all task ids
+    have markers True will be returned. Otherwise it will return False as soon
+    as a None result is hit.
+    """
+    shuffle(task_ids)
 
     offset = 10
     for index in xrange(0, len(task_ids), offset):
@@ -141,6 +176,11 @@ def _cleanup_markers(context_id, task_ids):
     logging.debug("Markers cleaned.")
 
 
+def load_context(id):
+    """Load a Context object by it's id."""
+    return FuriousContext.from_id(id)
+
+
 def store_context(context):
     """Persist a Context object to the datastore."""
     logging.debug("Attempting to store Context %s.", context.id)
@@ -154,17 +194,54 @@ def store_context(context):
     logging.debug("Stored Context with key: %s.", key)
 
 
-def store_async_result(async):
+def store_async_result(async_id, async_result):
     """Persist the Async's result to the datastore."""
-    logging.debug("Storing result for %s", async)
-    pass
+    logging.debug("Storing result for %s", async_id)
+
+    key = FuriousAsyncMarker(
+        id=async_id, result=json.dumps(async_result)).put()
+
+    logging.debug("Setting Async result %s using marker: %s.", async_result,
+                  key)
 
 
 def store_async_marker(async):
     """Persist a marker indicating the Async ran to the datastore."""
     logging.debug("Attempting to mark Async %s complete.", async.id)
 
+    # QUESTION: Do we trust if the marker had a flag result to just trust it?
+    marker = FuriousAsyncMarker.get_by_id(async.id)
+
+    if marker:
+        logging.debug("Marker already exists for %s.", async.id)
+        return
+
     # TODO: Handle exceptions and retries here.
     key = FuriousAsyncMarker(id=async.id).put()
 
     logging.debug("Marked Async complete using marker: %s.", key)
+
+
+def iter_results(context):
+    """Yield out the results found on the markers for the context task ids."""
+    for futures in iget_batches(context.task_ids):
+        for key, future in futures:
+            task = future.get_result()
+
+            if not (task and task.result):
+                yield key.id(), None
+            else:
+                yield key.id(), json.loads(task.result)
+
+
+def iget_batches(task_ids, batch_size=10):
+    """Yield out a map of the keys and futures in batches of the batch size
+    passed in.
+    """
+    make_key = lambda _id: ndb.Key(FuriousAsyncMarker, _id)
+    key_batches = izip_longest(*[imap(make_key, task_ids)] * batch_size)
+
+    for keys in key_batches:
+        keys = filter(None, keys)
+
+        yield izip(keys, ndb.get_multi_async(keys))
