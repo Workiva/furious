@@ -21,8 +21,8 @@ import json
 import logging
 
 from itertools import imap
+from itertools import islice
 from itertools import izip
-from itertools import izip_longest
 
 from random import shuffle
 
@@ -198,9 +198,14 @@ def iget_batches(task_ids, batch_size=10):
     passed in.
     """
     make_key = lambda _id: ndb.Key(FuriousAsyncMarker, _id)
-    key_batches = izip_longest(*[imap(make_key, task_ids)] * batch_size)
-
-    for keys in key_batches:
-        keys = filter(None, keys)
-
+    for keys in i_batch(imap(make_key, task_ids), batch_size):
         yield izip(keys, ndb.get_multi_async(keys))
+
+
+def i_batch(items, size):
+    """Generator that iteratively batches items to a max size and consumes the
+    items as each batch is yielded.
+    """
+    for items_batch in iter(lambda: tuple(islice(items, size)),
+                            tuple()):
+        yield items_batch
