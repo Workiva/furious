@@ -91,23 +91,10 @@ def context_completion_checker(async):
     if not _check_markers(task_ids):
         return False
 
-    first_complete = _mark_context_complete(marker, context_id)
+    first_complete = _mark_context_complete(marker, context)
 
-    if not first_complete:
-        return
-
-    logging.debug("All Async's complete!!")
-
-    context.exec_event_handler('complete')
-
-    try:
-        # TODO: If tracking results we may not want to auto cleanup and instead
-        # wait until the results have been accessed.
-        from furious.async import Async
-        Async(_cleanup_markers, args=[context_id, task_ids],
-              task_args={'countdown': 7200}).start()
-    except:
-        pass
+    if first_complete:
+        _insert_post_complete_tasks(context)
 
     return True
 
@@ -134,10 +121,10 @@ def _check_markers(task_ids):
 
 
 @ndb.transactional
-def _mark_context_complete(marker, context_id):
+def _mark_context_complete(marker, context):
     """Transactionally 'complete' the context."""
 
-    current = FuriousCompletionMarker(id=context_id)
+    current = None
 
     if marker:
         current = marker.key.get()
@@ -149,10 +136,28 @@ def _mark_context_complete(marker, context_id):
         return False
 
     current.complete = True
-
     current.put()
 
+
     return True
+
+
+def _insert_post_complete_tasks(context):
+
+    logging.debug("All Async's complete!!")
+
+    # Async event handlers
+    context.exec_event_handler('complete')
+
+    # Insert cleanup tasks
+    try:
+        # TODO: If tracking results we may not want to auto cleanup and instead
+        # wait until the results have been accessed.
+        from furious.async import Async
+        Async(_cleanup_markers, args=[context.id, context.task_ids],
+              task_args={'countdown': 7200}).start()
+    except:
+        pass
 
 
 def _cleanup_markers(context_id, task_ids):
