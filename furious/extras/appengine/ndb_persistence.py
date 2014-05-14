@@ -68,25 +68,33 @@ class FuriousCompletionMarker(ndb.Model):
 
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
+
     store_async_marker(async)
+
     # Now, check for other Async markers in this Context.
     context_id = async.context_id
     logging.debug("Check completion for: %s", context_id)
 
     context = FuriousContext.from_id(context_id)
     marker = FuriousCompletionMarker.get_by_id(context_id)
+
     if marker and marker.complete:
         logging.info("Context %s already complete" % context_id)
         return
-    logging.debug("Loaded context.")
 
     task_ids = context.task_ids
     task_ids.remove(async.id)
 
+    logging.debug("Loaded context.")
     logging.debug(task_ids)
 
     if not _check_markers(task_ids):
         return False
+
+    first_complete = _mark_context_complete(marker, context_id)
+
+    if not first_complete:
+        return
 
     logging.debug("All Async's complete!!")
 
@@ -121,21 +129,6 @@ def _check_markers(task_ids):
         if not all(markers):
             logging.debug("Not all Async's complete")
             return False
-
-    first_complete = _mark_context_complete(marker, context_id)
-
-    if not first_complete:
-        return
-
-    logging.debug("All Async's complete!!")
-
-    context.exec_event_handler('complete')
-
-    try:
-        from furious.async import Async
-        Async(_cleanup_markers, args=[context_id, task_ids]).start()
-    except:
-        pass
 
     return True
 
