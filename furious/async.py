@@ -416,12 +416,13 @@ class Async(object):
 
     def _get_context_id(self):
         """If this async is in a context set the context id."""
+
+        from furious.context import get_current_context
+
         context_id = self._options.get('context_id')
 
         if context_id:
             return context_id
-
-        from furious.context import get_current_context
 
         try:
             context = get_current_context()
@@ -430,8 +431,7 @@ class Async(object):
 
         if context:
             context_id = context.id
-
-        self.update_options(context_id=context_id)
+            self.update_options(context_id=context_id)
 
         return context_id
 
