@@ -208,7 +208,7 @@ class Context(object):
 
         callbacks = self._options.get('callbacks', {})
 
-        handler = callbacks[event]
+        handler = callbacks.get(event)
 
         if not handler:
             raise Exception('Handler not defined!!!')

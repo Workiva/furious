@@ -63,17 +63,17 @@ class FuriousAsyncMarker(ndb.Model):
 
 def context_completion_checker(async):
     """Check if all Async jobs within a Context have been run."""
-    store_async_marker(async)
+    store_async_marker(async.id)
 
     # Now, check for other Async markers in this Context.
-    context_id = async.context_id
-    logging.debug("Check completion for: %s", context_id)
+    logging.debug("Check completion for: %s", async.context_id)
 
-    context = FuriousContext.from_id(context_id)
+    context = FuriousContext.from_id(async.context_id)
     logging.debug("Loaded context.")
 
     task_ids = context.task_ids
-    task_ids.remove(async.id)
+    if async.id in task_ids:
+        task_ids.remove(async.id)
 
     logging.debug(task_ids)
 
@@ -84,26 +84,32 @@ def context_completion_checker(async):
 
     context.exec_event_handler('complete')
 
+    _insert_cleanup_task(async.context_id, task_ids)
+
+    return True
+
+
+def _insert_cleanup_task(context_id, task_ids, delay=7200):
+    """Insert a task to delete all clean up markers for the task ids passed in.
+    The task will be inserted with a delay.
+    """
     try:
         # TODO: If tracking results we may not want to auto cleanup and instead
         # wait until the results have been accessed.
         from furious.async import Async
         Async(_cleanup_markers, args=[context_id, task_ids],
-              task_args={'countdown': 7200}).start()
+              task_args={'countdown': delay}).start()
     except:
         pass
 
-    return True
 
-
-def _check_markers(task_ids):
+def _check_markers(task_ids, offset=10):
     """Returns a flag for markers being found for the task_ids. If all task ids
     have markers True will be returned. Otherwise it will return False as soon
     as a None result is hit.
     """
     shuffle(task_ids)
 
-    offset = 10
     for index in xrange(0, len(task_ids), offset):
         keys = [ndb.Key(FuriousAsyncMarker, id)
                 for id in task_ids[index:index + offset]]
@@ -144,6 +150,8 @@ def store_context(context):
 
     logging.debug("Stored Context with key: %s.", key)
 
+    return key
+
 
 def store_async_result(async_id, async_result):
     """Persist the Async's result to the datastore."""
@@ -156,26 +164,26 @@ def store_async_result(async_id, async_result):
                   key)
 
 
-def store_async_marker(async):
+def store_async_marker(async_id):
     """Persist a marker indicating the Async ran to the datastore."""
-    logging.debug("Attempting to mark Async %s complete.", async.id)
+    logging.debug("Attempting to mark Async %s complete.", async_id)
 
     # QUESTION: Do we trust if the marker had a flag result to just trust it?
-    marker = FuriousAsyncMarker.get_by_id(async.id)
+    marker = FuriousAsyncMarker.get_by_id(async_id)
 
     if marker:
-        logging.debug("Marker already exists for %s.", async.id)
+        logging.debug("Marker already exists for %s.", async_id)
         return
 
     # TODO: Handle exceptions and retries here.
-    key = FuriousAsyncMarker(id=async.id).put()
+    key = FuriousAsyncMarker(id=async_id).put()
 
     logging.debug("Marked Async complete using marker: %s.", key)
 
 
-def iter_results(context):
+def iter_results(context, batch_size=10):
     """Yield out the results found on the markers for the context task ids."""
-    for futures in iget_batches(context.task_ids):
+    for futures in iget_batches(context.task_ids, batch_size=batch_size):
         for key, future in futures:
             task = future.get_result()
 
