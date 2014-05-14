@@ -60,25 +60,28 @@ def async_worker(*args, **kwargs):
     return args
 
 
-def context_complete(id):
+def context_complete(context_id):
     """Log out that the context is complete."""
-    logging.info('Context %s is.......... DONE.', id)
+    logging.info('Context %s is.......... DONE.', context_id)
 
     from furious.context import get_current_async
     from furious.context import Context
 
     async = get_current_async()
     if not (async and async.context_id):
-        return id
+        return context_id
 
     context = Context.load(async.context_id)
 
     if not context:
-        return id
+        return context_id
 
     for result in context.iter_results():
         logging.info("#########################")
         logging.info(result)
 
-    return id
+    return context_id
+
+
+class TestMarker(ndb.Model):
 
