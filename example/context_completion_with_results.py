@@ -83,5 +83,4 @@ def context_complete(context_id):
     return context_id
 
 
-class TestMarker(ndb.Model):
 
