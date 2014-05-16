@@ -81,6 +81,3 @@ def context_complete(context_id):
         logging.info(result)
 
     return context_id
-
-
-
