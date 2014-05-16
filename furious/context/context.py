@@ -128,6 +128,17 @@ class Context(object):
                 "This Context has already had its tasks inserted.")
 
         task_map = self._get_tasks_by_queue()
+
+        # QUESTION: Should the persist happen before or after the task
+        # insertion?  I feel like this is something that will alter the
+        # behavior of the tasks themselves by adding a callback (check context
+        # complete) to each Async's callback stack.
+
+        # If we are able to and there is a reason to persist... persist.
+        callbacks = self._options.get('callbacks')
+        if self._persistence_engine and callbacks:
+            self.persist()
+
         for queue, tasks in task_map.iteritems():
             for batch in _task_batcher(tasks, batch_size=batch_size):
                 inserted = self._insert_tasks(batch, queue=queue)
@@ -143,22 +154,6 @@ class Context(object):
         self._handle_tasks_insert()
 
         self._tasks_inserted = True
-
-        # QUESTION: Should the persist happen before or after the task
-        # insertion?  I feel like this is something that will alter the
-        # behavior of the tasks themselves by adding a callback (check context
-        # complete) to each Async's callback stack.
-
-        # I think we should persist before hand but do the
-        # context_completion_checker options change to each async before we
-        # persist so it would require a minor refactor of the interaction
-        # between _get_tasks_by_queue and _handle_tasks_insert and would
-        # require changes to auto_context.py as well
-
-        # If we are able to and there is a reason to persist... persist.
-        callbacks = self._options.get('callbacks')
-        if self._persistence_engine and callbacks:
-            self.persist()
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
