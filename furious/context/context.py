@@ -66,10 +66,8 @@ class Context(object):
         self._insert_success_count = 0
         self._insert_failed_count = 0
 
-        self._persistence_engine = options.get('persistence_engine', None)
-        if self._persistence_engine:
-            options['persistence_engine'] = reference_to_path(
-                self._persistence_engine)
+        self._persistence_engine = None
+        self._completion_engine = None
 
         self._options = options
 
@@ -152,6 +150,8 @@ class Context(object):
 
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
+        from furious.async import Async
+
         task_map = {}
         _checker = None
 
@@ -160,7 +160,16 @@ class Context(object):
         if self._persistence_engine:
             _checker = self._persistence_engine.context_completion_checker
 
+        callbacks = self._options.get('callbacks')
+
+        self._prepare_completion_engine()
+        complete = Async(self.completion_engine.check_context_complete,
+                         args=[self.id])
+
         for async in self._tasks:
+            if callbacks:
+                async.get_options()['_check_context'] = complete
+
             queue = async.get_queue()
             if _checker:
                 async.update_options(_context_checker=_checker)
@@ -239,8 +248,44 @@ class Context(object):
         if self._tasks:
             self._handle_tasks()
 
+    def _prepare_persistence_engine(self):
+        """Load the specified persistence engine, or the default if none is
+        set.
+        """
+        if self._persistence_engine:
+            return
+
+        persistence_engine = self._options.get('persistence_engine')
+        if persistence_engine:
+            self._persistence_engine = path_to_reference(persistence_engine)
+            return
+
+        from furious.config import get_default_persistence_engine
+
+        self._persistence_engine = get_default_persistence_engine()
+
+    def _prepare_completion_engine(self):
+        """Load the specified completion engine, or the default if none is
+        set.
+        """
+
+        if self._completion_engine:
+            return
+
+        completion_engine = self._options.get('completion_engine')
+        if completion_engine:
+            self._completion_engine = path_to_reference(completion_engine)
+            return
+
+        from furious.config import get_default_completion_engine
+
+        self._completion_engine = get_default_completion_engine()
+
     def persist(self):
         """Store the context."""
+
+        self._prepare_persistence_engine()
+
         if not self._persistence_engine:
             raise RuntimeError(
                 'Specify a valid persistence_engine to persist this context.')
@@ -351,4 +396,3 @@ def _task_batcher(tasks, batch_size=None):
 
     args = [iter(tasks)] * batch_size
     return ([task for task in group if task] for group in izip_longest(*args))
-

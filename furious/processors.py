@@ -137,4 +137,3 @@ def _execute_callback(async, callback):
         return callback.start()
 
     return callback()
-
