@@ -32,7 +32,7 @@ class ContextEventsHandler(webapp2.RequestHandler):
         from furious.async import Async
         from furious import context
 
-        count = self.request.get('tasks', 5)
+        count = int(self.request.get('tasks', 5))
 
         # Create a new furious Context.
         with context.new() as ctx:
