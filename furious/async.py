@@ -411,6 +411,7 @@ class Async(object):
         """Return this Async's Context Id if it exists."""
         if not self._context_id:
             self._context_id = self._get_context_id()
+            self.update_options(context_id=self._context_id)
 
         return self._context_id
 
@@ -428,6 +429,7 @@ class Async(object):
             context = get_current_context()
         except errors.NotInContextError:
             context = None
+            self.update_options(context_id=None)
 
         if context:
             context_id = context.id
@@ -517,5 +519,3 @@ def _check_options(options):
         return
 
     assert 'job' not in options
-    #assert 'callbacks' not in options
-
