@@ -26,6 +26,7 @@ from furious.async import Async
 from furious.context import Context
 
 from furious.extras.appengine.ndb_persistence import context_completion_checker
+from furious.extras.appengine.ndb_persistence import _completion_checker
 from furious.extras.appengine.ndb_persistence import FuriousAsyncMarker
 from furious.extras.appengine.ndb_persistence import FuriousContext
 from furious.extras.appengine.ndb_persistence import iter_results
@@ -63,9 +64,25 @@ class NdbTestBase(unittest.TestCase):
         super(NdbTestBase, self).tearDown()
 
 
+class ContextCompletionCheckerTestCase(NdbTestBase):
+
+    def test_completion_store(self):
+
+        async = Async('foo')
+
+        result = context_completion_checker(async)
+
+        self.assertTrue(result)
+
+        marker = FuriousAsyncMarker.get_by_id(async.id)
+
+        self.assertIsNotNone(marker)
+        self.assertEqual(marker.key.id(), async.id)
+
+
 @patch('furious.extras.appengine.ndb_persistence._check_markers')
 @patch.object(FuriousContext, 'from_id')
-class ContextCompletionCheckerTestCase(NdbTestBase):
+class CompletionCheckerTestCase(NdbTestBase):
 
     def test_markers_not_complete(self, context_from_id, check_markers):
         """Ensure if not all markers are complete that False is returned and
@@ -80,17 +97,15 @@ class ContextCompletionCheckerTestCase(NdbTestBase):
         check_markers.return_value = False
 
         async = Async('foo')
+        async.update_options(context_id='contextid')
 
-        result = context_completion_checker(async)
+        result = _completion_checker(async.id, async.context_id)
 
         self.assertFalse(result)
 
+        self.assertTrue(context_from_id.called)
+
         self.assertFalse(complete_event.start.called)
-
-        marker = FuriousAsyncMarker.get_by_id(async.id)
-
-        self.assertIsNotNone(marker)
-        self.assertEqual(marker.key.id(), async.id)
 
     @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
     def test_markers_complete(self, mark, context_from_id, check_markers):
@@ -109,16 +124,11 @@ class ContextCompletionCheckerTestCase(NdbTestBase):
         async = Async('foo')
         async.update_options(context_id='contextid')
 
-        result = context_completion_checker(async)
+        result = _completion_checker(async.id, async.context_id)
 
         self.assertTrue(result)
 
         complete_event.start.assert_called_once_with()
-
-        marker = FuriousAsyncMarker.get_by_id(async.id)
-
-        self.assertIsNotNone(marker)
-        self.assertEqual(marker.key.id(), async.id)
 
 
 @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi')
