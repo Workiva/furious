@@ -92,7 +92,8 @@ class ContextCompletionCheckerTestCase(NdbTestBase):
         self.assertIsNotNone(marker)
         self.assertEqual(marker.key.id(), async.id)
 
-    def test_markers_complete(self, context_from_id, check_markers):
+    @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
+    def test_markers_complete(self, mark, context_from_id, check_markers):
         """Ensure if all markers are complete that True is returned and the
         completion handler and cleanup tasks are triggered.
         """
@@ -103,8 +104,10 @@ class ContextCompletionCheckerTestCase(NdbTestBase):
         context_from_id.return_value = context
 
         check_markers.return_value = True
+        mark.return_value = True
 
         async = Async('foo')
+        async.update_options(context_id='contextid')
 
         result = context_completion_checker(async)
 
