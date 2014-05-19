@@ -77,6 +77,10 @@ def context_completion_checker(async):
     # Now, check for other Async markers in this Context.
     logging.debug("Check completion for: %s", async.context_id)
 
+    if not async.context_id:
+        logging.debug("Context for async %s does not exist", async.id)
+        return
+
     context = FuriousContext.from_id(async.context_id)
     marker = FuriousCompletionMarker.get_by_id(async.context_id)
 
