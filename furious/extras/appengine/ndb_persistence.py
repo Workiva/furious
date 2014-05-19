@@ -70,27 +70,35 @@ class FuriousCompletionMarker(ndb.Model):
 
 
 def context_completion_checker(async):
-    """Check if all Async jobs within a Context have been run."""
+    """Persist async marker and async the completion check"""
 
     store_async_marker(async.id)
 
-    # Now, check for other Async markers in this Context.
-    logging.debug("Check completion for: %s", async.context_id)
+    logging.debug("Async check completion for: %s", async.context_id)
 
-    if not async.context_id:
-        logging.debug("Context for async %s does not exist", async.id)
+    from furious.async import Async
+    Async(_completion_checker, args=(async.id, async.context_id)).start()
+
+    return True
+
+
+def _completion_checker(async_id, context_id):
+    """Check if all Async jobs within a Context have been run."""
+
+    if not context_id:
+        logging.debug("Context for async %s does not exist", async_id)
         return
 
-    context = FuriousContext.from_id(async.context_id)
-    marker = FuriousCompletionMarker.get_by_id(async.context_id)
+    context = FuriousContext.from_id(context_id)
+    marker = FuriousCompletionMarker.get_by_id(context_id)
 
     if marker and marker.complete:
-        logging.info("Context %s already complete" % async.context_id)
+        logging.info("Context %s already complete" % context_id)
         return
 
     task_ids = context.task_ids
-    if async.id in task_ids:
-        task_ids.remove(async.id)
+    if async_id in task_ids:
+        task_ids.remove(async_id)
 
     logging.debug("Loaded context.")
     logging.debug(task_ids)
