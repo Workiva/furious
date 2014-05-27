@@ -34,7 +34,7 @@ class ContextCompletionHandler(webapp2.RequestHandler):
 
         count = self.request.get('tasks', 5)
 
-        # Create a new furious Context.
+        # Create a new furious Context with persistance enabled.
         with context.new(persist_async_results=True) as ctx:
             # Set a completion event handler.
             ctx.set_event_handler('complete',
@@ -69,12 +69,14 @@ def context_complete(context_id):
 
     async = get_current_async()
     if not (async and async.context_id):
-        return context_id
+        logging.error("Could not find current async")
+        return
 
     context = Context.load(async.context_id)
 
     if not context:
-        return context_id
+        logging.error("Could not load context")
+        return
 
     for result in context.iter_results():
         logging.info("#########################")
