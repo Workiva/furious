@@ -165,8 +165,8 @@ class Async(object):
         """Store this Async's result in persistent storage."""
         self._prepare_persistence_engine()
 
-        return self._persistence_engine.store_async_result(
-            self.id, self.result)
+        return self._persistence_engine.store_async_result(self.id,
+                                                           self.result)
 
     @property
     def _function_path(self):
@@ -411,27 +411,29 @@ class Async(object):
         """Return this Async's Context Id if it exists."""
         if not self._context_id:
             self._context_id = self._get_context_id()
+            self.update_options(context_id=self._context_id)
 
         return self._context_id
 
     def _get_context_id(self):
         """If this async is in a context set the context id."""
+
+        from furious.context import get_current_context
+
         context_id = self._options.get('context_id')
 
         if context_id:
             return context_id
 
-        from furious.context import get_current_context
-
         try:
             context = get_current_context()
         except errors.NotInContextError:
             context = None
+            self.update_options(context_id=None)
 
         if context:
             context_id = context.id
-
-        self.update_options(context_id=context_id)
+            self.update_options(context_id=context_id)
 
         return context_id
 
@@ -517,5 +519,3 @@ def _check_options(options):
         return
 
     assert 'job' not in options
-    #assert 'callbacks' not in options
-

@@ -422,7 +422,8 @@ class TestContext(unittest.TestCase):
         persistence_engine = Mock()
         persistence_engine.func_name = 'persistence_engine'
         persistence_engine.im_class.__name__ = 'engine'
-        persistence_engine.load_context.return_value = {'id': 'ABC123'}
+        persistence_engine.load_context.return_value = Context.from_dict(
+            {'id': 'ABC123'})
 
         context = Context.load('ABC123', persistence_engine)
 

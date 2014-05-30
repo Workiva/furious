@@ -49,10 +49,10 @@ from furious import errors
 execution_context_from_async = _execution.execution_context_from_async
 
 
-def new():
+def new(**options):
     """Get a new furious context and add it to the registry."""
 
-    new_context = Context()
+    new_context = Context(**options)
 
     _local.get_local_context().registry.append(new_context)
 

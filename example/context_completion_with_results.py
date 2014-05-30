@@ -26,22 +26,22 @@ import logging
 import webapp2
 
 
-class ContextEventsHandler(webapp2.RequestHandler):
+class ContextCompletionHandler(webapp2.RequestHandler):
     """Demonstrate using Context Events to make work flows."""
     def get(self):
         from furious.async import Async
         from furious import context
 
-        count = int(self.request.get('tasks', 5))
+        count = self.request.get('tasks', 5)
 
-        # Create a new furious Context.
-        with context.new() as ctx:
+        # Create a new furious Context with persistance enabled.
+        with context.new(persist_async_results=True) as ctx:
             # Set a completion event handler.
             ctx.set_event_handler('complete',
                                   Async(context_complete, args=[ctx.id]))
 
             # Insert some Asyncs.
-            for i in xrange(count):
+            for i in xrange(int(count)):
                 ctx.add(target=async_worker, args=[ctx.id, i])
                 logging.info('Added job %d to context.', i)
 
@@ -64,5 +64,22 @@ def context_complete(context_id):
     """Log out that the context is complete."""
     logging.info('Context %s is.......... DONE.', context_id)
 
-    return context_id
+    from furious.context import get_current_async
+    from furious.context import Context
 
+    async = get_current_async()
+    if not (async and async.context_id):
+        logging.error("Could not find current async")
+        return
+
+    context = Context.load(async.context_id)
+
+    if not context:
+        logging.error("Could not load context")
+        return
+
+    for result in context.iter_results():
+        logging.info("#########################")
+        logging.info(result)
+
+    return context_id
