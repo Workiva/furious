@@ -135,3 +135,4 @@ class TestConfigurationLoading(unittest.TestCase):
         my_config = _parse_yaml_config(example_yaml)
 
         self.assertEqual(my_config, default_config())
+

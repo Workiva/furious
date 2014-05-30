@@ -108,6 +108,7 @@ class Async(object):
 
         self._initialize_recursion_depth()
 
+        self._context_id = self._get_context_id()
         self._id = self._get_id()
 
         self._execution_context = None
@@ -164,8 +165,8 @@ class Async(object):
         """Store this Async's result in persistent storage."""
         self._prepare_persistence_engine()
 
-        return self._persistence_engine.store_async_result(
-            self.id, self.result)
+        return self._persistence_engine.store_async_result(self.id,
+                                                           self.result)
 
     @property
     def _function_path(self):
@@ -405,6 +406,37 @@ class Async(object):
         self.update_options(_recursion={'current': current_depth,
                                         'max': max_depth})
 
+    @property
+    def context_id(self):
+        """Return this Async's Context Id if it exists."""
+        if not self._context_id:
+            self._context_id = self._get_context_id()
+            self.update_options(context_id=self._context_id)
+
+        return self._context_id
+
+    def _get_context_id(self):
+        """If this async is in a context set the context id."""
+
+        from furious.context import get_current_context
+
+        context_id = self._options.get('context_id')
+
+        if context_id:
+            return context_id
+
+        try:
+            context = get_current_context()
+        except errors.NotInContextError:
+            context = None
+            self.update_options(context_id=None)
+
+        if context:
+            context_id = context.id
+            self.update_options(context_id=context_id)
+
+        return context_id
+
 
 def async_from_options(options):
     """Deserialize an Async or Async subclass from an options dict."""
@@ -432,6 +464,10 @@ def encode_async_options(async):
     if callbacks:
         options['callbacks'] = encode_callbacks(callbacks)
 
+    if '_context_checker' in options:
+        _checker = options.pop('_context_checker')
+        options['__context_checker'] = reference_to_path(_checker)
+
     return options
 
 
@@ -450,6 +486,10 @@ def decode_async_options(options):
     callbacks = async_options.get('callbacks', {})
     if callbacks:
         async_options['callbacks'] = decode_callbacks(callbacks)
+
+    if '__context_checker' in options:
+        _checker = options['__context_checker']
+        async_options['_context_checker'] = path_to_reference(_checker)
 
     return async_options
 
@@ -479,5 +519,3 @@ def _check_options(options):
         return
 
     assert 'job' not in options
-    #assert 'callbacks' not in options
-
