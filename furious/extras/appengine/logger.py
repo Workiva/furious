@@ -43,7 +43,7 @@ def log_async(async, task_info=None):
     import socket
 
     connection_address = get_config().get('log_socket_address')
-    connection_port = int(get_config().get('log_socket_port', 1200))
+    connection_port = int(get_config().get('log_socket_port', 1300))
 
     if not connection_address:
         logging.info("No connection address to log output.")
@@ -57,17 +57,19 @@ def log_async(async, task_info=None):
         s.connect((connection_address, connection_port))
 
         # TODO: Handle payload size.
+        # TODO: Add app id
         payload = {
             'id': async.full_id,
             'url': async.function_path,
             'request_info': get_request_info(),
+            'request_address': _get_env_info('APPLICATION_ID', 'NO_APPID'),
         }
 
         if task_info:
             payload.update(task_info)
 
         # Add url and request id as a key
-        s.send("TASK " + json.dumps(payload))
+        s.sendall(json.dumps(payload))
         s.close()
     except Exception, e:
         logging.exception(e)
