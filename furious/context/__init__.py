@@ -81,3 +81,18 @@ def get_current_context():
 
     raise errors.NotInContextError('Not in a Context.')
 
+
+def get_async_with_context():
+    """Return a reference to the currently executing Async job object and it's
+    triggering context. Return None for the async if not in an Async job and
+    None for the context if the Async was not triggered within a context.
+    """
+    async = get_current_async()
+
+    if not async:
+        return None, None
+
+    if not async.context_id:
+        return async, None
+
+    return async, Context.load(async.context_id)
