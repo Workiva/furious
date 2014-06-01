@@ -43,7 +43,12 @@ class TestConfigurationLoading(unittest.TestCase):
 
         contents = _load_yaml_config(os.path.join('furious', '_furious.yaml'))
 
-        self.assertEqual(contents, "persistence: ndb\n")
+        self.assertEqual(contents,
+                         "persistence: ndb\n"
+                         "logging: gae_logging\n"
+                         "log_sockets: False\n"
+                         "log_socket_address: '127.0.0.1'\n"
+                         "log_socket_port: 1200\n")
 
     @patch('os.path.exists', autospec=True)
     def test_not_find_yaml(self, mock_exists):
@@ -62,13 +67,21 @@ class TestConfigurationLoading(unittest.TestCase):
 
         example_yaml = str('secret_key: "blah"\n'
                            'persistence: bubble\n'
-                           'task_system: flah\n')
+                           'task_system: flah\n'
+                           'log_socket_address: "0.0.0.0"\n'
+                           'log_socket_port: 44\n'
+                           'log_sockets: false\n'
+                           'logging: "logger"\n')
 
         my_config = _parse_yaml_config(example_yaml)
 
         self.assertEqual(my_config, {'secret_key': 'blah',
                                      'persistence': 'bubble',
-                                     'task_system': 'flah'})
+                                     'task_system': 'flah',
+                                     'log_socket_address': '0.0.0.0',
+                                     'log_socket_port': 44,
+                                     'log_sockets': False,
+                                     'logging': 'logger'})
 
     def test_get_configured_persistence_exists(self):
         """Ensure a chosen persistence module is selected."""

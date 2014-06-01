@@ -72,7 +72,7 @@ def log_async(async, task_info=None):
         s.sendall(json.dumps(payload))
         s.close()
     except Exception, e:
-        logging.exception(e)
+        logging.info(e)
 
 
 def get_request_info():

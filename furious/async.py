@@ -176,6 +176,11 @@ class Async(object):
         return self.job[0]
 
     @property
+    def _function_path(self):
+        # DEPRECATED: Hanging around for backwards compatibility.
+        return self.job[0]
+
+    @property
     def job(self):
         """job is stored as a (function path, args, kwargs) tuple."""
         return self._options['job']

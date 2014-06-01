@@ -247,7 +247,7 @@ class TestAsync(unittest.TestCase):
         from furious.async import defaults
 
         options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'thing',
-                   'context_id': None}
+                   'context_id': None, 'parent_id': 'parentid'}
 
         @defaults(**options.copy())
         def some_function():
@@ -266,7 +266,7 @@ class TestAsync(unittest.TestCase):
         from furious.async import defaults
 
         options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong',
-                   'context_id': None}
+                   'context_id': None, 'parent_id': 'parentid'}
 
         @defaults(**options.copy())
         def some_function():
@@ -311,7 +311,7 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
 
         options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'xx',
-                   'context_id': None}
+                   'context_id': None, 'parent_id': 'parentid'}
 
         job = Async("nonexistant")
         job.update_options(**options.copy())
@@ -327,7 +327,7 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
 
         options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong',
-                   'context_id': None}
+                   'context_id': None, 'parent_id': 'parentid'}
 
         job = Async("nonexistant", **options.copy())
 
@@ -426,7 +426,7 @@ class TestAsync(unittest.TestCase):
         task_args = {'other': 'zzz', 'nested': 1}
         headers = {'some': 'thing', 'fun': 1}
         options = {'headers': headers, 'task_args': task_args, 'id': 'me',
-                   'context_id': None}
+                   'context_id': None, 'parent_id': 'parentid'}
 
         job = Async('nonexistant', **options.copy())
 
@@ -442,10 +442,12 @@ class TestAsync(unittest.TestCase):
 
         options = {'id': 'anident',
                    'context_id': 'contextid',
+                   'parent_id': 'parentid',
                    'callbacks': {
                        'success': self.__class__.test_to_dict_with_callbacks,
                        'failure': "failure_function",
-                       'exec': Async(target=dir, id='subidnet'),
+                       'exec': Async(target=dir, id='subidnet',
+                                     parent_id='parentid'),
                    }}
 
         job = Async('nonexistant', **options.copy())
@@ -458,6 +460,7 @@ class TestAsync(unittest.TestCase):
             'exec': {'job': ('dir', None, None),
                      'id': 'subidnet',
                      'context_id': None,
+                     'parent_id': 'parentid',
                      '_recursion': {'current': 0, 'max': 100},
                      '_type': 'furious.async.Async'}
         }
@@ -481,6 +484,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(headers, async_job.get_headers())
         self.assertEqual(task_args, async_job.get_task_args())
         self.assertEqual(job[0], async_job._function_path)
+        self.assertEqual(job[0], async_job.function_path)
 
     def test_from_dict_with_callbacks(self):
         """Ensure from_dict reconstructs callbacks correctly."""
@@ -491,10 +495,11 @@ class TestAsync(unittest.TestCase):
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('dir', None, None), 'id': 'petey'}
+            'exec': {'job': ('dir', None, None), 'id': 'petey',
+                     'parent_id': 'parentid'}
         }
 
-        options = {'job': job, 'callbacks': callbacks}
+        options = {'job': job, 'callbacks': callbacks, 'parent_id': 'parentid'}
 
         async_job = Async.from_dict(options)
 
@@ -508,6 +513,7 @@ class TestAsync(unittest.TestCase):
 
         correct_options = {'job': ('dir', None, None),
                            'id': 'petey',
+                           'parent_id': 'parentid',
                            'context_id': None,
                            '_recursion': {'current': 0, 'max': 100},
                            '_type': 'furious.async.Async'}
@@ -530,7 +536,8 @@ class TestAsync(unittest.TestCase):
             'persistence_engine': 'furious.extras.appengine.ndb_persistence',
             '_recursion': {'current': 1, 'max': 100},
             '_type': 'furious.async.Async',
-            'context_id': None
+            'context_id': None,
+            'parent_id': 'parentid'
         }
 
         async_job = Async.from_dict(options)
@@ -563,7 +570,8 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'eta': eta_posix}
         options = {'job': job, 'headers': headers, 'task_args': task_args,
-                   'id': 'ident', 'context_id': 'contextid'}
+                   'id': 'ident', 'context_id': 'contextid',
+                   'parent_id': 'parentid'}
 
         task = Async.from_dict(options).to_task()
 

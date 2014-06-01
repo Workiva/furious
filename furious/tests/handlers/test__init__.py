@@ -20,58 +20,79 @@ import unittest
 from mock import patch
 
 
-@patch('time.time')
-@patch('logging.debug')
+#@patch('time.time')
+#@patch('logging.debug')
+@patch('furious.config.get_default_logging_engine')
 class TestLogTaskInfo(unittest.TestCase):
-    """Ensure that _log_task_info works as expected."""
+    """Ensure that log_task_info works as expected."""
 
-    def test_all_headers(self, debug_mock, time_mock):
-        """Ensure _log_task_info produces the correct logs."""
-        from furious import handlers
-        time_mock.return_value = 1.5
-        headers = {
-            'X-Appengine-Taskretrycount': 'blue',
-            'X-Appengine-Taskexecutioncount': 'yellow',
-            'X-Appengine-Tasketa': '0.50'
-        }
+    def test_no_engine(self, get_engine):
+        """Ensure no logging is triggered if no engine is found."""
+        from furious.handlers import log_task_info
+        get_engine.return_value = None
 
-        handlers._log_task_info(headers)
+        log_task_info({}, None)
 
-        expected_logs = (
-            '{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, '
-            '"task_eta": 0.5, "execution_count": "yellow"}')
+        get_engine.assert_called_once_with()
 
-        debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
+    def test_has_engine(self, get_engine):
+        from furious.handlers import log_task_info
 
-    def test_no_headers(self, debug_mock, time_mock):
-        """Ensure _log_task_info produces the correct logs."""
-        from furious import handlers
-        time_mock.return_value = 1.5
-        headers = {}
+        request = {}
+        async = None
 
-        handlers._log_task_info(headers)
+        log_task_info(request, async)
 
-        expected_logs = (
-            '{"ran": 1.5, "retry_count": "", "gae_latency_seconds": 1.5, '
-            '"task_eta": 0.0, "execution_count": ""}')
+        get_engine.assert_called_once_with()
+        get_engine.return_value.log.assert_called_once_with(async, request)
 
-        debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
+    #def test_all_headers(self, debug_mock, time_mock):
+        #"""Ensure log_task_info produces the correct logs."""
+        #from furious import handlers
+        #time_mock.return_value = 1.5
+        #headers = {
+            #'X-Appengine-Taskretrycount': 'blue',
+            #'X-Appengine-Taskexecutioncount': 'yellow',
+            #'X-Appengine-Tasketa': '0.50'
+        #}
 
-    def test_ignore_extra_headers(self, debug_mock, time_mock):
-        """Ensure _log_task_info ignores extra items in the header"""
-        from furious import handlers
-        time_mock.return_value = 1.5
-        headers = {
-            'something-something': 'please-ignore-me',
-            'X-Appengine-Taskretrycount': 'blue',
-            'X-Appengine-Taskexecutioncount': 'yellow',
-            'X-Appengine-Tasketa': '0.50'
-        }
+        #handlers.log_task_info(headers)
 
-        handlers._log_task_info(headers)
+        #expected_logs = (
+            #'{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, '
+            #'"task_eta": 0.5, "execution_count": "yellow"}')
 
-        expected_logs = (
-            '{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, '
-            '"task_eta": 0.5, "execution_count": "yellow"}')
+        #debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
 
-        debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
+    #def test_no_headers(self, debug_mock, time_mock):
+        #"""Ensure log_task_info produces the correct logs."""
+        #from furious import handlers
+        #time_mock.return_value = 1.5
+        #headers = {}
+
+        #handlers.log_task_info(headers)
+
+        #expected_logs = (
+            #'{"ran": 1.5, "retry_count": "", "gae_latency_seconds": 1.5, '
+            #'"task_eta": 0.0, "execution_count": ""}')
+
+        #debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
+
+    #def test_ignore_extra_headers(self, debug_mock, time_mock):
+        #"""Ensure log_task_info ignores extra items in the header"""
+        #from furious import handlers
+        #time_mock.return_value = 1.5
+        #headers = {
+            #'something-something': 'please-ignore-me',
+            #'X-Appengine-Taskretrycount': 'blue',
+            #'X-Appengine-Taskexecutioncount': 'yellow',
+            #'X-Appengine-Tasketa': '0.50'
+        #}
+
+        #handlers.log_task_info(headers)
+
+        #expected_logs = (
+            #'{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, '
+            #'"task_eta": 0.5, "execution_count": "yellow"}')
+
+        #debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)

@@ -288,11 +288,13 @@ class TestContext(unittest.TestCase):
         options = {
             'id': 'someid',
             'context_id': 'contextid',
+            'parent_id': 'parentid',
             'persistence_engine': 'persistence_engine',
             'callbacks': {
                 'success': self.__class__.test_to_dict_with_callbacks,
                 'failure': "failure_function",
-                'exec': Async(target=dir, id='blargh', context_id='contextid')
+                'exec': Async(target=dir, id='blargh', context_id='contextid',
+                              parent_id='parentid')
             }
         }
 
@@ -312,6 +314,7 @@ class TestContext(unittest.TestCase):
                 'exec': {'job': ('dir', None, None),
                          'id': 'blargh',
                          'context_id': 'contextid',
+                         'parent_id': 'parentid',
                          '_recursion': {'current': 0, 'max': 100},
                          '_type': 'furious.async.Async'}
             }
@@ -354,7 +357,8 @@ class TestContext(unittest.TestCase):
                         "TestContext.test_to_dict_with_callbacks"),
             'failure': "dir",
             'exec': {'job': ('id', None, None), 'id': 'myid',
-                     'context_id': 'contextid'}
+                     'context_id': 'contextid',
+                     'parent_id': 'parentid'}
         }
 
         context = Context.from_dict({'callbacks': callbacks})
@@ -368,6 +372,7 @@ class TestContext(unittest.TestCase):
         exec_callback = callbacks.pop('exec')
 
         correct_dict = {'job': ('id', None, None),
+                        'parent_id': 'parentid',
                         'id': 'myid',
                         'context_id': 'contextid',
                         '_recursion': {'current': 0, 'max': 100},
