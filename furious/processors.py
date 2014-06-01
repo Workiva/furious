@@ -57,6 +57,10 @@ def run_job():
     except Abort as abort:
         logging.info('Async job was aborted: %r', abort)
         async.result = None
+
+        # QUESTION: In this eventuality, we should probably tell the context we
+        # are "complete" and let it handle completion checking.
+        _handle_context_completion_check(async)
         return
     except AbortAndRestart as restart:
         logging.info('Async job was aborted and restarted: %r', restart)
@@ -64,13 +68,31 @@ def run_job():
     except Exception as e:
         async.result = encode_exception(e)
 
-    results_processor = async_options.get('_process_results')
+    _handle_results(async_options)
+    _handle_context_completion_check(async)
+
+
+def _handle_results(options):
+    """Process the results of executing the Async's target."""
+    results_processor = options.get('_process_results')
     if not results_processor:
         results_processor = _process_results
 
     processor_result = results_processor()
     if isinstance(processor_result, (Async, Context)):
         processor_result.start()
+
+
+def _handle_context_completion_check(async):
+    """If options specifies a completion check function, execute it."""
+    checker = async.get_options().get('_context_checker')
+
+    if not checker:
+        logging.debug('no checker defined.')
+        return
+
+    # Call the context complete checker with the id of this Async.
+    checker(async)
 
 
 def encode_exception(exception):
@@ -91,15 +113,14 @@ def _process_results():
     async = get_current_async()
     callbacks = async.get_callbacks()
 
-    if isinstance(async.result, AsyncException):
-        error_callback = callbacks.get('error')
-        if not error_callback:
+    if not isinstance(async.result, AsyncException):
+        callback = callbacks.get('success')
+    else:
+        callback = callbacks.get('error')
+        if not callback:
             raise async.result.exception, None, async.result.traceback
 
-        return _execute_callback(async, error_callback)
-
-    success_callback = callbacks.get('success')
-    return _execute_callback(async, success_callback)
+    return _execute_callback(async, callback)
 
 
 def _execute_callback(async, callback):

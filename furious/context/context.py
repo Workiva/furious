@@ -62,15 +62,9 @@ class Context(object):
     """
     def __init__(self, **options):
         self._tasks = []
-        self._task_ids = []
         self._tasks_inserted = False
         self._insert_success_count = 0
         self._insert_failed_count = 0
-
-        id = options.get('id')
-        if not id:
-            id = uuid.uuid4().hex
-        self._id = id
 
         self._persistence_engine = options.get('persistence_engine', None)
         if self._persistence_engine:
@@ -79,13 +73,32 @@ class Context(object):
 
         self._options = options
 
+        if '_task_ids' not in self._options:
+            self._options['_task_ids'] = []
+
+        self._id = self._get_id()
+
         self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
         if not callable(self._insert_tasks):
             raise TypeError('You must provide a valid insert_tasks function.')
 
+    def _get_id(self):
+        """If this async has no id, generate one."""
+        id = self._options.get('id')
+        if id:
+            return id
+
+        id = uuid.uuid4().hex
+        self._options['id'] = id
+        return id
+
     @property
     def id(self):
         return self._id
+
+    @property
+    def task_ids(self):
+        return self._options['_task_ids']
 
     @property
     def insert_success(self):
@@ -94,6 +107,10 @@ class Context(object):
     @property
     def insert_failed(self):
         return self._insert_failed_count
+
+    @property
+    def persist_async_results(self):
+        return self._options.get('persist_async_results', False)
 
     def __enter__(self):
         return self
@@ -111,6 +128,17 @@ class Context(object):
                 "This Context has already had its tasks inserted.")
 
         task_map = self._get_tasks_by_queue()
+
+        # QUESTION: Should the persist happen before or after the task
+        # insertion?  I feel like this is something that will alter the
+        # behavior of the tasks themselves by adding a callback (check context
+        # complete) to each Async's callback stack.
+
+        # If we are able to and there is a reason to persist... persist.
+        callbacks = self._options.get('callbacks')
+        if self._persistence_engine and callbacks:
+            self.persist()
+
         for queue, tasks in task_map.iteritems():
             for batch in _task_batcher(tasks, batch_size=batch_size):
                 inserted = self._insert_tasks(batch, queue=queue)
@@ -130,13 +158,64 @@ class Context(object):
     def _get_tasks_by_queue(self):
         """Return the tasks for this Context, grouped by queue."""
         task_map = {}
+        _checker = None
+
+        # Ask the persistence engine for an Async to use for checking if the
+        # context is complete.
+        if self._persistence_engine:
+            _checker = self._persistence_engine.context_completion_checker
 
         for async in self._tasks:
             queue = async.get_queue()
+            if _checker:
+                async.update_options(_context_checker=_checker)
+
             task = async.to_task()
             task_map.setdefault(queue, []).append(task)
 
         return task_map
+
+    def _prepare_persistence_engine(self):
+        """Load the specified persistence engine, or the default if none is
+        set.
+        """
+
+        from furious.config import get_default_persistence_engine
+
+        if self._persistence_engine:
+            return
+
+        persistence_engine = self._options.get('persistence_engine')
+        if persistence_engine:
+            self._persistence_engine = path_to_reference(persistence_engine)
+            return
+
+        self._persistence_engine = get_default_persistence_engine()
+
+    def set_event_handler(self, event, handler):
+        """Add an Async to be run on event."""
+        # QUESTION: Should we raise an exception if `event` is not in some
+        # known event-type list?
+
+        self._prepare_persistence_engine()
+
+        callbacks = self._options.get('callbacks', {})
+        callbacks[event] = handler
+        self._options['callbacks'] = callbacks
+
+    def exec_event_handler(self, event):
+        """Execute the Async set to be run on event."""
+        # QUESTION: Should we raise an exception if `event` is not in some
+        # known event-type list?
+
+        callbacks = self._options.get('callbacks', {})
+
+        handler = callbacks.get(event)
+
+        if not handler:
+            raise Exception('Handler not defined!!!')
+
+        handler.start()
 
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
@@ -154,7 +233,13 @@ class Context(object):
         if not isinstance(target, (Async, Message)):
             target = Async(target, args, kwargs, **options)
 
+        target.update_options(_context_id=self.id)
+
+        if self.persist_async_results:
+            target.update_options(persist_result=True)
+
         self._tasks.append(target)
+        self._options['_task_ids'].append(target.id)
 
         return target
 
@@ -169,16 +254,20 @@ class Context(object):
             raise RuntimeError(
                 'Specify a valid persistence_engine to persist this context.')
 
-        return self._persistence_engine.store_context(self.id, self.to_dict())
+        return self._persistence_engine.store_context(self)
 
     @classmethod
-    def load(cls, context_id, persistence_engine):
+    def load(cls, context_id, persistence_engine=None):
         """Load and instantiate a Context from the persistence_engine."""
+        if not persistence_engine:
+            from furious.config import get_default_persistence_engine
+            persistence_engine = get_default_persistence_engine()
+
         if not persistence_engine:
             raise RuntimeError(
                 'Specify a valid persistence_engine to load the context.')
 
-        return cls.from_dict(persistence_engine.load_context(context_id))
+        return persistence_engine.load_context(context_id)
 
     def to_dict(self):
         """Return this Context as a dict suitable for json encoding."""
@@ -195,7 +284,6 @@ class Context(object):
 
         options.update({
             '_tasks_inserted': self._tasks_inserted,
-            '_task_ids': [async.id for async in self._tasks]
         })
 
         callbacks = self._options.get('callbacks')
@@ -212,7 +300,6 @@ class Context(object):
         context_options = copy.deepcopy(context_options_dict)
 
         tasks_inserted = context_options.pop('_tasks_inserted', False)
-        task_ids = context_options.pop('_task_ids', [])
 
         insert_tasks = context_options.pop('insert_tasks', None)
         if insert_tasks:
@@ -232,9 +319,17 @@ class Context(object):
         context = cls(**context_options)
 
         context._tasks_inserted = tasks_inserted
-        context._task_ids = task_ids
 
         return context
+
+    def iter_results(self):
+        """Yield out the results found on the markers for the context task ids.
+        """
+        if not self._persistence_engine:
+            raise RuntimeError(
+                'Specify a valid persistence_engine to persist this context.')
+
+        return self._persistence_engine.iter_results(self)
 
 
 def _insert_tasks(tasks, queue, transactional=False):

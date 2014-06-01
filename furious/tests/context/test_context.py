@@ -76,6 +76,30 @@ class TestContext(unittest.TestCase):
 
         self.assertTrue(Context().id)
 
+    @patch('uuid.uuid4', autospec=True)
+    def test_id_added_to_options(self, uuid_patch):
+        """Ensure random context id gets added to options."""
+        from furious.context import Context
+
+        id = 'random-id'
+        uuid_patch.return_value.hex = id
+
+        context = Context()
+
+        self.assertEqual(context.id, id)
+        self.assertEqual(context._options['id'], id)
+
+    def test_context_gets_one_id(self):
+        """Ensure a new Context gets an id only generated once."""
+        from furious.context import Context
+
+        context = Context()
+
+        id1 = context.id
+        id2 = context.id
+        self.assertEqual(id1, id2)
+        self.assertEqual(context.id, id1)
+
     def test_context_gets_assigned_id(self):
         """Ensure a new Context keeps its assigned id."""
         from furious.context import Context
@@ -154,6 +178,21 @@ class TestContext(unittest.TestCase):
         self.assertEqual(10, ctx.insert_success)
 
     @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
+    def test_added_asyncs_get_context_id(self, queue_mock):
+        """Ensure Asyncs added to context get context id."""
+        from furious.async import Async
+        from furious.context import Context
+
+        asyncs = [Async('test', id=i) for i in xrange(100, 110)]
+
+        with Context() as ctx:
+            for async in asyncs:
+                ctx.add(async)
+                self.assertEqual(ctx.id, async.get_options()['_context_id'])
+
+        self.assertEqual(10, ctx.insert_success)
+
+    @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
     def test_added_to_correct_queue(self, queue_mock):
         """Ensure jobs are added to the correct queue."""
         from furious.context import Context
@@ -224,6 +263,7 @@ class TestContext(unittest.TestCase):
         options = {
             'persistence_engine': 'persistence_engine',
             'unkown': True,
+            'id': 'anid'
         }
 
         context = Context(**copy.deepcopy(options))
@@ -233,6 +273,7 @@ class TestContext(unittest.TestCase):
             'insert_tasks': 'furious.context.context._insert_tasks',
             '_tasks_inserted': False,
             '_task_ids': [],
+            'id': 'anid'
         })
 
         self.assertEqual(options, context.to_dict())
@@ -245,11 +286,13 @@ class TestContext(unittest.TestCase):
         from furious.context import Context
 
         options = {
+            'id': 'someid',
+            'context_id': 'contextid',
             'persistence_engine': 'persistence_engine',
             'callbacks': {
                 'success': self.__class__.test_to_dict_with_callbacks,
                 'failure': "failure_function",
-                'exec': Async(target=dir, id='blargh')
+                'exec': Async(target=dir, id='blargh', context_id='contextid')
             }
         }
 
@@ -257,6 +300,7 @@ class TestContext(unittest.TestCase):
 
         # This stuff gets dumped out by to_dict().
         options.update({
+            'id': 'someid',
             'insert_tasks': 'furious.context.context._insert_tasks',
             'persistence_engine': 'persistence_engine',
             '_tasks_inserted': False,
@@ -267,6 +311,7 @@ class TestContext(unittest.TestCase):
                 'failure': "failure_function",
                 'exec': {'job': ('dir', None, None),
                          'id': 'blargh',
+                         'context_id': 'contextid',
                          '_recursion': {'current': 0, 'max': 100},
                          '_type': 'furious.async.Async'}
             }
@@ -294,7 +339,7 @@ class TestContext(unittest.TestCase):
         context = Context.from_dict(options)
 
         self.assertEqual(123456, context.id)
-        self.assertEqual([1, 2, 3, 4], context._task_ids)
+        self.assertEqual([1, 2, 3, 4], context.task_ids)
         self.assertEqual(True, context._tasks_inserted)
         self.assertEqual('avalue', context._options.get('random_option'))
         self.assertEqual(_insert_tasks, context._insert_tasks)
@@ -308,7 +353,8 @@ class TestContext(unittest.TestCase):
             'success': ("furious.tests.context.test_context."
                         "TestContext.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('id', None, None), 'id': 'myid'}
+            'exec': {'job': ('id', None, None), 'id': 'myid',
+                     'context_id': 'contextid'}
         }
 
         context = Context.from_dict({'callbacks': callbacks})
@@ -323,6 +369,7 @@ class TestContext(unittest.TestCase):
 
         correct_dict = {'job': ('id', None, None),
                         'id': 'myid',
+                        'context_id': 'contextid',
                         '_recursion': {'current': 0, 'max': 100},
                         '_type': 'furious.async.Async'}
 
@@ -336,6 +383,7 @@ class TestContext(unittest.TestCase):
         options = {
             'id': 123098,
             'insert_tasks': 'furious.context.context._insert_tasks',
+            'context_id': 'contextid',
             'persistence_engine':
             'furious.job_utils.get_function_path_and_options',
             '_tasks_inserted': True,
@@ -365,8 +413,7 @@ class TestContext(unittest.TestCase):
 
         context.persist()
 
-        persistence_engine.store_context.assert_called_once_with(
-            context.id, context.to_dict())
+        persistence_engine.store_context.assert_called_once_with(context)
 
     def test_load_context(self):
         """Calling load with an engine attempts to load the Context."""
@@ -375,7 +422,8 @@ class TestContext(unittest.TestCase):
         persistence_engine = Mock()
         persistence_engine.func_name = 'persistence_engine'
         persistence_engine.im_class.__name__ = 'engine'
-        persistence_engine.load_context.return_value = {'id': 'ABC123'}
+        persistence_engine.load_context.return_value = Context.from_dict(
+            {'id': 'ABC123'})
 
         context = Context.load('ABC123', persistence_engine)
 
