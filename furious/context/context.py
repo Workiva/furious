@@ -322,14 +322,33 @@ class Context(object):
 
         return context
 
-    def iter_results(self):
-        """Yield out the results found on the markers for the context task ids.
+    @property
+    def result(self):
+        """Return the context result object pulled from the persistence_engine
+        if it has been set.
         """
-        if not self._persistence_engine:
-            raise RuntimeError(
-                'Specify a valid persistence_engine to persist this context.')
+        if not self._result:
+            if not self._persistence_engine:
+                return None
 
-        return self._persistence_engine.iter_results(self)
+            self._result = self._persistence_engine.get_context_result(self)
+
+        return self._result
+
+
+class ContextResult(object):
+
+    def __init__(self, persistence_engine_result):
+        self._engine_result = persistence_engine_result
+
+    @property
+    def results(self):
+        """Yield the async reuslts for the context."""
+        return self._engine_result.results
+
+    def has_errors(self):
+        """Return the error flag from the completion engine."""
+        return self._engine_result.has_errors()
 
 
 def _insert_tasks(tasks, queue, transactional=False):

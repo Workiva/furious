@@ -23,13 +23,16 @@ from mock import Mock
 from mock import patch
 
 from furious.async import Async
+from furious.async import AsyncResult
 from furious.context import Context
 
 from furious.extras.appengine.ndb_persistence import context_completion_checker
+from furious.extras.appengine.ndb_persistence import ContextResult
 from furious.extras.appengine.ndb_persistence import _completion_checker
 from furious.extras.appengine.ndb_persistence import FuriousAsyncMarker
 from furious.extras.appengine.ndb_persistence import FuriousContext
-from furious.extras.appengine.ndb_persistence import iter_results
+from furious.extras.appengine.ndb_persistence import FuriousCompletionMarker
+from furious.extras.appengine.ndb_persistence import iter_context_results
 from furious.extras.appengine.ndb_persistence import store_async_marker
 from furious.extras.appengine.ndb_persistence import store_context
 from furious.extras.appengine.ndb_persistence import _check_markers
@@ -245,7 +248,7 @@ class IterResultsTestCase(NdbTestBase):
 
         context = Context(_task_ids=["1", "2", "3"])
 
-        results = list(iter_results(context, batch_size=2))
+        results = list(iter_context_results(context, batch_size=2))
 
         self.assertEqual(results[0], ("1", 1))
         self.assertEqual(results[1], ("2", 2))
@@ -262,7 +265,7 @@ class IterResultsTestCase(NdbTestBase):
 
         context = Context(_task_ids=["1", "2", "3"])
 
-        results = list(iter_results(context))
+        results = list(iter_context_results(context))
 
         self.assertEqual(results[0], ("1", 1))
         self.assertEqual(results[1], ("2", 2))
@@ -275,7 +278,7 @@ class IterResultsTestCase(NdbTestBase):
         get_multi_async.return_value = []
         context = Context(_task_ids=[])
 
-        results = list(iter_results(context))
+        results = list(iter_context_results(context))
 
         self.assertEqual(results, [])
 
@@ -290,8 +293,319 @@ class IterResultsTestCase(NdbTestBase):
 
         context = Context(_task_ids=["1", "2", "3"])
 
-        results = list(iter_results(context))
+        results = list(iter_context_results(context))
 
         self.assertEqual(results[0], ("1", None))
         self.assertEqual(results[1], ("2", None))
         self.assertEqual(results[2], ("3", None))
+
+
+#class
+
+@patch('furious.extras.appengine.ndb_persistence._check_markers')
+@patch.object(FuriousContext, 'from_id')
+class CompletionCheckerTestCase(NdbTestBase):
+
+    def test_markers_not_complete(self, context_from_id, check_markers):
+        """Ensure if not all markers are complete that False is returned and
+        the completion handler and cleanup tasks are not triggered.
+        """
+        complete_event = Mock()
+        context = Context(id="contextid",
+                          callbacks={'complete': complete_event})
+
+        context_from_id.return_value = context
+
+        check_markers.return_value = False, False
+
+        async = Async('foo')
+        async.update_options(context_id='contextid')
+
+        result = _completion_checker(async.id, async.context_id)
+
+        self.assertFalse(result)
+
+        self.assertTrue(context_from_id.called)
+
+        self.assertFalse(complete_event.start.called)
+
+    @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
+    def test_markers_complete(self, mark, context_from_id, check_markers):
+        """Ensure if all markers are complete that True is returned and the
+        completion handler and cleanup tasks are triggered.
+        """
+        complete_event = Mock()
+        context = Context(id="contextid",
+                          callbacks={'complete': complete_event})
+
+        context_from_id.return_value = context
+
+        check_markers.return_value = True, False
+        mark.return_value = True
+
+        async = Async('foo')
+        async.update_options(context_id='contextid')
+
+        result = _completion_checker(async.id, async.context_id)
+
+        self.assertTrue(result)
+
+        complete_event.start.assert_called_once_with()
+
+
+@patch('furious.extras.appengine.ndb_persistence.ndb.get_multi')
+class CheckMarkersTestCase(NdbTestBase):
+
+    def test_all_markers_exist(self, get_multi):
+        """Ensure True is returned when all markers exist."""
+        task_ids = map(lambda x: "task" + str(x), range(11))
+
+        get_multi.side_effect = [Mock()], [Mock()]
+
+        done, has_errors = _check_markers(task_ids)
+
+        self.assertTrue(done)
+        self.assertFalse(has_errors)
+
+    def test_not_all_markers_exist(self, get_multi):
+        """Ensure False is returned when not all markers exist."""
+        task_ids = map(lambda x: "task" + str(x), range(11))
+
+        get_multi.side_effect = [Mock()], [None]
+
+        done, has_errors = _check_markers(task_ids)
+
+        self.assertFalse(done)
+        self.assertFalse(has_errors)
+
+
+class StoreContextTestCase(NdbTestBase):
+
+    def test_save_context(self):
+        """Ensure the passed in context gets serialized and set on the saved
+        FuriousContext entity.
+        """
+        _id = "contextid"
+
+        context = Context(id=_id)
+
+        result = store_context(context)
+
+        self.assertEqual(result.id(), _id)
+
+        loaded_context = FuriousContext.from_id(result.id())
+
+        self.assertEqual(context.to_dict(), loaded_context.to_dict())
+
+
+class StoreAsyncMarkerTestCase(NdbTestBase):
+
+    def test_marker_does_not_exist(self):
+        """Ensure the marker is saved if it does not already exist."""
+        async_id = "asyncid"
+
+        store_async_marker(async_id, 0)
+
+        self.assertIsNotNone(FuriousAsyncMarker.get_by_id(async_id))
+
+    def test_marker_does_exist(self):
+        """Ensure the marker is not saved if it already exists."""
+        async_id = "asyncid"
+        result = '{"foo": "bar"}'
+        FuriousAsyncMarker(id=async_id, result=result, status=2).put()
+
+        store_async_marker(async_id, 1)
+
+        marker = FuriousAsyncMarker.get_by_id(async_id)
+
+        self.assertEqual(marker.result, result)
+        self.assertEqual(marker.status, 2)
+
+
+@patch('furious.extras.appengine.ndb_persistence.ndb.get_multi_async')
+class IterResultsTestCase(NdbTestBase):
+
+    def test_more_results_than_batch_size(self, get_multi_async):
+        """Ensure all the results are yielded out when more than the batch
+        size.
+        """
+        marker1 = FuriousAsyncMarker(result="1")
+        marker2 = FuriousAsyncMarker(result="2")
+        marker3 = FuriousAsyncMarker(result="3")
+
+        future_set_1 = [_build_future(marker1),
+                        _build_future(marker2)]
+        future_set_2 = [_build_future(marker3)]
+
+        get_multi_async.side_effect = future_set_1, future_set_2
+
+        context = Context(_task_ids=["1", "2", "3"])
+
+        results = list(iter_context_results(context, batch_size=2))
+
+        self.assertEqual(results[0], ("1", marker1))
+        self.assertEqual(results[1], ("2", marker2))
+        self.assertEqual(results[2], ("3", marker3))
+
+    def test_less_results_than_batch_size(self, get_multi_async):
+        """Ensure all the results are yielded out when less than the batch
+        size.
+        """
+        marker1 = FuriousAsyncMarker(result="1")
+        marker2 = FuriousAsyncMarker(result="2")
+        marker3 = FuriousAsyncMarker(result="3")
+
+        future_set_1 = [_build_future(marker1), _build_future(marker2),
+                        _build_future(marker3)]
+
+        get_multi_async.return_value = future_set_1
+
+        context = Context(_task_ids=["1", "2", "3"])
+
+        results = list(iter_context_results(context))
+
+        self.assertEqual(results[0], ("1", marker1))
+        self.assertEqual(results[1], ("2", marker2))
+        self.assertEqual(results[2], ("3", marker3))
+
+    def test_no_task_ids(self, get_multi_async):
+        """Ensure no results are yielded out when there are no task ids on the
+        passed in context.
+        """
+        get_multi_async.return_value = []
+        context = Context(_task_ids=[])
+
+        results = list(iter_context_results(context))
+
+        self.assertEqual(results, [])
+
+    def test_keys_with_no_results(self, get_multi_async):
+        """Ensure empty results are yielded out when there are no items to
+        load but task ids are on the passed in context.
+        """
+        future_set_1 = [_build_future(), _build_future(), _build_future()]
+
+        get_multi_async.return_value = future_set_1
+
+        context = Context(_task_ids=["1", "2", "3"])
+
+        results = list(iter_context_results(context))
+
+        self.assertEqual(results[0], ("1", None))
+        self.assertEqual(results[1], ("2", None))
+        self.assertEqual(results[2], ("3", None))
+
+
+class ContextResultTestCase(NdbTestBase):
+
+    @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi_async')
+    def test_results_with_no_tasks_loaded(self, get_multi_async):
+        """Ensure results loads the tasks and yields them out when no tasks are
+        cached.
+        """
+        marker1 = FuriousAsyncMarker(result="1")
+        marker2 = FuriousAsyncMarker(result="2")
+        marker3 = FuriousAsyncMarker(result="3")
+
+        future_set_1 = [_build_future(marker1), _build_future(marker2),
+                        _build_future(marker3)]
+
+        get_multi_async.return_value = future_set_1
+
+        context = Context(_task_ids=["1", "2", "3"])
+        context_result = ContextResult(context)
+
+        results = list(context_result.results)
+
+        results = sorted(results)
+
+        self.assertEqual(results, [("1", 1), ("2", 2), ("3", 3)])
+
+        self.assertEqual(context_result._task_cache, {
+            "1": marker1,
+            "2": marker2,
+            "3": marker3
+        })
+
+    @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi_async')
+    def test_results_with_tasks_loaded(self, get_multi_async):
+        """Ensure results uses the cached tasks and yields them out when tasks
+        are cached.
+        """
+        marker1 = FuriousAsyncMarker(result="1")
+        marker2 = FuriousAsyncMarker(result="2")
+        marker3 = FuriousAsyncMarker(result="3")
+
+        context = Context(_task_ids=["1", "2", "3"])
+        context_result = ContextResult(context)
+
+        context_result._task_cache = {
+            "1": marker1,
+            "2": marker2,
+            "3": marker3
+        }
+
+        results = list(context_result.results)
+
+        results = sorted(results)
+
+        self.assertEqual(results, [("1", 1), ("2", 2), ("3", 3)])
+
+        self.assertFalse(get_multi_async.called)
+
+    def test_has_errors_with_marker_not_cached(self):
+        """Ensure returns the value from the marker when not cached."""
+        context_id = 1
+
+        FuriousCompletionMarker(id=context_id, has_errors=True).put()
+
+        context = Context(id=context_id)
+        context_result = ContextResult(context)
+
+        self.assertIsNone(context_result._marker)
+        self.assertTrue(context_result.has_errors())
+
+        context_result._marker.key.delete()
+
+    def test_has_errors_with_marker_cached(self):
+        """Ensure returns the value from the marker when cached."""
+        context_id = 1
+
+        marker = FuriousCompletionMarker(id=context_id, has_errors=True)
+        marker.put()
+
+        context = Context(id=context_id)
+        context._marker = marker
+        context_result = ContextResult(context)
+
+        self.assertIsNone(context_result._marker)
+        self.assertTrue(context_result.has_errors())
+
+        marker.key.delete()
+
+    def test_has_no_marker(self):
+        """Ensure returns False when no marker found."""
+        context_id = 1
+
+        marker = FuriousCompletionMarker(id=context_id, has_errors=True)
+        marker.put()
+
+        context = Context(id=context_id)
+        context._marker = marker
+        context_result = ContextResult(context)
+
+        self.assertIsNone(context_result._marker)
+        self.assertTrue(context_result.has_errors())
+
+        marker.key.delete()
+
+
+def _build_future(result=None):
+    future = Mock()
+
+    if not result:
+        future.get_result.return_value = None
+    else:
+        future.get_result.return_value = result
+
+    return future
