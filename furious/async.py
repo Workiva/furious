@@ -438,6 +438,21 @@ class Async(object):
         return context_id
 
 
+class AsyncResult(object):
+
+    SUCCESS = 1
+    ERROR = 2
+    ABORT = 3
+
+    def __init__(self, result=None, status=None):
+        self.result = result
+        self.status = status
+
+    @property
+    def success(self):
+        return self.status != self.ERROR
+
+
 def async_from_options(options):
     """Deserialize an Async or Async subclass from an options dict."""
     _type = options.pop('_type', 'furious.async.Async')

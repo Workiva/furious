@@ -22,6 +22,7 @@ import logging
 from collections import namedtuple
 
 from furious.async import Async
+from furious.async import AsyncResult
 from furious.context import Context
 from furious.context import get_current_async
 from furious.errors import Abort
@@ -53,10 +54,11 @@ def run_job():
 
     try:
         async.executing = True
-        async.result = function(*args, **kwargs)
+        async.result = AsyncResult(result=function(*args, **kwargs),
+                                   status=AsyncResult.SUCCESS)
     except Abort as abort:
         logging.info('Async job was aborted: %r', abort)
-        async.result = None
+        async.result = AsyncResult(status=AsyncResult.ABORT)
 
         # QUESTION: In this eventuality, we should probably tell the context we
         # are "complete" and let it handle completion checking.
@@ -66,7 +68,8 @@ def run_job():
         logging.info('Async job was aborted and restarted: %r', restart)
         raise
     except Exception as e:
-        async.result = encode_exception(e)
+        async.result = AsyncResult(result=encode_exception(e),
+                                   status=AsyncResult.ERROR)
 
     _handle_results(async_options)
     _handle_context_completion_check(async)
@@ -113,12 +116,13 @@ def _process_results():
     async = get_current_async()
     callbacks = async.get_callbacks()
 
-    if not isinstance(async.result, AsyncException):
+    if not isinstance(async.result.result, AsyncException):
         callback = callbacks.get('success')
     else:
         callback = callbacks.get('error')
         if not callback:
-            raise async.result.exception, None, async.result.traceback
+            raise (async.result.result.exception, None,
+                   async.result.result.traceback)
 
     return _execute_callback(async, callback)
 
@@ -130,7 +134,7 @@ def _execute_callback(async, callback):
     from furious.async import Async
 
     if not callback:
-        return async.result
+        return async.result.result
 
     if isinstance(callback, Async):
         return callback.start()

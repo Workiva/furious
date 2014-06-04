@@ -67,8 +67,10 @@ class NdbTestBase(unittest.TestCase):
 class ContextCompletionCheckerTestCase(NdbTestBase):
 
     def test_completion_store(self):
+        """Ensure the marker is stored on completion even without a result."""
 
         async = Async('foo')
+        async._executed = True
 
         result = context_completion_checker(async)
 
@@ -78,6 +80,25 @@ class ContextCompletionCheckerTestCase(NdbTestBase):
 
         self.assertIsNotNone(marker)
         self.assertEqual(marker.key.id(), async.id)
+        self.assertEqual(marker.status, -1)
+
+    def test_completion_store_with_result(self):
+        """Ensure the marker is stored on completion with a result."""
+
+        async = Async('foo')
+        async._executing = True
+        async.result = AsyncResult(status=1)
+        async._executed = True
+
+        result = context_completion_checker(async)
+
+        self.assertTrue(result)
+
+        marker = FuriousAsyncMarker.get_by_id(async.id)
+
+        self.assertIsNotNone(marker)
+        self.assertEqual(marker.key.id(), async.id)
+        self.assertEqual(marker.status, 1)
 
 
 @patch('furious.extras.appengine.ndb_persistence._check_markers')
@@ -94,7 +115,7 @@ class CompletionCheckerTestCase(NdbTestBase):
 
         context_from_id.return_value = context
 
-        check_markers.return_value = False
+        check_markers.return_value = False, False
 
         async = Async('foo')
         async.update_options(context_id='contextid')
@@ -118,7 +139,7 @@ class CompletionCheckerTestCase(NdbTestBase):
 
         context_from_id.return_value = context
 
-        check_markers.return_value = True
+        check_markers.return_value = True, False
         mark.return_value = True
 
         async = Async('foo')
@@ -140,9 +161,10 @@ class CheckMarkersTestCase(NdbTestBase):
 
         get_multi.side_effect = [Mock()], [Mock()]
 
-        result = _check_markers(task_ids)
+        done, has_errors = _check_markers(task_ids)
 
-        self.assertTrue(result)
+        self.assertTrue(done)
+        self.assertFalse(has_errors)
 
     def test_not_all_markers_exist(self, get_multi):
         """Ensure False is returned when not all markers exist."""
@@ -150,9 +172,10 @@ class CheckMarkersTestCase(NdbTestBase):
 
         get_multi.side_effect = [Mock()], [None]
 
-        result = _check_markers(task_ids)
+        done, has_errors = _check_markers(task_ids)
 
-        self.assertFalse(result)
+        self.assertFalse(done)
+        self.assertFalse(has_errors)
 
 
 class StoreContextTestCase(NdbTestBase):
@@ -180,7 +203,7 @@ class StoreAsyncMarkerTestCase(NdbTestBase):
         """Ensure the marker is saved if it does not already exist."""
         async_id = "asyncid"
 
-        store_async_marker(async_id)
+        store_async_marker(async_id, 0)
 
         self.assertIsNotNone(FuriousAsyncMarker.get_by_id(async_id))
 
@@ -190,11 +213,12 @@ class StoreAsyncMarkerTestCase(NdbTestBase):
         result = '{"foo": "bar"}'
         FuriousAsyncMarker(id=async_id, result=result).put()
 
-        store_async_marker(async_id)
+        store_async_marker(async_id, 1)
 
         marker = FuriousAsyncMarker.get_by_id(async_id)
 
         self.assertEqual(marker.result, result)
+        self.assertEqual(marker.status, 1)
 
 
 @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi_async')

@@ -111,7 +111,7 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             self.assertRaises(TypeError, run_job)
 
-        self.assertIsInstance(work.result, AsyncException)
+        self.assertIsInstance(work.result.result, AsyncException)
 
     def test_calls_success_callback(self):
         """Ensure run_job calls the success callback after a successful run."""
@@ -382,5 +382,5 @@ def _fake_async_returning_target(async_to_return):
 def _fake_result_returning_callback():
     from furious.context import get_current_async
 
-    return get_current_async().result
+    return get_current_async().result.result
 
