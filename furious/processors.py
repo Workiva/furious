@@ -54,7 +54,7 @@ def run_job():
 
     try:
         async.executing = True
-        async.result = AsyncResult(result=function(*args, **kwargs),
+        async.result = AsyncResult(payload=function(*args, **kwargs),
                                    status=AsyncResult.SUCCESS)
     except Abort as abort:
         logging.info('Async job was aborted: %r', abort)
@@ -68,7 +68,7 @@ def run_job():
         logging.info('Async job was aborted and restarted: %r', restart)
         raise
     except Exception as e:
-        async.result = AsyncResult(result=encode_exception(e),
+        async.result = AsyncResult(payload=encode_exception(e),
                                    status=AsyncResult.ERROR)
 
     _handle_results(async_options)
@@ -116,13 +116,14 @@ def _process_results():
     async = get_current_async()
     callbacks = async.get_callbacks()
 
-    if not isinstance(async.result.result, AsyncException):
+    if not isinstance(async.result.payload, AsyncException):
         callback = callbacks.get('success')
     else:
         callback = callbacks.get('error')
+
         if not callback:
-            raise (async.result.result.exception, None,
-                   async.result.result.traceback)
+            raise (async.result.payload.exception, None,
+                   async.result.payload.traceback)
 
     return _execute_callback(async, callback)
 
@@ -134,7 +135,7 @@ def _execute_callback(async, callback):
     from furious.async import Async
 
     if not callback:
-        return async.result.result
+        return async.result.payload
 
     if isinstance(callback, Async):
         return callback.start()

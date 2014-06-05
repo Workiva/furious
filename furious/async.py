@@ -444,13 +444,32 @@ class AsyncResult(object):
     ERROR = 2
     ABORT = 3
 
-    def __init__(self, result=None, status=None):
-        self.result = result
+    def __init__(self, payload=None, status=None):
+        self.payload = payload
         self.status = status
 
     @property
     def success(self):
         return self.status != self.ERROR
+
+    def to_dict(self):
+        return {
+            'status': self.status,
+            'payload': (self.payload
+                        if self.status != self.ERROR else self._error_dict())
+        }
+
+    def _error_dict(self):
+        import traceback
+
+        if not self.payload:
+            return {}
+
+        return {
+            "error": self.payload.error,
+            "args": self.payload.args,
+            "traceback": traceback.format_tb(self.payload.traceback)
+        }
 
 
 def async_from_options(options):

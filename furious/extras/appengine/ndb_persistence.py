@@ -103,6 +103,7 @@ class ContextResult(object):
             if not (task and task.result):
                 yield key, None
             else:
+                # If error convert to Exception?
                 yield key, json.loads(task.result)
 
     def has_errors(self):
@@ -286,7 +287,7 @@ def store_async_result(async_id, async_result):
     logging.debug("Storing result for %s", async_id)
 
     key = FuriousAsyncMarker(
-        id=async_id, result=json.dumps(async_result.result),
+        id=async_id, result=json.dumps(async_result.to_dict()),
         status=async_result.status).put()
 
     logging.debug("Setting Async result %s using marker: %s.", async_result,
