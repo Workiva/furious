@@ -63,6 +63,11 @@ class FuriousAsyncMarker(ndb.Model):
     result = ndb.JsonProperty(indexed=False, compressed=True)
     status = ndb.IntegerProperty(indexed=False)
 
+    @property
+    def success(self):
+        from furious.async import AsyncResult
+        return self.status != AsyncResult.ERROR
+
 
 class FuriousCompletionMarker(ndb.Model):
     """This entity serves as a 'complete' marker for the entire context."""
@@ -96,15 +101,21 @@ class ContextResult(object):
 
         return self._marker
 
-    @property
-    def results(self):
+    def items(self):
         """Yield the async reuslts for the context."""
         for key, task in self._tasks:
             if not (task and task.result):
                 yield key, None
             else:
-                # If error convert to Exception?
-                yield key, json.loads(task.result)
+                yield key, json.loads(task.result)["payload"]
+
+    def values(self):
+        """Yield the async reuslt values for the context."""
+        for _, task in self._tasks:
+            if not (task and task.result):
+                yield None
+            else:
+                yield json.loads(task.result)["payload"]
 
     def has_errors(self):
         """Return the error flag from the completion marker."""
@@ -139,7 +150,7 @@ def _completion_checker(async_id, context_id):
 
     if marker and marker.complete:
         logging.info("Context %s already complete" % context_id)
-        return
+        return True
 
     task_ids = context.task_ids
     if async_id in task_ids:

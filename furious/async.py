@@ -453,22 +453,27 @@ class AsyncResult(object):
         return self.status != self.ERROR
 
     def to_dict(self):
+        """Return the AsyncResult converted to a dictionary and also to an
+        serializable format.
+        """
         return {
             'status': self.status,
-            'payload': (self.payload
-                        if self.status != self.ERROR else self._error_dict())
+            'payload': self._payload_to_dict()
         }
 
-    def _error_dict(self):
-        import traceback
-
-        if not self.payload:
+    def _payload_to_dict(self):
+        """When an error status the payload is holding an AsyncException that
+        is converted to a serialiable dict.
+        """
+        if self.status != self.ERROR or not self.payload:
             return {}
+
+        import traceback
 
         return {
             "error": self.payload.error,
             "args": self.payload.args,
-            "traceback": traceback.format_tb(self.payload.traceback)
+            "traceback": traceback.format_exception(*self.payload.traceback)
         }
 
 

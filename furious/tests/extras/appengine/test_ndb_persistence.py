@@ -196,6 +196,17 @@ class CompletionCheckerTestCase(NdbTestBase):
 
         self.assertFalse(complete_event.start.called)
 
+    def test_no_context_id(self, context_from_id, check_markers):
+        """Ensure if no context id that nothing happens.
+        """
+        result = _completion_checker("1", None)
+
+        self.assertIsNone(result)
+
+        self.assertFalse(context_from_id.called)
+
+        self.assertFalse(check_markers.start.called)
+
     @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
     def test_markers_complete(self, mark, context_from_id, check_markers):
         """Ensure if all markers are complete that True is returned and the
@@ -218,6 +229,35 @@ class CompletionCheckerTestCase(NdbTestBase):
         self.assertTrue(result)
 
         complete_event.start.assert_called_once_with()
+
+    @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
+    def test_markers_and_context_complete(self, mark, context_from_id,
+                                          check_markers):
+        """Ensure if all markers are complete that True is returned and
+        nothing else is done.
+        """
+        async = Async('foo')
+        async.update_options(context_id='contextid')
+
+        complete_event = Mock()
+        context = Context(id="contextid",
+                          callbacks={'complete': complete_event})
+
+        context_from_id.return_value = context
+
+        marker = FuriousCompletionMarker(id="contextid", complete=True)
+        marker.put()
+
+        check_markers.return_value = True, False
+        mark.return_value = True
+
+        result = _completion_checker(async.id, async.context_id)
+
+        self.assertTrue(result)
+
+        self.assertFalse(complete_event.start.called)
+
+        marker.key.delete()
 
 
 @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi')
@@ -253,9 +293,9 @@ class IterResultsTestCase(NdbTestBase):
         """Ensure all the results are yielded out when more than the batch
         size.
         """
-        marker1 = FuriousAsyncMarker(result="1")
-        marker2 = FuriousAsyncMarker(result="2")
-        marker3 = FuriousAsyncMarker(result="3")
+        marker1 = _build_marker(payload="1", status=1)
+        marker2 = _build_marker(payload="2", status=1)
+        marker3 = _build_marker(payload="3", status=1)
 
         future_set_1 = [_build_future(marker1),
                         _build_future(marker2)]
@@ -275,9 +315,9 @@ class IterResultsTestCase(NdbTestBase):
         """Ensure all the results are yielded out when less than the batch
         size.
         """
-        marker1 = FuriousAsyncMarker(result="1")
-        marker2 = FuriousAsyncMarker(result="2")
-        marker3 = FuriousAsyncMarker(result="3")
+        marker1 = _build_marker(payload="1", status=1)
+        marker2 = _build_marker(payload="2", status=1)
+        marker3 = _build_marker(payload="3", status=1)
 
         future_set_1 = [_build_future(marker1), _build_future(marker2),
                         _build_future(marker3)]
@@ -348,9 +388,9 @@ class ContextResultTestCase(NdbTestBase):
         """Ensure results loads the tasks and yields them out when no tasks are
         cached.
         """
-        marker1 = FuriousAsyncMarker(result="1")
-        marker2 = FuriousAsyncMarker(result="2")
-        marker3 = FuriousAsyncMarker(result="3")
+        marker1 = _build_marker(payload="1", status=1)
+        marker2 = _build_marker(payload="2", status=1)
+        marker3 = _build_marker(payload="3", status=1)
 
         future_set_1 = [_build_future(marker1), _build_future(marker2),
                         _build_future(marker3)]
@@ -360,11 +400,11 @@ class ContextResultTestCase(NdbTestBase):
         context = Context(_task_ids=["1", "2", "3"])
         context_result = ContextResult(context)
 
-        results = list(context_result.results)
+        results = list(context_result.items())
 
         results = sorted(results)
 
-        self.assertEqual(results, [("1", 1), ("2", 2), ("3", 3)])
+        self.assertEqual(results, [("1", "1"), ("2", "2"), ("3", "3")])
 
         self.assertEqual(context_result._task_cache, {
             "1": marker1,
@@ -377,9 +417,9 @@ class ContextResultTestCase(NdbTestBase):
         """Ensure results uses the cached tasks and yields them out when tasks
         are cached.
         """
-        marker1 = FuriousAsyncMarker(result="1")
-        marker2 = FuriousAsyncMarker(result="2")
-        marker3 = FuriousAsyncMarker(result="3")
+        marker1 = _build_marker(payload="1", status=1)
+        marker2 = _build_marker(payload="2", status=1)
+        marker3 = _build_marker(payload="3", status=1)
 
         context = Context(_task_ids=["1", "2", "3"])
         context_result = ContextResult(context)
@@ -390,11 +430,35 @@ class ContextResultTestCase(NdbTestBase):
             "3": marker3
         }
 
-        results = list(context_result.results)
+        results = list(context_result.items())
 
         results = sorted(results)
 
-        self.assertEqual(results, [("1", 1), ("2", 2), ("3", 3)])
+        self.assertEqual(results, [("1", "1"), ("2", "2"), ("3", "3")])
+
+        self.assertFalse(get_multi_async.called)
+
+    @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi_async')
+    def test_results_with_tasks_loaded_missing_result(self, get_multi_async):
+        """Ensure results uses the cached tasks and yields them out when tasks
+        are cached and there's no results.
+        """
+        marker1 = FuriousAsyncMarker()
+
+        context = Context(_task_ids=["1", "2", "3"])
+        context_result = ContextResult(context)
+
+        context_result._task_cache = {
+            "1": marker1,
+            "2": None,
+            "3": None
+        }
+
+        results = list(context_result.items())
+
+        results = sorted(results)
+
+        self.assertEqual(results, [("1", None), ("2", None), ("3", None)])
 
         self.assertFalse(get_multi_async.called)
 
@@ -437,6 +501,15 @@ class ContextResultTestCase(NdbTestBase):
 
         self.assertIsNone(context_result._marker)
         self.assertFalse(context_result.has_errors())
+
+
+def _build_marker(payload=None, status=None):
+    return FuriousAsyncMarker(result=json.dumps(
+        {
+            'payload': payload,
+            'status': status
+        }
+    ))
 
 
 def _build_future(result=None):

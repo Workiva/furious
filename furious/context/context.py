@@ -77,6 +77,7 @@ class Context(object):
             self._options['_task_ids'] = []
 
         self._id = self._get_id()
+        self._result = None
 
         self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
         if not callable(self._insert_tasks):
@@ -341,14 +342,17 @@ class ContextResult(object):
     def __init__(self, persistence_engine_result):
         self._engine_result = persistence_engine_result
 
-    @property
-    def results(self):
+    def items(self):
         """Yield the async reuslts for the context."""
-        return self._engine_result.results
+        return self._engine_result.items()
 
     def has_errors(self):
         """Return the error flag from the completion engine."""
         return self._engine_result.has_errors()
+
+    def values(self):
+        """Return the async reuslt values for the context."""
+        return self._engine_result.values()
 
 
 def _insert_tasks(tasks, queue, transactional=False):
