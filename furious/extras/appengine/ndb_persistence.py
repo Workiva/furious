@@ -28,6 +28,8 @@ from random import shuffle
 
 from google.appengine.ext import ndb
 
+from furious.context.context import ContextResultBase
+
 
 class FuriousContextNotFoundError(Exception):
     """FuriousContext entity not found in the datastore."""
@@ -76,7 +78,7 @@ class FuriousCompletionMarker(ndb.Model):
     has_errors = ndb.BooleanProperty(default=False, indexed=False)
 
 
-class ContextResult(object):
+class ContextResult(ContextResultBase):
 
     BATCH_SIZE = 10
 
@@ -207,7 +209,7 @@ def _check_markers(task_ids, offset=10):
 
         # Did any of the aync's fail? Check the success property on the
         # AsyncResult.
-        has_errors = not all([marker.success for marker in markers])
+        has_errors = not all((marker.success for marker in markers))
 
     return True, has_errors
 

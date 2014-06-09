@@ -466,7 +466,7 @@ class AsyncResult(object):
         is converted to a serialiable dict.
         """
         if self.status != self.ERROR or not self.payload:
-            return {}
+            return self.payload
 
         import traceback
 

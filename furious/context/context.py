@@ -41,7 +41,7 @@ Usage:
             queue='workgroup')
 
 """
-
+import abc
 import uuid
 
 from furious.job_utils import decode_callbacks
@@ -337,22 +337,24 @@ class Context(object):
         return self._result
 
 
-class ContextResult(object):
+class ContextResultBase(object):
 
-    def __init__(self, persistence_engine_result):
-        self._engine_result = persistence_engine_result
+    __metaclass__ = abc.ABCMeta
 
+    @abc.abstractmethod
     def items(self):
         """Yield the async reuslts for the context."""
-        return self._engine_result.items()
+        return
 
+    @abc.abstractmethod
     def has_errors(self):
         """Return the error flag from the completion engine."""
-        return self._engine_result.has_errors()
+        return
 
+    @abc.abstractmethod
     def values(self):
         """Return the async reuslt values for the context."""
-        return self._engine_result.values()
+        return
 
 
 def _insert_tasks(tasks, queue, transactional=False):
