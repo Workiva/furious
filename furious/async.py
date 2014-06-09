@@ -450,11 +450,16 @@ class AsyncResult(object):
 
     @property
     def success(self):
+        """Return True if the status is a success. This is true if the status
+        is not an error state. So abort or success. Abort is considered a
+        success as it's something expected by the developer. Errors would
+        generally only happen in tasks if something unexpected occurred.
+        """
         return self.status != self.ERROR
 
     def to_dict(self):
         """Return the AsyncResult converted to a dictionary and also to an
-        serializable format.
+        serilizable format.
         """
         return {
             'status': self.status,
@@ -463,7 +468,7 @@ class AsyncResult(object):
 
     def _payload_to_dict(self):
         """When an error status the payload is holding an AsyncException that
-        is converted to a serialiable dict.
+        is converted to a serilizable dict.
         """
         if self.status != self.ERROR or not self.payload:
             return self.payload
