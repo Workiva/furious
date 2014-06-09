@@ -359,26 +359,40 @@ class IterResultsTestCase(NdbTestBase):
         self.assertEqual(results[1], ("2", None))
         self.assertEqual(results[2], ("3", None))
 
-    #def test_failure_in_marker(self, get_multi_async):
-        #"""Ensure all the results are yielded out when less than the batch
-        #size.
-        #"""
-        #marker1 = FuriousAsyncMarker(result="1")
-        #marker2 = FuriousAsyncMarker(result="2")
-        #marker3 = FuriousAsyncMarker(result="3")
+    def test_failure_in_marker(self, get_multi_async):
+        """Ensure all the results are yielded out when less than the batch
+        size and a failure is included in the results.
+        """
+        async_id = "1"
+        async_result = AsyncResult()
+        try:
+            raise Exception()
+        except Exception, e:
+            async_result.payload = encode_exception(e)
+            async_result.status = async_result.ERROR
 
-        #future_set_1 = [_build_future(marker1), _build_future(marker2),
-                        #_build_future(marker3)]
+        json_dump = json.dumps(async_result.to_dict())
+        marker1 = FuriousAsyncMarker(id=async_id, result=json_dump,
+                                     status=async_result.status)
 
-        #get_multi_async.return_value = future_set_1
+        marker2 = FuriousAsyncMarker(
+            result=json.dumps(AsyncResult(payload="2", status=1).to_dict()))
+        marker3 = FuriousAsyncMarker(
+            result=json.dumps(AsyncResult(payload="3", status=1).to_dict()))
 
-        #context = Context(_task_ids=["1", "2", "3"])
+        future_set_1 = [_build_future(marker1), _build_future(marker2),
+                        _build_future(marker3)]
 
-        #results = list(iter_context_results(context))
+        get_multi_async.return_value = future_set_1
 
-        #self.assertEqual(results[0], ("1", marker1))
-        #self.assertEqual(results[1], ("2", marker2))
-        #self.assertEqual(results[2], ("3", marker3))
+        context = Context(_task_ids=["1", "2", "3"])
+        context_result = ContextResult(context)
+
+        results = list(context_result.items())
+
+        self.assertEqual(results[0], ("1", json.loads(json_dump)["payload"]))
+        self.assertEqual(results[1], ("2", "2"))
+        self.assertEqual(results[2], ("3", "3"))
 
 
 class ContextResultTestCase(NdbTestBase):
