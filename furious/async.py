@@ -459,7 +459,7 @@ class AsyncResult(object):
 
     def to_dict(self):
         """Return the AsyncResult converted to a dictionary and also to an
-        serilizable format.
+        serializable format.
         """
         return {
             'status': self.status,
@@ -468,7 +468,7 @@ class AsyncResult(object):
 
     def _payload_to_dict(self):
         """When an error status the payload is holding an AsyncException that
-        is converted to a serilizable dict.
+        is converted to a serializable dict.
         """
         if self.status != self.ERROR or not self.payload:
             return self.payload
