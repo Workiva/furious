@@ -64,22 +64,16 @@ def context_complete(context_id):
     """Log out that the context is complete."""
     logging.info('Context %s is.......... DONE.', context_id)
 
-    from furious.context import get_current_async
-    from furious.context import Context
+    from furious.context import get_current_async_with_context
 
-    async = get_current_async()
-    if not (async and async.context_id):
-        logging.error("Could not find current async")
-        return
-
-    context = Context.load(async.context_id)
+    _, context = get_current_async_with_context()
 
     if not context:
         logging.error("Could not load context")
         return
 
-    for result in context.iter_results():
+    for task_id, result in context.result.items():
         logging.info("#########################")
-        logging.info(result)
+        logging.info("Task Id: %s and Result: %s", task_id, result)
 
     return context_id
