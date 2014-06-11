@@ -41,7 +41,7 @@ Usage:
             queue='workgroup')
 
 """
-
+import abc
 import uuid
 
 from furious.job_utils import decode_callbacks
@@ -77,6 +77,7 @@ class Context(object):
             self._options['_task_ids'] = []
 
         self._id = self._get_id()
+        self._result = None
 
         self._insert_tasks = options.pop('insert_tasks', _insert_tasks)
         if not callable(self._insert_tasks):
@@ -322,14 +323,38 @@ class Context(object):
 
         return context
 
-    def iter_results(self):
-        """Yield out the results found on the markers for the context task ids.
+    @property
+    def result(self):
+        """Return the context result object pulled from the persistence_engine
+        if it has been set.
         """
-        if not self._persistence_engine:
-            raise RuntimeError(
-                'Specify a valid persistence_engine to persist this context.')
+        if not self._result:
+            if not self._persistence_engine:
+                return None
 
-        return self._persistence_engine.iter_results(self)
+            self._result = self._persistence_engine.get_context_result(self)
+
+        return self._result
+
+
+class ContextResultBase(object):
+
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def items(self):
+        """Yield the async reuslts for the context."""
+        return
+
+    @abc.abstractmethod
+    def has_errors(self):
+        """Return the error flag from the completion engine."""
+        return
+
+    @abc.abstractmethod
+    def values(self):
+        """Return the async reuslt values for the context."""
+        return
 
 
 def _insert_tasks(tasks, queue, transactional=False):
