@@ -111,7 +111,7 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             self.assertRaises(TypeError, run_job)
 
-        self.assertIsInstance(work.result, AsyncException)
+        self.assertIsInstance(work.result.payload, AsyncException)
 
     def test_calls_success_callback(self):
         """Ensure run_job calls the success callback after a successful run."""
@@ -375,6 +375,100 @@ class TestContextCompletionChecker(unittest.TestCase):
         self.assertEqual(checker.call_count, 0)
 
 
+@patch('furious.processors.get_current_async')
+class ProcessResultsTestCase(unittest.TestCase):
+
+    def test_is_success_with_callback(self, get_current_async):
+        """Ensure a sucessful process executes the sucess callback."""
+        from furious.processors import _process_results
+
+        async = Mock()
+        success_callback = Mock()
+
+        async.get_callbacks.return_value = {
+            'success': success_callback
+        }
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, success_callback.return_value)
+
+    def test_is_success_with_async_callback(self, get_current_async):
+        """Ensure a sucessful process executes the sucess callback and returns
+        an async if it's callback is an async.
+        """
+        from furious.async import Async
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+        success_callback = Mock(spec=Async)
+
+        async.get_callbacks.return_value = {
+            'success': success_callback
+        }
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, success_callback.start.return_value)
+
+    def test_is_success_with_no_callback(self, get_current_async):
+        """Ensure a sucessful process with no success callback returns the
+        async result payload if one exists.
+        """
+        from furious.async import Async
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+
+        async.get_callbacks.return_value = {}
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, async.result.payload)
+
+    def test_is_error_with_callback(self, get_current_async):
+        """Ensure an error process executes the error callback."""
+        from furious.async import Async
+        from furious.processors import AsyncException
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+        async.result.payload = AsyncException("", "", "", "")
+        error_callback = Mock(spec=Async)
+
+        async.get_callbacks.return_value = {
+            'error': error_callback
+        }
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, error_callback.start.return_value)
+
+    def test_is_error_with_no_callback(self, get_current_async):
+        """Ensure an error process with no callback raises the error."""
+        from furious.async import Async
+        from furious.async import AsyncResult
+        from furious.processors import encode_exception
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+
+        try:
+            raise Exception()
+        except Exception, e:
+            async.result = AsyncResult(payload=encode_exception(e),
+                                       status=AsyncResult.ERROR)
+
+        async.get_callbacks.return_value = {}
+        get_current_async.return_value = async
+
+        self.assertRaises(Exception, _process_results)
+
+
 def _fake_async_returning_target(async_to_return):
     return async_to_return
 
@@ -382,5 +476,5 @@ def _fake_async_returning_target(async_to_return):
 def _fake_result_returning_callback():
     from furious.context import get_current_async
 
-    return get_current_async().result
+    return get_current_async().result.payload
 
