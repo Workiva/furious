@@ -45,7 +45,7 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertEqual(contents,
                          "persistence: ndb\n"
-                         "logging: gae_logging\n"
+                         "logging: appengine_logging\n"
                          "log_sockets: False\n"
                          "log_socket_address: '127.0.0.1'\n"
                          "log_socket_port: 1200\n")

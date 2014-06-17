@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import json
-import os
 import unittest
 
 from mock import patch
@@ -24,6 +23,7 @@ from furious.async import Async
 from furious.extras.appengine.logger import log
 from furious.extras.appengine.logger import log_async_info_external
 from furious.extras.appengine.logger import _build_url
+from furious.extras.appengine.logger import _get_env_info
 from furious.extras.appengine.logger import _log_async_info_to_http
 from furious.extras.appengine.logger import _log_async_info_to_socket
 
@@ -95,12 +95,15 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
         super(LogAsyncInfoExternalTestCase, self).setUp()
 
         self._id = 'asyncid'
-        request_id = os.environ.get('REQUEST_LOG_ID')
+        request_id = _get_env_info('REQUEST_LOG_ID')
 
         self.async_info = {
             'url': 'foo',
-            'request_info': "%s#%s" % (
-                'testbed_test.testbed_version.default.NO_INSTANCE_ID',
+            'request_info': "%s.%s.%s.%s#%s" % (
+                _get_env_info('APPLICATION_ID', 'NO_APPID'),
+                _get_env_info('CURRENT_VERSION_ID', 'NO_VERSION'),
+                _get_env_info('CURRENT_MODULE_ID', 'NO_MODULE'),
+                _get_env_info('INSTANCE_ID', 'NO_INSTANCE_ID'),
                 request_id),
             'request_address': 'testbed_test',
             'id': "%s:%s" % (request_id, self._id)
