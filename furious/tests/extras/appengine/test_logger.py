@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import json
+import os
 import unittest
 
 from mock import patch
@@ -95,7 +96,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
         super(LogAsyncInfoExternalTestCase, self).setUp()
 
         self._id = 'asyncid'
-        request_id = _get_env_info('REQUEST_LOG_ID')
+        request_id = os.environ.get('REQUEST_LOG_ID', 'NO_REQUEST')
 
         self.async_info = {
             'url': 'foo',
@@ -105,7 +106,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
                 _get_env_info('CURRENT_MODULE_ID', 'NO_MODULE'),
                 _get_env_info('INSTANCE_ID', 'NO_INSTANCE_ID'),
                 request_id),
-            'request_address': 'testbed_test',
+            'request_address': _get_env_info('APPLICATION_ID', 'NO_APPID'),
             'id': "%s:%s" % (request_id, self._id)
         }
 
