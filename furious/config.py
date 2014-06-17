@@ -25,7 +25,7 @@ PERSISTENCE_MODULES = {
 }
 
 LOGGING_MODULES = {
-    'gae_logging': 'furious.extras.appengine.logger'
+    'appengine_logging': 'furious.extras.appengine.logger'
 }
 
 
@@ -141,7 +141,7 @@ def default_config():
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
             'task_system': 'appengine_taskqueue',
-            'logging': 'gae_logging'}
+            'logging': 'appengine_logging'}
 
 
 def _load_yaml_config(path=None):
