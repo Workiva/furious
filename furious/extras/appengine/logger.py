@@ -234,4 +234,4 @@ def _get_env_info(env_id, default=''):
 
 def _clean_string(string):
     """Return the string with special characters removed."""
-    return re.sub('[^a-zA-Z0-9\n]', '_', string.strip())
+    return re.sub('[^a-zA-Z0-9\n]', '_', string.strip()).strip('_')
