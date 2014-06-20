@@ -52,7 +52,7 @@ execution_context_from_async = _execution.execution_context_from_async
 
 def new(batch_size=None, **options):
     """Get a new furious context and add it to the registry. If a batch size is
-    specified, use an auto context which inserts tasks in batches as they are
+    specified, use an AutoContext which inserts tasks in batches as they are
     added to the context.
     """
 
