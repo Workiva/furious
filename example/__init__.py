@@ -37,6 +37,7 @@ from .context_events import ContextEventsHandler
 from .context_completion_with_results import ContextCompletionHandler
 from .grep import GrepHandler
 from .simple_workflow import SimpleWorkflowHandler
+from .limits import LimitHandler
 
 config = {
     'webapp2_extras.jinja2': {
@@ -59,5 +60,6 @@ app = webapp2.WSGIApplication([
     ('/batcher/run', BatcherHandler),
     ('/batcher/stats', BatcherStatsHandler),
     ('/grep', GrepHandler),
+    ('/limits', LimitHandler),
 ], config=config)
 
