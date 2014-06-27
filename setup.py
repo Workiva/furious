@@ -5,7 +5,7 @@ def get_version():
     import imp
     import os
 
-    with open(os.path.join('furious', os.path.sep, '_pkg_meta.py'), 'rb') as f:
+    with open(os.path.join('furious', '_pkg_meta.py'), 'rb') as f:
         mod = imp.load_source('_pkg_meta', 'biloba', f)
 
         return mod.version
