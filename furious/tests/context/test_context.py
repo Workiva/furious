@@ -32,6 +32,19 @@ class TestNew(unittest.TestCase):
 
         self.assertIsInstance(new(), Context)
 
+    def test_new_auto_context(self):
+        """Ensure new returns a new AutoContext when batch size is specified.
+        """
+        from furious.context import AutoContext
+        from furious.context import new
+
+        batch_size = 100
+
+        context = new(batch_size=batch_size)
+
+        self.assertIsInstance(context, AutoContext)
+        self.assertEqual(context.batch_size, batch_size)
+
     def test_new_adds_to_registry(self):
         """Ensure new adds new contexts to the context registry."""
         from furious.context import Context
