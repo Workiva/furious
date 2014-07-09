@@ -15,8 +15,7 @@
 #
 import webapp2
 
-from furious.handlers import process_async_task
-from furious.errors import AbortAndRestart
+from furious.handlers import handle_task
 
 
 class AsyncJobHandler(webapp2.RequestHandler):
@@ -31,18 +30,12 @@ class AsyncJobHandler(webapp2.RequestHandler):
         """Pass request info to the async framework."""
         headers = self.request.headers
 
-        message = None
-        try:
-            status_code, output = process_async_task(
-                headers, self.request.body)
-        except AbortAndRestart as restart:
-            # Async retry status code
-            status_code = 549
-            message = 'Retry Async Task'
-            output = str(restart)
+        status_code, message, output = handle_task(
+            headers, self.request.body)
 
         self.response.set_status(status_code, message)
         self.response.out.write(output)
+
 
 app = webapp2.WSGIApplication([
     ('.*', AsyncJobHandler)

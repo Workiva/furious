@@ -19,7 +19,32 @@ import logging
 
 from furious.async import async_from_options
 from furious import context
+from furious.errors import AbortAndRestart
 from furious.processors import run_job
+
+
+def handle_task(headers, request_body):
+    """Handle an Async task, execute the requested function and log the
+    details.
+    """
+    message = None
+
+    try:
+        status_code, async = process_async_task(
+            headers, request_body)
+        output = async.function_path
+    except AbortAndRestart as restart:
+        # Async retry status code
+        status_code = 549
+        message = 'Retry Async Task'
+        output = str(restart)
+
+    try:
+        log_task_info(headers, async, status_code)
+    except:
+        pass
+
+    return status_code, message, output
 
 
 def process_async_task(headers, request_body):
@@ -27,16 +52,15 @@ def process_async_task(headers, request_body):
     async_options = json.loads(request_body)
     async = async_from_options(async_options)
 
-    log_task_info(headers, async)
     logging.info(async.function_path)
 
     with context.execution_context_from_async(async):
         run_job()
 
-    return 200, async.function_path
+    return 200, async
 
 
-def log_task_info(headers, async):
+def log_task_info(headers, async, status_code):
     from furious.config import get_default_logging_engine
 
     logger = get_default_logging_engine()
@@ -44,4 +68,4 @@ def log_task_info(headers, async):
     if not logger:
         return
 
-    logger.log(async, headers)
+    logger.log(async, headers, status_code)

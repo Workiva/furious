@@ -31,7 +31,7 @@ class CONNECTIONS:
     UDP = 'upd'
 
 
-def log(async, headers):
+def log(async, headers, status_code):
     """Log the gae request info out to the default python logger. If an
     external logger is configured trigger the external logging of the same info
     and the specific async info.
@@ -44,10 +44,10 @@ def log(async, headers):
 
     if config.get('log_external', False):
         logging.debug("Send async info over external connection.")
-        log_async_info_external(config, async, task_info)
+        log_async_info_external(config, async, status_code, task_info)
 
 
-def log_async_info_external(config, async, task_info=None):
+def log_async_info_external(config, async, status_code, task_info=None):
     """Log the task info and async information (id, path info, url, etc) to an
     external logger. It will serialize a json payload to pass to an http, udp,
     or tcp connection. Add settings are pulled from the config file. If any
@@ -56,7 +56,7 @@ def log_async_info_external(config, async, task_info=None):
     be overridden in the config settings.
     """
 
-    payload = _make_payload(async, task_info)
+    payload = _make_payload(async, status_code, task_info)
 
     if not payload:
         logging.debug("Unable to get task payload.")
@@ -162,24 +162,24 @@ def _build_url(connection_address, connection_port):
     return connection_address
 
 
-def _make_payload(async, task_info=None):
+def _make_payload(async, status_code, task_info=None):
     """Create a dict consisting of the async full id, async function path as
     the url, request info, application id as the address and combine it with
     the passed in task info. Then json dumps that and return it.
     """
 
-    if not async:
-        return
-
     try:
         # TODO: Handle payload size.
         # TODO: Add app id
         payload = {
-            'id': async.full_id,
-            'url': async.function_path,
             'request_info': _get_request_info(),
             'request_address': _get_env_info('APPLICATION_ID', 'NO_APPID'),
+            'status_code': status_code
         }
+
+        if async:
+            payload['id'] = async.full_id
+            payload['url'] = async.function_path
 
         if task_info:
             payload.update(task_info)
