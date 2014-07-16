@@ -1,1 +1,5 @@
 persistence: ndb
+logging: appengine_logging
+log_sockets: False
+log_socket_address: '127.0.0.1'
+log_socket_port: 1200
