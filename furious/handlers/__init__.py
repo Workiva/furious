@@ -29,6 +29,8 @@ def handle_task(headers, request_body):
     """
     message = None
 
+    init_stats = start_stats()
+
     try:
         status_code, async = process_async_task(
             headers, request_body)
@@ -40,7 +42,7 @@ def handle_task(headers, request_body):
         output = str(restart)
 
     try:
-        log_task_info(headers, async, status_code)
+        log_task_info(headers, async, status_code, init_stats)
     except:
         pass
 
@@ -60,7 +62,15 @@ def process_async_task(headers, request_body):
     return 200, async
 
 
-def log_task_info(headers, async, status_code):
+def start_stats():
+    import time
+
+    return {
+        'start_time': time.time()
+    }
+
+
+def log_task_info(headers, async, status_code, init_stats):
     from furious.config import get_default_logging_engine
 
     logger = get_default_logging_engine()
@@ -68,4 +78,4 @@ def log_task_info(headers, async, status_code):
     if not logger:
         return
 
-    logger.log(async, headers, status_code)
+    logger.log(async, headers, status_code, init_stats)

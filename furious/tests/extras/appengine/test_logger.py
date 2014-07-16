@@ -48,7 +48,7 @@ class LogTestCase(unittest.TestCase):
         with patch('furious.extras.appengine.logger.time.time') as time:
             time.return_value = 10
 
-            log(async, headers)
+            log(async, headers, 200, {'start_time': 10})
 
         self.assertFalse(log_external.called)
 
@@ -60,7 +60,9 @@ class LogTestCase(unittest.TestCase):
             'retry_count': 3,
             'gae_latency_seconds': 6.0,
             'task_eta': 4.0,
-            'execution_count': 2
+            'execution_count': 2,
+            'end': 10,
+            'run_time': 0
         })
 
     @patch('furious.extras.appengine.logger.get_config')
@@ -81,12 +83,12 @@ class LogTestCase(unittest.TestCase):
         with patch('furious.extras.appengine.logger.time.time') as time:
             time.return_value = 11
 
-            log(async, headers)
+            log(async, headers, 200, {'start_time': 10})
 
         args, _ = json_dump.call_args
         task_info = args[0]
 
-        log_external.assert_called_once_with(config, async, task_info)
+        log_external.assert_called_once_with(config, async, 200, task_info)
 
 
 @patch('furious.extras.appengine.logger._log_async_info_to_http')
@@ -115,7 +117,8 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
             'retry_count': 3,
             'gae_latency_seconds': 6.0,
             'task_eta': 4.0,
-            'execution_count': 2
+            'execution_count': 2,
+            'status_code': 200
         }
 
         self.async_info.update(self.task_info)
@@ -133,7 +136,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
 
         async = Async('foo', id=self._id)
 
-        log_async_info_external(config, async, self.task_info)
+        log_async_info_external(config, async, 200, self.task_info)
 
         payload = json.dumps(self.async_info)
 
@@ -150,7 +153,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
 
         async = Async('foo', id=self._id)
 
-        log_async_info_external(config, async, self.task_info)
+        log_async_info_external(config, async, 200, self.task_info)
 
         payload = json.dumps(self.async_info)
 
@@ -170,7 +173,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
 
         async = Async('foo', id=self._id)
 
-        log_async_info_external(config, async, self.task_info)
+        log_async_info_external(config, async, 200, self.task_info)
 
         payload = json.dumps(self.async_info)
 
@@ -193,7 +196,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
 
         async = Async('foo', id=self._id)
 
-        log_async_info_external(config, async, self.task_info)
+        log_async_info_external(config, async, 200, self.task_info)
 
         payload = json.dumps(self.async_info)
 
@@ -214,7 +217,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
 
         async = Async('foo', id=self._id)
 
-        log_async_info_external(config, async, self.task_info)
+        log_async_info_external(config, async, 200, self.task_info)
 
         self.assertFalse(log_http.called)
         self.assertFalse(log_socket.called)
@@ -233,10 +236,22 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
             'log_external_deadline': 3
         }
 
-        log_async_info_external(config, None)
+        payload = json.dumps({
+            'request_info': "%s.%s.%s.%s#%s" % (
+                _get_env_info('APPLICATION_ID', 'NO_APPID'),
+                _get_env_info('CURRENT_VERSION_ID', 'NO_VERSION'),
+                _get_env_info('CURRENT_MODULE_ID', 'NO_MODULE'),
+                _get_env_info('INSTANCE_ID', 'NO_INSTANCE_ID'),
+                os.environ.get('REQUEST_LOG_ID', 'NO_REQUEST')
+            ),
+            'request_address': _get_env_info('APPLICATION_ID', 'NO_APPID'),
+            'status_code': 200
+        })
+
+        log_async_info_external(config, None, 200)
 
         self.assertFalse(log_http.called)
-        self.assertFalse(log_socket.called)
+        log_socket.assert_called_once_with(protocol, address, 123, 3, payload)
 
     @patch('furious.extras.appengine.logger._log_async_info_to_socket')
     def test_failed_payload(self, log_socket, log_http):
@@ -253,7 +268,7 @@ class LogAsyncInfoExternalTestCase(unittest.TestCase):
             'log_external_deadline': 3
         }
 
-        log_async_info_external(config, {'foo': Decimal('10')})
+        log_async_info_external(config, {'foo': Decimal('10')}, 200)
 
         self.assertFalse(log_http.called)
         self.assertFalse(log_socket.called)

@@ -31,12 +31,12 @@ class CONNECTIONS:
     UDP = 'upd'
 
 
-def log(async, headers, status_code):
+def log(async, headers, status_code, init_stats):
     """Log the gae request info out to the default python logger. If an
     external logger is configured trigger the external logging of the same info
     and the specific async info.
     """
-    task_info = _get_task_info(headers)
+    task_info = _get_task_info(headers, init_stats)
 
     logging.debug('TASK-INFO: %s', json.dumps(task_info))
 
@@ -209,17 +209,20 @@ def _get_request_info():
     }
 
 
-def _get_task_info(headers):
+def _get_task_info(headers, init_stats):
     """Processes the header from task requests to log analytical data."""
 
-    ran_at = time.time()
+    start = init_stats.get('start_time', 0)
+    end = time.time()
     task_eta = float(headers.get('X-Appengine-Tasketa', 0.0))
     task_info = {
         'retry_count': headers.get('X-Appengine-Taskretrycount', ''),
         'execution_count': headers.get('X-Appengine-Taskexecutioncount', ''),
         'task_eta': task_eta,
-        'ran': ran_at,
-        'gae_latency_seconds': ran_at - task_eta
+        'ran': start,
+        'gae_latency_seconds': start - task_eta,
+        'end': end,
+        'run_time': end - start
     }
 
     return task_info

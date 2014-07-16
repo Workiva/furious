@@ -53,8 +53,7 @@ class FuriousContext(ndb.Model):
         # TODO: Handle exceptions and retries here.
         entity = cls.get_by_id(id)
         if not entity:
-            raise FuriousContextNotFoundError(
-                "Context entity not found for: {}".format(id))
+            return
 
         return Context.from_dict(entity.context)
 

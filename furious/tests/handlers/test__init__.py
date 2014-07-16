@@ -31,7 +31,7 @@ class TestLogTaskInfo(unittest.TestCase):
         from furious.handlers import log_task_info
         get_engine.return_value = None
 
-        log_task_info({}, None)
+        log_task_info({}, None, 200, {})
 
         get_engine.assert_called_once_with()
 
@@ -41,10 +41,11 @@ class TestLogTaskInfo(unittest.TestCase):
         request = {}
         async = None
 
-        log_task_info(request, async)
+        log_task_info(request, async, 200, {})
 
         get_engine.assert_called_once_with()
-        get_engine.return_value.log.assert_called_once_with(async, request)
+        get_engine.return_value.log.assert_called_once_with(async, request,
+                                                            200, {})
 
     #def test_all_headers(self, debug_mock, time_mock):
         #"""Ensure log_task_info produces the correct logs."""
