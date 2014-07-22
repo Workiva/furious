@@ -491,7 +491,12 @@ class TestAsync(unittest.TestCase):
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('dir', None, None), 'id': 'petey'}
+            'exec': {'job': ('dir', None, None), 'id': 'petey'},
+            'complete': {
+                'job': ('dir', None, None),
+                'id': 'foo',
+                '_type': 'furious.batcher.MessageProcessor'
+            },
         }
 
         options = {'job': job, 'callbacks': callbacks}
@@ -505,6 +510,7 @@ class TestAsync(unittest.TestCase):
 
         callbacks = async_job.get_callbacks()
         exec_callback = callbacks.pop('exec')
+        completion_callback = callbacks.pop('complete')
 
         correct_options = {'job': ('dir', None, None),
                            'id': 'petey',
@@ -512,8 +518,15 @@ class TestAsync(unittest.TestCase):
                            '_recursion': {'current': 0, 'max': 100},
                            '_type': 'furious.async.Async'}
 
+        completion_options = {'job': ('dir', None, None),
+                              'id': 'foo',
+                              'context_id': None,
+                              '_recursion': {'current': 0, 'max': 100},
+                              '_type': 'furious.batcher.MessageProcessor'}
+
         self.assertEqual(check_callbacks, callbacks)
         self.assertEqual(correct_options, exec_callback.to_dict())
+        self.assertEqual(completion_options, completion_callback.to_dict())
 
     def test_reconstitution(self):
         """Ensure to_dict(job.from_dict()) returns the same thing."""
