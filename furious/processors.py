@@ -122,8 +122,8 @@ def _process_results():
         callback = callbacks.get('error')
 
         if not callback:
-            raise (async.result.payload.exception, None,
-                   async.result.payload.traceback)
+            raise async.result.payload.exception, None, \
+                async.result.payload.traceback[2]
 
     return _execute_callback(async, callback)
 
