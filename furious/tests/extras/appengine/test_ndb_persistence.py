@@ -19,6 +19,7 @@ import unittest
 
 from google.appengine.ext import testbed
 from google.appengine.datastore import datastore_stub_util
+from google.appengine.runtime.apiproxy_errors import DeadlineExceededError
 
 from mock import Mock
 from mock import patch
@@ -207,8 +208,7 @@ class CompletionCheckerTestCase(NdbTestBase):
 
         self.assertFalse(check_markers.start.called)
 
-    @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
-    def test_markers_complete(self, mark, context_from_id, check_markers):
+    def test_markers_complete(self, context_from_id, check_markers):
         """Ensure if all markers are complete that True is returned and the
         completion handler and cleanup tasks are triggered.
         """
@@ -219,16 +219,16 @@ class CompletionCheckerTestCase(NdbTestBase):
         context_from_id.return_value = context
 
         check_markers.return_value = True, False
-        mark.return_value = True
 
         async = Async('foo')
         async.update_options(context_id='contextid')
+        FuriousCompletionMarker(id=async.context_id, complete=False).put()
 
         result = _completion_checker(async.id, async.context_id)
 
         self.assertTrue(result)
 
-        complete_event.start.assert_called_once_with()
+        complete_event.start.assert_called_once_with(transactional=True)
 
     @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
     def test_markers_and_context_complete(self, mark, context_from_id,
@@ -258,6 +258,36 @@ class CompletionCheckerTestCase(NdbTestBase):
         self.assertFalse(complete_event.start.called)
 
         marker.key.delete()
+
+    @patch('furious.extras.appengine.ndb_persistence._insert_post_complete_tasks')
+    def test_marker_not_complete_when_start_fails(self, mock_insert,
+                                                  context_from_id,
+                                                  check_markers):
+        """Ensure if the completion handler fails to start, that the marker
+        does not get marked as complete.
+        """
+
+        complete_event = Mock()
+        context = Context(id="contextid",
+                          callbacks={'complete': complete_event})
+
+        context_from_id.return_value = context
+
+        check_markers.return_value = True, False
+
+        async = Async('foo')
+        async.update_options(context_id='contextid')
+        FuriousCompletionMarker(id=async.context_id, complete=False).put()
+
+        # Simulate the task failing to start
+        mock_insert.side_effect = DeadlineExceededError()
+
+        self.assertRaises(DeadlineExceededError,
+                          _completion_checker, async.id, async.context_id)
+
+        # Marker should not have been marked complete.
+        current_marker = FuriousCompletionMarker.get_by_id(async.context_id)
+        self.assertFalse(current_marker.complete)
 
 
 @patch('furious.extras.appengine.ndb_persistence.ndb.get_multi')
