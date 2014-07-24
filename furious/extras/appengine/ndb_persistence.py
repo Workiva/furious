@@ -151,12 +151,7 @@ def _completion_checker(async_id, context_id):
     marker = FuriousCompletionMarker.get_by_id(context_id)
 
     if marker and marker.complete:
-        logging.info("Context %s already complete, executing callback." %
-                     context_id)
-
-        # Execute callback, in case this is a retry and it could not be executed
-        # the first time.
-        _insert_post_complete_tasks(context)
+        logging.info("Context %s already complete" % context_id)
         return True
 
     task_ids = context.task_ids

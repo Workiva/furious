@@ -233,8 +233,8 @@ class CompletionCheckerTestCase(NdbTestBase):
     @patch('furious.extras.appengine.ndb_persistence._mark_context_complete')
     def test_markers_and_context_complete(self, mark, context_from_id,
                                           check_markers):
-        """Ensure if all markers are complete that True is returned and the
-        completion event is called.
+        """Ensure if all markers are complete that True is returned and
+        nothing else is done.
         """
         async = Async('foo')
         async.update_options(context_id='contextid')
@@ -255,7 +255,7 @@ class CompletionCheckerTestCase(NdbTestBase):
 
         self.assertTrue(result)
 
-        self.assertEqual(complete_event.start.call_count, 1)
+        self.assertFalse(complete_event.start.called)
 
         marker.key.delete()
 
