@@ -166,10 +166,7 @@ def _completion_checker(async_id, context_id):
     if not done:
         return False
 
-    first_complete = _mark_context_complete(marker, context, has_errors)
-
-    if first_complete:
-        _insert_post_complete_tasks(context)
+    _mark_context_complete(marker, context, has_errors)
 
     return True
 
@@ -233,6 +230,9 @@ def _mark_context_complete(marker, context, has_errors):
     current.has_errors = has_errors
     current.put()
 
+    # Kick off completion tasks.
+    _insert_post_complete_tasks(context)
+
     return True
 
 
@@ -242,7 +242,7 @@ def _insert_post_complete_tasks(context):
     logging.debug("Context %s is complete.", context.id)
 
     # Async event handlers
-    context.exec_event_handler('complete')
+    context.exec_event_handler('complete', transactional=True)
 
     # Insert cleanup tasks
     try:

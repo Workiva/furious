@@ -204,7 +204,7 @@ class Context(object):
         callbacks[event] = handler
         self._options['callbacks'] = callbacks
 
-    def exec_event_handler(self, event):
+    def exec_event_handler(self, event, transactional=False):
         """Execute the Async set to be run on event."""
         # QUESTION: Should we raise an exception if `event` is not in some
         # known event-type list?
@@ -216,7 +216,7 @@ class Context(object):
         if not handler:
             raise Exception('Handler not defined!!!')
 
-        handler.start()
+        handler.start(transactional=transactional)
 
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
