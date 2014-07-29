@@ -178,7 +178,7 @@ class Async(object):
     @property
     def _function_path(self):
         # DEPRECATED: Hanging around for backwards compatibility.
-        return self.function_path()
+        return self.function_path
 
     @property
     def job(self):
