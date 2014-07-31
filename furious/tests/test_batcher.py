@@ -353,31 +353,18 @@ class MessageProcessorTestCase(unittest.TestCase):
         task_retry.return_value = task_retry_object
 
         processor = MessageProcessor('something', queue='test_queue',
-                                     id='someid')
+                                     id='someid', parent_id='parentid',
+                                     context_id="contextid")
 
         processor.to_task()
 
         task_args = {
-            'url': '/_ah/queue/async/something',
-            'headers': {},
-            'payload': json.dumps({
-                'queue': 'test_queue',
-                'job': ("something", None, None),
-                'id': 'someid',
-                'task_args': {
-                    'countdown': 30,
-                    'name': 'processor-processor-current-batch-3'
-                },
-                '_recursion': {
-                    'current': 1,
-                    'max': 100
-                },
-                '_type': 'furious.batcher.MessageProcessor',
-                'context_id': None
-            }),
-            'countdown': 30,
             'name': 'processor-processor-current-batch-3',
-            'retry_options': task_retry_object
+            'url': '/_ah/queue/async/something',
+            'countdown': 30,
+            'headers': {},
+            'retry_options': task_retry_object,
+            'payload': json.dumps(processor.to_dict())
         }
 
         task.assert_called_once_with(**task_args)

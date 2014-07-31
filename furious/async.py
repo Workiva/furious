@@ -71,6 +71,8 @@ import copy
 from functools import partial
 from functools import wraps
 import json
+import os
+import uuid
 
 from furious.job_utils import decode_callbacks
 from furious.job_utils import encode_callbacks
@@ -109,6 +111,7 @@ class Async(object):
         self._initialize_recursion_depth()
 
         self._context_id = self._get_context_id()
+        self._parent_id = self._get_parent_id()
         self._id = self._get_id()
 
         self._execution_context = None
@@ -165,12 +168,17 @@ class Async(object):
         """Store this Async's result in persistent storage."""
         self._prepare_persistence_engine()
 
-        return self._persistence_engine.store_async_result(self.id,
-                                                           self.result)
+        return self._persistence_engine.store_async_result(
+            self.id, self.result)
+
+    @property
+    def function_path(self):
+        return self.job[0]
 
     @property
     def _function_path(self):
-        return self.job[0]
+        # DEPRECATED: Hanging around for backwards compatibility.
+        return self.function_path
 
     @property
     def job(self):
@@ -290,7 +298,7 @@ class Async(object):
         self._increment_recursion_level()
         self.check_recursion_depth()
 
-        url = "%s/%s" % (ASYNC_ENDPOINT, self._function_path)
+        url = "%s/%s" % (ASYNC_ENDPOINT, self.function_path)
 
         kwargs = {
             'url': url,
@@ -373,13 +381,58 @@ class Async(object):
 
         self._persistence_engine = get_default_persistence_engine()
 
+    def _get_context_id(self):
+        """If this async is in a context set the context id."""
+
+        from furious.context import get_current_context
+
+        context_id = self._options.get('context_id')
+
+        if context_id:
+            return context_id
+
+        try:
+            context = get_current_context()
+        except errors.NotInContextError:
+            context = None
+            self.update_options(context_id=None)
+
+        if context:
+            context_id = context.id
+            self.update_options(context_id=context_id)
+
+        return context_id
+
+    def _get_parent_id(self):
+        """If this async is in within another async set that async id as the
+        parent.
+        """
+        parent_id = self._options.get('parent_id')
+        if parent_id:
+            return parent_id
+
+        from furious.context import get_current_async
+
+        try:
+            async = get_current_async()
+        except errors.NotInContextError:
+            async = None
+
+        if async:
+            parent_id = ":".join([async.parent_id.split(":")[0], async.id])
+        else:
+            parent_id = self.request_id
+
+        self.update_options(parent_id=parent_id)
+
+        return parent_id
+
     def _get_id(self):
         """If this async has no id, generate one."""
         id = self._options.get('id')
         if id:
             return id
 
-        import uuid
         id = uuid.uuid4().hex
         self.update_options(id=id)
         return id
@@ -388,6 +441,37 @@ class Async(object):
     def id(self):
         """Return this Async's ID value."""
         return self._id
+
+    @property
+    def context_id(self):
+        """Return this Async's Context Id if it exists."""
+        return self._context_id
+
+    @property
+    def parent_id(self):
+        """Return this Async's Parent Id if it exists."""
+        return self._parent_id
+
+    @property
+    def full_id(self):
+        """Return the full_id for this Async. Consists of the parent id, id and
+        context id.
+        """
+        full_id = ""
+
+        if self.parent_id:
+            full_id = ":".join([self.parent_id, self.id])
+        else:
+            full_id = self.id
+
+        if self.context_id:
+            full_id = "|".join([full_id, self.context_id])
+
+        return full_id
+
+    @property
+    def request_id(self):
+        return os.environ.get('REQUEST_LOG_ID', uuid.uuid4().hex)
 
     def _increment_recursion_level(self):
         """Increment current_depth based on either defaults or the enclosing
