@@ -5,7 +5,7 @@ import os
 class StatProcessor(object):
 
     def __init__(self, env, recorder):
-        """Initialize the stat procossor with the environment variables and
+        """Initialize the stat processor with the environment variables and
         recorder.
         """
         self.env = {}
