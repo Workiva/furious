@@ -44,12 +44,6 @@ class StatProcessorTestCase(unittest.TestCase):
             'request_id': ''
         })
 
-    def test_get_host_is_server_name(self):
-        """Ensure the SERVER_NAME is returned for the host if it exists."""
-        processor = StatProcessor({'SERVER_NAME': 'sname'}, None)
-
-        self.assertEqual(processor.get_host(), 'sname')
-
     def test_get_host_is_app_id(self):
         """Ensure the APPLICATION_ID is returned for the host if it exists and
         the SERVER_NAME does not.

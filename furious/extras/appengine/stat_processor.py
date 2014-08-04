@@ -27,8 +27,7 @@ class StatProcessor(object):
 
     def get_host(self):
         """Return the server name or application name from the environemnt."""
-        return self.env.get('SERVER_NAME') or self.env.get('APPLICATION_ID',
-                                                           'NO_APPID')
+        return self.env.get('APPLICATION_ID', 'NO_APPID')
 
     def get_task_stats(self):
         """Processes the environment data from task requests to get some
