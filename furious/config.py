@@ -75,7 +75,7 @@ def _get_configured_module(option_name, known_modules=None,
         option_name: name of persistence module
         known_modules: dictionary of module names and module paths,
             ie: {'ndb':'furious.extras.appengine.ndb_persistence'}
-        verify_exists: boolean of wether to ensure the keys and modules exist
+        verify_exists: boolean of whether to ensure the keys and modules exist
             or just return if they don't.
     Returns:
         module of the module path matching the name in known_modules
