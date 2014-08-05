@@ -50,10 +50,11 @@ def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
     return _get_configured_module('persistence', known_modules=known_modules)
 
 
-def _get_configured_module(option_name, known_modules=None):
+def get_module(option_name, known_modules=None):
     """Get the module specified by the value of option_name. The value of the
     configuration option will be used to load the module by name from the known
-    module list or treated as a path if not found in known_modules.
+    module list or treated as a path if not found in known_modules. If the
+    module is not found then None will be returned.
     Args:
         option_name: name of persistence module
         known_modules: dictionary of module names and module paths,
@@ -61,9 +62,31 @@ def _get_configured_module(option_name, known_modules=None):
     Returns:
         module of the module path matching the name in known_modules
     """
+    return _get_configured_module(option_name, known_modules=known_modules,
+                                  verify_exists=False)
+
+
+def _get_configured_module(option_name, known_modules=None,
+                           verify_exists=True):
+    """Get the module specified by the value of option_name. The value of the
+    configuration option will be used to load the module by name from the known
+    module list or treated as a path if not found in known_modules.
+    Args:
+        option_name: name of persistence module
+        known_modules: dictionary of module names and module paths,
+            ie: {'ndb':'furious.extras.appengine.ndb_persistence'}
+        verify_exists: boolean of whether to ensure the keys and modules exist
+            or just return if they don't.
+    Returns:
+        module of the module path matching the name in known_modules
+    """
     from furious.job_utils import path_to_reference
 
     config = get_config()
+
+    if not verify_exists and option_name not in config:
+        return
+
     option_value = config[option_name]
 
     # If no known_modules were give, make it an empty dict.
@@ -71,6 +94,7 @@ def _get_configured_module(option_name, known_modules=None):
         known_modules = {}
 
     module_path = known_modules.get(option_value) or option_value
+
     return path_to_reference(module_path)
 
 

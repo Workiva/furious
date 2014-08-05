@@ -125,6 +125,44 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertEqual(module, async)
 
+    def test_get_configured_module_by_name_is_invlid_path(self):
+        """Ensure _get_configured_module raises when trying to load non
+        existing options by name.
+        """
+        from furious.config import _get_configured_module
+        from furious.errors import BadObjectPathError
+        from furious import config
+
+        config.get_config()['other_option'] = 'cfg'
+
+        self.assertRaises(BadObjectPathError, _get_configured_module,
+                          'other_option')
+
+    def test_get_configured_module_by_name_doesnt_exist_no_verify(self):
+        """Ensure _get_configured_module raises when trying to load non
+        existing options by name.
+        """
+        from furious.config import _get_configured_module
+
+        self.assertRaises(KeyError, _get_configured_module,
+                          'other_option')
+
+    def test_get_configured_module_by_name_doesnt_exist_no_verify(self):
+        """Ensure _get_configured_module raises when trying to load non
+        existing options by name.
+        """
+        from furious.config import _get_configured_module
+
+        self.assertRaises(KeyError, _get_configured_module,
+                          'other_option')
+
+    def test_get_configured_module_by_name_doesnt_exist_with_verify(self):
+        """Ensure _get_configured_module loads options by name."""
+        from furious.config import _get_configured_module
+
+        self.assertRaises(KeyError, _get_configured_module,
+                          'other_option')
+
     def test_get_config_empty_yaml(self):
         """Ensure an empty furious.yaml will produce a default config."""
         from furious.config import default_config
@@ -135,4 +173,3 @@ class TestConfigurationLoading(unittest.TestCase):
         my_config = _parse_yaml_config(example_yaml)
 
         self.assertEqual(my_config, default_config())
-
