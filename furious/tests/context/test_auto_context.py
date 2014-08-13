@@ -18,7 +18,6 @@ import unittest
 
 from google.appengine.ext import testbed
 
-from mock import Mock
 from mock import patch
 
 
@@ -47,7 +46,7 @@ class TestAutoContextTestCase(unittest.TestCase):
         os.environ.clear()
         os.environ.update(self._orig_environ)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
     def test_add_job_to_context_multiple_batches(self, queue_add_mock):
         """Ensure adding more tasks than the batch_size causes multiple batches
         to get inserted.
@@ -76,18 +75,14 @@ class TestAutoContextTestCase(unittest.TestCase):
             self.assertIsInstance(job2, Async)
             queue_add_mock.assert_called_once()
             #Ensure only two tasks were inserted
-            tasks_added = queue_add_mock.call_args[0][0]
-            self.assertEqual(2, len(tasks_added))
+            self.assertEqual(2, len(queue_add_mock.call_args_list))
 
         # Ensure the third job was inserted when the context exited.
         self.assertIsInstance(job3, Async)
-        # Ensure add has now been called twice.
-        self.assertEqual(2, queue_add_mock.call_count)
-        # Ensure only one task was inserted
-        tasks_added = queue_add_mock.call_args[0][0]
-        self.assertEqual(1, len(tasks_added))
+        # Ensure add_async has now been called three times.
+        self.assertEqual(3, queue_add_mock.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
     def test_add_job_to_context_batch_size_unspecified(self, queue_add_mock):
         """When batch_size is None or 0, the default behavior of Context is
         used.  All the tasks are added to the queue when the context is exited.
@@ -108,11 +103,8 @@ class TestAutoContextTestCase(unittest.TestCase):
             # Ensure no batches of tasks are inserted yet.
             self.assertFalse(queue_add_mock.called)
 
-        # Ensure the list of tasks added when the context exited.
-        self.assertEqual(1, queue_add_mock.call_count)
         # Ensure the three tasks were inserted
-        tasks_added = queue_add_mock.call_args[0][0]
-        self.assertEqual(3, len(tasks_added))
+        self.assertEqual(3, len(queue_add_mock.call_args_list))
 
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_no_jobs(self, queue_add_mock):
