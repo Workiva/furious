@@ -16,7 +16,7 @@
 """This module contains the default functions to use when performing
 persistence operations backed by the App Engine ndb library.
 """
-
+import os
 import json
 import logging
 
@@ -29,6 +29,10 @@ from random import shuffle
 from google.appengine.ext import ndb
 
 from furious.context.context import ContextResultBase
+
+CLEAN_QUEUE = 'clean'
+DEFAULT_QUEUE = 'default'
+QUEUE_HEADER = 'HTTP_X_APPENGINE_QUEUENAME'
 
 
 class FuriousContextNotFoundError(Exception):
@@ -133,11 +137,18 @@ def context_completion_checker(async):
     store_async_marker(async.id, async.result.status if async.result else -1)
 
     logging.debug("Async check completion for: %s", async.context_id)
-
+    current_queue = _get_current_queue()
     from furious.async import Async
-    Async(_completion_checker, args=(async.id, async.context_id)).start()
+    logging.debug("Completion Check queue:%s", current_queue)
+    Async(_completion_checker, queue=current_queue,
+          args=(async.id, async.context_id)).start()
 
     return True
+
+
+def _get_current_queue():
+
+    return os.environ.get(QUEUE_HEADER, DEFAULT_QUEUE)
 
 
 def _completion_checker(async_id, context_id):
@@ -169,20 +180,6 @@ def _completion_checker(async_id, context_id):
     _mark_context_complete(marker, context, has_errors)
 
     return True
-
-
-def _insert_cleanup_task(context_id, task_ids, delay=7200):
-    """Insert a task to delete all clean up markers for the task ids passed in.
-    The task will be inserted with a delay.
-    """
-    try:
-        # TODO: If tracking results we may not want to auto cleanup and instead
-        # wait until the results have been accessed.
-        from furious.async import Async
-        Async(_cleanup_markers, args=[context_id, task_ids],
-              task_args={'countdown': delay}).start()
-    except:
-        pass
 
 
 def _check_markers(task_ids, offset=10):
@@ -249,8 +246,9 @@ def _insert_post_complete_tasks(context):
         # TODO: If tracking results we may not want to auto cleanup and instead
         # wait until the results have been accessed.
         from furious.async import Async
-        Async(_cleanup_markers, args=[context.id, context.task_ids],
-              task_args={'countdown': 7200}).start()
+        Async(_cleanup_markers, queue=CLEAN_QUEUE,
+              args=[context.id, context.task_ids],
+              task_args={'countdown': 7600}).start()
     except:
         pass
 

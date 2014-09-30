@@ -73,6 +73,20 @@ class NdbTestBase(unittest.TestCase):
         super(NdbTestBase, self).tearDown()
 
 
+class QueueTestCase(NdbTestBase):
+
+    def test_queue_assignment(self):
+
+        from furious.extras.appengine.ndb_persistence import QUEUE_HEADER
+        from furious.extras.appengine.ndb_persistence import _get_current_queue
+
+        queue = "test"
+
+        os.environ[QUEUE_HEADER] = queue
+        result = _get_current_queue()
+        self.assertEqual(result, queue)
+
+
 class ContextCompletionCheckerTestCase(NdbTestBase):
 
     def test_completion_store(self):
