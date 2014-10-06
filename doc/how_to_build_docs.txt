@@ -1,25 +1,33 @@
-You must have a .pth file in your path which includes
-the path of your google_appengine sdk
+1. You must have a .pth file in your site-packages directory with
+the path of your google_appengine sdk. For Unix environments just create a file here:
 
-pip install -r doc/requirements.txt
+$VIRTUAL_ENV/lib/python2.7/site-packages/appengine.pth
 
-http://sphinx-doc.org/invocation.html#invocation-apidoc
-Auto build doc source from project source
-with cwd the doc directory:
-sphinx-apidoc -T -s txt -o source ../furious
-sphinx-apidoc -T -s txt -o source ../example
+with the path:
 
-to force rebuild the rsts, include -f.
-    sphinx-apidoc -T -f -s txt -o source ../furious
-    sphinx-apidoc -T -f -s txt -o source ../example
+/usr/local/google_appengine
 
 
-http://sphinx-doc.org/invocation.html
-Build docs from source:
-make html
+2. Install the requirements:
 
-Sometimes the docs don't update and
-you need to remove doc/build/doctrees
-rm -Rf build/doctrees
+    $ pip install -r doc/requirements.txt
+
+
+3. Auto build doc source from project source (run from the doc directory):
+(http://sphinx-doc.org/invocation.html#invocation-apidoc)
+    $ sphinx-apidoc -T -s txt -o source ../furious
+    $ sphinx-apidoc -T -s txt -o source ../example
+
+to force rebuild the rsts, include -f:
+(http://sphinx-doc.org/invocation.html)
+    $ sphinx-apidoc -T -f -s txt -o source ../furious
+    $ sphinx-apidoc -T -f -s txt -o source ../example
+
+
+4. Build docs from source:
+    $ make html
+
+Sometimes the docs don't update and you need to remove doc/build/doctrees:
+    $ rm -Rf build/doctrees
 
 
