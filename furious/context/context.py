@@ -42,6 +42,7 @@ Usage:
 
 """
 import abc
+import time
 import uuid
 
 from furious.job_utils import decode_callbacks
@@ -52,6 +53,7 @@ from furious.job_utils import reference_to_path
 from furious import errors
 
 DEFAULT_TASK_BATCH_SIZE = 100
+RETRY_SLEEP_SECS = 4
 
 
 class Context(object):
@@ -140,9 +142,12 @@ class Context(object):
         if self._persistence_engine and callbacks:
             self.persist()
 
+        retry_errors = self._options.get('retry_transient_errors', True)
+
         for queue, tasks in task_map.iteritems():
             for batch in _task_batcher(tasks, batch_size=batch_size):
-                inserted = self._insert_tasks(batch, queue=queue)
+                inserted = self._insert_tasks(batch, queue=queue,
+                                              retry_errors=retry_errors)
                 if isinstance(inserted, (int, long)):
                     # Don't blow up on insert_tasks that don't return counts.
                     self._insert_success_count += inserted
@@ -357,7 +362,7 @@ class ContextResultBase(object):
         return
 
 
-def _insert_tasks(tasks, queue, transactional=False):
+def _insert_tasks(tasks, queue, transactional=False, retry_errors=True):
     """Insert a batch of tasks into the specified queue. If an error occurs
     during insertion, split the batch and retry until they are successfully
     inserted. Return the number of successfully inserted tasks.
@@ -372,17 +377,24 @@ def _insert_tasks(tasks, queue, transactional=False):
         return len(tasks)
     except (taskqueue.BadTaskStateError,
             taskqueue.TaskAlreadyExistsError,
-            taskqueue.TombstonedTaskError,
-            taskqueue.TransientError):
+            taskqueue.TombstonedTaskError):
         count = len(tasks)
         if count <= 1:
+            # Task has already been inserted, no reason to report an error here.
             return 0
-
         inserted = _insert_tasks(tasks[:count / 2], queue, transactional)
         inserted += _insert_tasks(tasks[count / 2:], queue, transactional)
 
         return inserted
+    except taskqueue.TransientError:
+        if not retry_errors:
+            return 0
 
+        # Retry with a delay, and then let any errors re-raise.
+        time.sleep(RETRY_SLEEP_SECS)
+
+        taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
+        return len(tasks)
 
 def _task_batcher(tasks, batch_size=None):
     """Batches large task lists into groups of 100 so that they can all be

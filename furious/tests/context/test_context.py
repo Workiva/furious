@@ -483,35 +483,33 @@ class TestInsertTasks(unittest.TestCase):
                                                transactional=False)
         self.assertEqual(4, inserted)
 
+    @patch('time.sleep')
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
-    def test_task_add_error_TransientError(self, queue_add_mock):
+    def test_task_add_error_TransientError(self, queue_add_mock, mock_sleep):
         """Ensure a TransientError doesn't get raised from add."""
         from furious.context.context import _insert_tasks
+        from google.appengine.api import taskqueue
+        queue_add_mock.side_effect = taskqueue.TransientError
 
-        def raise_error(*args, **kwargs):
-            from google.appengine.api import taskqueue
-            raise taskqueue.TransientError()
-
-        queue_add_mock.side_effect = raise_error
-
-        inserted = _insert_tasks(('A',), 'AbCd')
+        inserted = _insert_tasks(('A',), 'AbCd', retry_errors=False)
         queue_add_mock.assert_called_once_with(('A',), transactional=False)
         self.assertEqual(0, inserted)
 
+    @patch('time.sleep')
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
-    def test_batches_get_split_TransientError(self, queue_add_mock):
-        """Ensure a batches get split and retried on TransientErrors."""
+    def test_batches_get_split_TransientError(self, queue_add_mock, mock_sleep):
+        """Ensure TransientErrors retries once, and correctly returns the number
+        of inserted tasks."""
+
         from furious.context.context import _insert_tasks
+        from google.appengine.api import taskqueue
 
-        def raise_error(*args, **kwargs):
-            from google.appengine.api import taskqueue
-            raise taskqueue.TransientError()
-
-        queue_add_mock.side_effect = raise_error
+        queue_add_mock.side_effect = (taskqueue.TransientError, None)
 
         inserted = _insert_tasks(('A', 1, 'B'), 'AbCd')
-        self.assertEqual(5, queue_add_mock.call_count)
-        self.assertEqual(0, inserted)
+        self.assertEqual(2, queue_add_mock.call_count)
+        self.assertEqual(3, inserted)
+        self.assertEqual(mock_sleep.call_count, 1)
 
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_task_add_error_BadTaskStateError(self, queue_add_mock):
@@ -603,6 +601,38 @@ class TestInsertTasks(unittest.TestCase):
         inserted = _insert_tasks(('A', 1, 'B'), 'AbCd')
         self.assertEqual(5, queue_add_mock.call_count)
         self.assertEqual(0, inserted)
+
+    @patch('time.sleep')
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_single_task_gets_retried(self, queue_add_mock, mock_sleep):
+        """Ensure a single task failing causes a retry.
+        """
+
+        from furious.context.context import _insert_tasks
+        from google.appengine.api import taskqueue
+
+        queue_add_mock.side_effect = (taskqueue.TransientError, None)
+
+        inserted = _insert_tasks(('A',), 'AbCd')
+        self.assertEqual(queue_add_mock.call_count, 2)
+        self.assertEqual(inserted, 1)
+
+    @patch('time.sleep')
+    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    def test_single_task_reraises_after_failure(self, queue_add_mock,
+                                                mock_sleep):
+        """Ensure a repeated failure on add re-raises the exception after
+        retrying.
+        """
+
+        from furious.context.context import _insert_tasks
+        from google.appengine.api import taskqueue
+
+        queue_add_mock.side_effect = taskqueue.TransientError
+
+        self.assertRaises(taskqueue.TransientError,
+                          _insert_tasks, ('A', ), 'AbDc')
+        self.assertEqual(queue_add_mock.call_count, 2)
 
 
 class TestTaskBatcher(unittest.TestCase):
