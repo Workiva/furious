@@ -378,23 +378,44 @@ def _insert_tasks(tasks, queue, transactional=False, retry_errors=True):
     except (taskqueue.BadTaskStateError,
             taskqueue.TaskAlreadyExistsError,
             taskqueue.TombstonedTaskError):
-        count = len(tasks)
-        if count <= 1:
+        if len(tasks) <= 1:
             # Task has already been inserted, no reason to report an error here.
             return 0
-        inserted = _insert_tasks(tasks[:count / 2], queue, transactional)
-        inserted += _insert_tasks(tasks[count / 2:], queue, transactional)
+
+        # If a list of more than one Tasks is given, a raised exception does
+        # not guarantee that no tasks were added to the queue (unless
+        # transactional is set to True). To determine which tasks were
+        # successfully added when an exception is raised, check the
+        # Task.was_enqueued property.
+        reinsert = _tasks_to_reinsert(tasks, transactional)
+        count = len(reinsert)
+        inserted = len(tasks) - count
+        inserted += _insert_tasks(reinsert[:count / 2], queue, transactional)
+        inserted += _insert_tasks(reinsert[count / 2:], queue, transactional)
 
         return inserted
     except taskqueue.TransientError:
         if not retry_errors:
             return 0
 
+        reinsert = _tasks_to_reinsert(tasks, transactional)
+
         # Retry with a delay, and then let any errors re-raise.
         time.sleep(RETRY_SLEEP_SECS)
 
-        taskqueue.Queue(name=queue).add(tasks, transactional=transactional)
+        taskqueue.Queue(name=queue).add(reinsert, transactional=transactional)
         return len(tasks)
+
+
+def _tasks_to_reinsert(tasks, transactional):
+    """Return a list containing the tasks that should be reinserted based on the
+    was_enqueued property and whether the insert is transactional or not.
+    """
+    if transactional:
+        return tasks
+
+    return [task for task in tasks if not task.was_enqueued]
+
 
 def _task_batcher(tasks, batch_size=None):
     """Batches large task lists into groups of 100 so that they can all be
