@@ -17,7 +17,10 @@
 """Example of using Context events for work flow.
 
 This example creates a context and illustrates how the completion checks will
-inherit the task queue that each async runs in"""
+inherit the task queue that each async runs in by having tasks alternate which
+queue they will run in. If you observer the queues you will see that tasks
+that run in one queue will have their completion checks for the context run
+in that queue as well"""
 
 
 import logging
@@ -26,7 +29,8 @@ import webapp2
 
 
 class ContextInheritHandler(webapp2.RequestHandler):
-    """Demonstrate using Context Events to make work flows."""
+    """Demonstrate using Context Events with queue specific parameters and how
+    that affects completion checks"""
     def get(self):
         from furious.async import Async
 
