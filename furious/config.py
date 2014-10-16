@@ -54,21 +54,21 @@ def get_completion_cleanup_queue():
     """Get the default queue that completion should use to cleanup markers on.
     """
     config = get_config()
-    return config.get('cleanupqueue', get_completion_default_queue())
+    return config.get('cleanupqueue')
 
 
 def get_completion_default_queue():
     """Get the default queue that completion should use to cleanup markers on.
     """
     config = get_config()
-    return config.get('defaultqueue', 'default')
+    return config.get('defaultqueue')
 
 
 def get_completion_cleanup_delay():
     """Get the default queue that completion should use to cleanup markers on.
     """
     config = get_config()
-    return config.get('cleanupdelay', 7600)
+    return config.get('cleanupdelay')
 
 
 def _get_configured_module(option_name, known_modules=None):
@@ -152,6 +152,9 @@ def default_config():
     return {'secret_key':
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
+            'cleanupqueue': 'default',
+            'cleanupdelay': 7600,
+            'defaultqueue': 'default',
             'task_system': 'appengine_taskqueue'}
 
 
