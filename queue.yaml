@@ -4,10 +4,6 @@ queue:
   rate: 100/s
   bucket_size: 100
 
-- name: clean
-  rate: 50/s
-  bucket_size: 50 
-
 - name: example 
   rate: 50/s
   bucket_size: 50 
