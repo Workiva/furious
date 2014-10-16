@@ -50,6 +50,27 @@ def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
     return _get_configured_module('persistence', known_modules=known_modules)
 
 
+def get_completion_cleanup_queue():
+    """Get the default queue that completion should use to cleanup markers on.
+    """
+    config = get_config()
+    return config.get('cleanupqueue', get_completion_default_queue())
+
+
+def get_completion_default_queue():
+    """Get the default queue that completion should use to cleanup markers on.
+    """
+    config = get_config()
+    return config.get('defaultqueue', 'default')
+
+
+def get_completion_cleanup_delay():
+    """Get the default queue that completion should use to cleanup markers on.
+    """
+    config = get_config()
+    return config.get('cleanupdelay', 7600)
+
+
 def _get_configured_module(option_name, known_modules=None):
     """Get the module specified by the value of option_name. The value of the
     configuration option will be used to load the module by name from the known
@@ -88,10 +109,10 @@ def find_furious_yaml(config_file=__file__):
         the path of furious.yaml or None if not found
     """
     checked = set()
-    yaml = _find_furious_yaml(os.path.dirname(config_file), checked)
-    if not yaml:
-        yaml = _find_furious_yaml(os.getcwd(), checked)
-    return yaml
+    result = _find_furious_yaml(os.path.dirname(config_file), checked)
+    if not result:
+        result = _find_furious_yaml(os.getcwd(), checked)
+    return result
 
 
 def _find_furious_yaml(start, checked):
@@ -184,4 +205,3 @@ def get_config():
     return _config
 
 _config = _parse_yaml_config()
-

@@ -43,7 +43,9 @@ class TestConfigurationLoading(unittest.TestCase):
 
         contents = _load_yaml_config(os.path.join('furious', '_furious.yaml'))
 
-        self.assertEqual(contents, "persistence: ndb\n")
+        e = 'persistence: ndb\ncleanupqueue: low-priority\ncleanupdelay: 7600\ndefaultqueue: default\n'
+
+        self.assertEqual(contents, e)
 
     @patch('os.path.exists', autospec=True)
     def test_not_find_yaml(self, mock_exists):

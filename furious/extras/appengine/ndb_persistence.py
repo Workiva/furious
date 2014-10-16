@@ -16,9 +16,9 @@
 """This module contains the default functions to use when performing
 persistence operations backed by the App Engine ndb library.
 """
-import os
 import json
 import logging
+import os
 
 from itertools import imap
 from itertools import islice
@@ -29,9 +29,11 @@ from random import shuffle
 from google.appengine.ext import ndb
 
 from furious.context.context import ContextResultBase
+from furious import config
 
-CLEAN_QUEUE = 'clean'
-DEFAULT_QUEUE = 'default'
+CLEAN_QUEUE = config.get_completion_cleanup_queue()
+DEFAULT_QUEUE = config.get_completion_default_queue()
+CLEAN_DELAY = config.get_completion_cleanup_delay()
 QUEUE_HEADER = 'HTTP_X_APPENGINE_QUEUENAME'
 
 
@@ -248,7 +250,7 @@ def _insert_post_complete_tasks(context):
         from furious.async import Async
         Async(_cleanup_markers, queue=CLEAN_QUEUE,
               args=[context.id, context.task_ids],
-              task_args={'countdown': 7600}).start()
+              task_args={'countdown': CLEAN_DELAY}).start()
     except:
         pass
 
