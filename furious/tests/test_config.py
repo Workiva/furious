@@ -37,13 +37,32 @@ class TestConfigurationLoading(unittest.TestCase):
         get_config().clear()
         config.update(default_config())
 
+    def test_completion_config(self):
+
+        from furious.config import get_completion_cleanup_delay
+        from furious.config import get_completion_cleanup_queue
+        from furious.config import get_completion_default_queue
+
+        expected = 'default'
+        queue = get_completion_cleanup_queue()
+        self.assertEqual(queue, expected)
+
+        queue = get_completion_default_queue()
+        self.assertEqual(queue, expected)
+
+        expected = 7600
+        delay = get_completion_cleanup_delay()
+        self.assertEqual(delay, expected)
+
     def test_load_yaml_config(self):
         """Ensure _load_yaml_config will load a specified path."""
         from furious.config import _load_yaml_config
 
         contents = _load_yaml_config(os.path.join('furious', '_furious.yaml'))
 
-        self.assertEqual(contents, "persistence: ndb\n")
+        e = 'persistence: ndb\ncleanupqueue: low-priority\ncleanupdelay: 7600\ndefaultqueue: default\n'
+
+        self.assertEqual(contents, e)
 
     @patch('os.path.exists', autospec=True)
     def test_not_find_yaml(self, mock_exists):
@@ -68,7 +87,10 @@ class TestConfigurationLoading(unittest.TestCase):
 
         self.assertEqual(my_config, {'secret_key': 'blah',
                                      'persistence': 'bubble',
-                                     'task_system': 'flah'})
+                                     'task_system': 'flah',
+                                     'cleanupqueue': 'default',
+                                     'cleanupdelay': 7600,
+                                     'defaultqueue': 'default'})
 
     def test_get_configured_persistence_exists(self):
         """Ensure a chosen persistence module is selected."""
@@ -135,4 +157,3 @@ class TestConfigurationLoading(unittest.TestCase):
         my_config = _parse_yaml_config(example_yaml)
 
         self.assertEqual(my_config, default_config())
-
