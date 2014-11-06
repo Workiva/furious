@@ -128,12 +128,13 @@ def handle_an_error():
 
     from furious.context import get_current_async
 
-    exception_info = get_current_async().result
-
-    logging.info('async job blew up, exception info: %r', exception_info)
+    async = get_current_async()
+    async_exception = async.result.payload
+    exc_info = async_exception.traceback
+    logging.info('async job blew up, exception info: %r', exc_info)
 
     retries = int(os.environ['HTTP_X_APPENGINE_TASKRETRYCOUNT'])
     if retries < 2:
-        raise exception_info.exception
+        raise Exception(async_exception.error)
     else:
         logging.info('Caught too many errors, giving up now.')
