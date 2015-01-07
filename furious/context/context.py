@@ -142,12 +142,13 @@ class Context(object):
         if self._persistence_engine and callbacks:
             self.persist()
 
-        retry_errors = self._options.get('retry_transient_errors', True)
+        retry_transient = self._options.get('retry_transient_errors', True)
 
         for queue, tasks in task_map.iteritems():
             for batch in _task_batcher(tasks, batch_size=batch_size):
-                inserted = self._insert_tasks(batch, queue=queue,
-                                              retry_errors=retry_errors)
+                inserted = self._insert_tasks(
+                    batch, queue=queue, retry_transient_errors=retry_transient
+                )
                 if isinstance(inserted, (int, long)):
                     # Don't blow up on insert_tasks that don't return counts.
                     self._insert_success_count += inserted
@@ -362,7 +363,8 @@ class ContextResultBase(object):
         return
 
 
-def _insert_tasks(tasks, queue, transactional=False, retry_errors=True):
+def _insert_tasks(tasks, queue, transactional=False,
+                  retry_transient_errors=True):
     """Insert a batch of tasks into the specified queue. If an error occurs
     during insertion, split the batch and retry until they are successfully
     inserted. Return the number of successfully inserted tasks.
@@ -390,13 +392,15 @@ def _insert_tasks(tasks, queue, transactional=False, retry_errors=True):
         reinsert = _tasks_to_reinsert(tasks, transactional)
         count = len(reinsert)
         inserted = len(tasks) - count
-        inserted += _insert_tasks(reinsert[:count / 2], queue, transactional)
-        inserted += _insert_tasks(reinsert[count / 2:], queue, transactional)
+        inserted += _insert_tasks(reinsert[:count / 2], queue, transactional,
+                                  retry_transient_errors)
+        inserted += _insert_tasks(reinsert[count / 2:], queue, transactional,
+                                  retry_transient_errors)
 
         return inserted
     except taskqueue.TransientError:
-        if not retry_errors:
-            return 0
+        if not retry_transient_errors:
+            raise
 
         reinsert = _tasks_to_reinsert(tasks, transactional)
 

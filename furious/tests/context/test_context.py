@@ -487,14 +487,18 @@ class TestInsertTasks(unittest.TestCase):
     @patch('time.sleep')
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_task_add_error_TransientError(self, queue_add_mock, mock_sleep):
-        """Ensure a TransientError doesn't get raised from add."""
+        """Ensure a TransientError gets raised from add if we've specified not
+        to retry those errors."""
         from furious.context.context import _insert_tasks
         from google.appengine.api import taskqueue
         queue_add_mock.side_effect = taskqueue.TransientError
 
-        inserted = _insert_tasks(('A',), 'AbCd', retry_errors=False)
+        self.assertRaises(
+            taskqueue.TransientError,
+            _insert_tasks, ('A',), 'AbCd', retry_transient_errors=False
+        )
+
         queue_add_mock.assert_called_once_with(('A',), transactional=False)
-        self.assertEqual(0, inserted)
 
     @patch('time.sleep')
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
