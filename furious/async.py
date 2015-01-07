@@ -91,6 +91,7 @@ ASYNC_ENDPOINT = '/_ah/queue/async'
 MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
+RETRY_SLEEP_SECS = 4
 
 DEFAULT_RETRY_OPTIONS = {
     'task_retry_limit': MAX_RESTARTS
@@ -330,6 +331,7 @@ class Async(object):
 
         task = self.to_task()
         queue = taskqueue.Queue(name=self.get_queue())
+        retry_transient = self._options.get('retry_transient_errors', True)
 
         add = queue.add
         if async:
@@ -338,6 +340,12 @@ class Async(object):
         try:
             ret = add(task, transactional=transactional)
         except taskqueue.TransientError:
+            if not retry_transient:
+                raise
+
+            import time
+            time.sleep(RETRY_SLEEP_SECS)
+
             ret = add(task, transactional=transactional)
         except (taskqueue.TaskAlreadyExistsError,
                 taskqueue.TombstonedTaskError):
