@@ -332,6 +332,7 @@ class Async(object):
         task = self.to_task()
         queue = taskqueue.Queue(name=self.get_queue())
         retry_transient = self._options.get('retry_transient_errors', True)
+        retry_delay = self._options.get('retry_delay', RETRY_SLEEP_SECS)
 
         add = queue.add
         if async:
@@ -344,7 +345,7 @@ class Async(object):
                 raise
 
             import time
-            time.sleep(RETRY_SLEEP_SECS)
+            time.sleep(retry_delay)
 
             ret = add(task, transactional=transactional)
         except (taskqueue.TaskAlreadyExistsError,

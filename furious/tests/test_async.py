@@ -725,14 +725,15 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(1, queue_mock.return_value.add.call_count)
 
         # Try again with the option enabled, this should cause a retry after a
-        # delay.
+        # delay, which we have also specified.
         queue_mock.reset_mock()
         async_job = Async("something", queue='my_queue',
-                          retry_transient_errors=True)
+                          retry_transient_errors=True,
+                          retry_delay=12)
 
         self.assertRaises(TransientError, async_job.start)
         self.assertEqual(2, queue_mock.return_value.add.call_count)
-        self.assertEqual(1, sleep_mock.call_count)
+        sleep_mock.assert_called_once_with(12)
 
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_other_error_retry_enabled(self, queue_mock):
