@@ -72,6 +72,7 @@ from functools import partial
 from functools import wraps
 import json
 import os
+import time
 import uuid
 
 from furious.job_utils import decode_callbacks
@@ -344,7 +345,6 @@ class Async(object):
             if not retry_transient:
                 raise
 
-            import time
             time.sleep(retry_delay)
 
             ret = add(task, transactional=transactional)
@@ -593,8 +593,6 @@ def encode_async_options(async):
     # JSON don't like datetimes.
     eta = options.get('task_args', {}).get('eta')
     if eta:
-        import time
-
         options['task_args']['eta'] = time.mktime(eta.timetuple())
 
     callbacks = async._options.get('callbacks')
