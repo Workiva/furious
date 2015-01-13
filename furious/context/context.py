@@ -402,7 +402,9 @@ def _insert_tasks(tasks, queue, transactional=False,
 
         return inserted
     except taskqueue.TransientError:
-        if not retry_transient_errors:
+        # Always re-raise for transactional insert, or if specified by
+        # options.
+        if transactional or not retry_transient_errors:
             raise
 
         reinsert = _tasks_to_reinsert(tasks, transactional)

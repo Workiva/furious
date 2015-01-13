@@ -342,7 +342,9 @@ class Async(object):
         try:
             ret = add(task, transactional=transactional)
         except taskqueue.TransientError:
-            if not retry_transient:
+            # Always re-raise for transactional insert, or if specified by
+            # options.
+            if transactional or not retry_transient:
                 raise
 
             time.sleep(retry_delay)

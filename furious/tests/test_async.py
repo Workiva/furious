@@ -735,6 +735,26 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(2, queue_mock.return_value.add.call_count)
         sleep_mock.assert_called_once_with(12)
 
+    @mock.patch('time.sleep')
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_transient_error_transactional(self, queue_mock,
+                                                      sleep_mock):
+        """Ensure if caller is specifying transactional, that Transient errors
+        are immediately re-raised.
+        """
+        from google.appengine.api.taskqueue import TransientError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TransientError()
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True)
+
+        self.assertRaises(TransientError, async_job.start,
+                          transactional=True)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+        self.assertEqual(0, sleep_mock.call_count)
+
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_other_error_retry_enabled(self, queue_mock):
         """Ensure if transient error retries are enabled, that other errors are
