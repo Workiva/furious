@@ -29,7 +29,9 @@ def process_async_task(headers, request_body):
     async_options = json.loads(request_body)
     async = async_from_options(async_options)
 
-    _log_task_info(headers)
+    _log_task_info(headers,
+                   extra_task_info=async.get_options().get('_extra_task_info'))
+
     logging.info(async._function_path)
 
     with context.execution_context_from_async(async):
@@ -38,7 +40,7 @@ def process_async_task(headers, request_body):
     return 200, async._function_path
 
 
-def _log_task_info(headers):
+def _log_task_info(headers, extra_task_info=None):
     """Processes the header from task requests to log analytical data."""
     ran_at = time.time()
     task_eta = float(headers.get('X-Appengine-Tasketa', 0.0))
@@ -49,5 +51,8 @@ def _log_task_info(headers):
         'ran': ran_at,
         'gae_latency_seconds': ran_at - task_eta
     }
+
+    if extra_task_info:
+        task_info['extra'] = extra_task_info
 
     logging.debug('TASK-INFO: %s', json.dumps(task_info))
