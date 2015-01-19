@@ -72,6 +72,7 @@ from functools import partial
 from functools import wraps
 import json
 import os
+import time
 import uuid
 
 from furious.job_utils import decode_callbacks
@@ -91,6 +92,7 @@ ASYNC_ENDPOINT = '/_ah/queue/async'
 MAX_DEPTH = 100
 MAX_RESTARTS = 10
 DISABLE_RECURSION_CHECK = -1
+RETRY_SLEEP_SECS = 4
 
 DEFAULT_RETRY_OPTIONS = {
     'task_retry_limit': MAX_RESTARTS
@@ -330,6 +332,8 @@ class Async(object):
 
         task = self.to_task()
         queue = taskqueue.Queue(name=self.get_queue())
+        retry_transient = self._options.get('retry_transient_errors', True)
+        retry_delay = self._options.get('retry_delay', RETRY_SLEEP_SECS)
 
         add = queue.add
         if async:
@@ -338,6 +342,13 @@ class Async(object):
         try:
             ret = add(task, transactional=transactional)
         except taskqueue.TransientError:
+            # Always re-raise for transactional insert, or if specified by
+            # options.
+            if transactional or not retry_transient:
+                raise
+
+            time.sleep(retry_delay)
+
             ret = add(task, transactional=transactional)
         except (taskqueue.TaskAlreadyExistsError,
                 taskqueue.TombstonedTaskError):
@@ -584,8 +595,6 @@ def encode_async_options(async):
     # JSON don't like datetimes.
     eta = options.get('task_args', {}).get('eta')
     if eta:
-        import time
-
         options['task_args']['eta'] = time.mktime(eta.timetuple())
 
     callbacks = async._options.get('callbacks')

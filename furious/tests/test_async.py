@@ -683,8 +683,9 @@ class TestAsync(unittest.TestCase):
         persistence_engine.store_async_result.assert_called_once_with(job.id,
                                                                       result)
 
+    @mock.patch('time.sleep')
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_transient_error(self, queue_mock):
+    def test_start_hits_transient_error(self, queue_mock, mock_sleep):
         """Ensure the task retries if a transient error is hit."""
         from google.appengine.api.taskqueue import TransientError
         from furious.async import Async
@@ -703,6 +704,72 @@ class TestAsync(unittest.TestCase):
 
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(2, queue_mock.return_value.add.call_count)
+        self.assertEqual(1, mock_sleep.call_count)
+
+    @mock.patch('time.sleep')
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_transient_error_retry_disabled(self, queue_mock,
+                                                       sleep_mock):
+        """Ensure if transient error retries are disabled, that those errors are
+        re-raised immediately without any attempt to re-insert.
+        """
+        from google.appengine.api.taskqueue import TransientError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TransientError()
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=False)
+
+        self.assertRaises(TransientError, async_job.start)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+
+        # Try again with the option enabled, this should cause a retry after a
+        # delay, which we have also specified.
+        queue_mock.reset_mock()
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True,
+                          retry_delay=12)
+
+        self.assertRaises(TransientError, async_job.start)
+        self.assertEqual(2, queue_mock.return_value.add.call_count)
+        sleep_mock.assert_called_once_with(12)
+
+    @mock.patch('time.sleep')
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_transient_error_transactional(self, queue_mock,
+                                                      sleep_mock):
+        """Ensure if caller is specifying transactional, that Transient errors
+        are immediately re-raised.
+        """
+        from google.appengine.api.taskqueue import TransientError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TransientError()
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True)
+
+        self.assertRaises(TransientError, async_job.start,
+                          transactional=True)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+        self.assertEqual(0, sleep_mock.call_count)
+
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_other_error_retry_enabled(self, queue_mock):
+        """Ensure if transient error retries are enabled, that other errors are
+        not retried.
+        """
+
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = (Exception(), None)
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True)
+
+        self.assertRaises(Exception, async_job.start)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
 
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_task_already_exists_error_error(self, queue_mock):
