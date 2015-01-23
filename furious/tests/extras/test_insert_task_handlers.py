@@ -1,9 +1,9 @@
-from mock import Mock
-from mock import patch
 import unittest
 
 from google.appengine.api import taskqueue
 from google.appengine.ext import testbed
+from mock import Mock
+from mock import patch
 
 from furious.extras.insert_task_handlers import \
     insert_tasks_ignore_duplicate_names
@@ -88,4 +88,3 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
         mock_add.assert_any_call(tasks, transactional=False)
         mock_add.assert_any_call([tasks[1]], transactional=False)
         mock_add.assert_any_call([tasks[2]], transactional=False)
-
