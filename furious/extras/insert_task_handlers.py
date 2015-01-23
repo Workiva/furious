@@ -1,5 +1,3 @@
-import logging
-
 from furious.context.context import _insert_tasks
 from furious.context.context import _tasks_to_reinsert
 
@@ -26,12 +24,9 @@ def insert_tasks_ignore_duplicate_names(tasks, queue, *args, **kwargs):
         count = len(reinsert)
         inserted = len(tasks) - count
 
+        # Our subsequent task inserts should raise TaskAlreadyExistsError at
+        # least once, but that will be swallowed by _insert_tasks.
         for task in reinsert:
-            try:
-                inserted += _insert_tasks([task], queue, *args, **kwargs)
-            except taskqueue.DuplicateTaskNameError:
-                logging.info(
-                    'Duplicate task name %s detected on queue %s and skipped.'
-                    % (task.name, queue))
+            inserted += _insert_tasks([task], queue, *args, **kwargs)
 
         return inserted

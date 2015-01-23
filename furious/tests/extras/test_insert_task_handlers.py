@@ -31,9 +31,15 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
     def test_insert_tasks_ignore_duplicate_names_raises(self, mock_add):
         """Ensure if `DuplicateTaskNameError` raised, that each task is
         retried.
+
+        Also ensure that TaskAlreadyExistsError is not re-raised on the
+        subsequent retries.
         """
 
-        mock_add.side_effect = taskqueue.DuplicateTaskNameError
+        mock_add.side_effect = (taskqueue.DuplicateTaskNameError,
+                                taskqueue.TaskAlreadyExistsError,
+                                taskqueue.TaskAlreadyExistsError,
+                                taskqueue.TaskAlreadyExistsError)
 
         tasks = [taskqueue.Task('1'), taskqueue.Task('2'), taskqueue.Task('3')]
         inserted = insert_tasks_ignore_duplicate_names(tasks, 'queue')
@@ -54,7 +60,7 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
         # Bulk add fails, then 2nd named task fails.
         mock_add.side_effect = (taskqueue.DuplicateTaskNameError,
                                 None,
-                                taskqueue.DuplicateTaskNameError,
+                                taskqueue.TaskAlreadyExistsError,
                                 None)
 
         tasks = [taskqueue.Task('1'), taskqueue.Task('2'), taskqueue.Task('3')]
@@ -74,7 +80,7 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
 
         # Bulk add fails, then 2nd named task fails.
         mock_add.side_effect = (taskqueue.DuplicateTaskNameError,
-                                taskqueue.DuplicateTaskNameError,
+                                taskqueue.TaskAlreadyExistsError,
                                 None)
         tasks = [Mock(), taskqueue.Task('2'), taskqueue.Task('3')]
         tasks[0].was_enqueued = True
