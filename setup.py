@@ -21,16 +21,17 @@ setup_args = dict(
     author_email='robert.kluin@webfilings.com',
     url='http://github.com/WebFilings/furious',
     packages=find_packages(exclude=['example']),
+    download_url = "https://github.com/Workiva/furious/tarball/v1.3.0",
+    keywords = ['async', 'gae', 'appengine', 'taskqueue'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
-        'License :: Apache',
+        'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
     ],
 )
-
 
 if __name__ == '__main__':
     setup(**setup_args)

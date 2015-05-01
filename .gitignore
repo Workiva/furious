@@ -15,3 +15,7 @@ doc/source/*
 !doc/source/design*.txt
 !doc/source/_static/*
 !doc/source/_templates/*
+
+bilobac
+dist/
+furious.egg-info/
