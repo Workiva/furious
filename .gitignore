@@ -1,6 +1,7 @@
 .coverage
 .noseids
 .build
+*.pyc
 
 \#*\#
 .idea
