@@ -360,7 +360,7 @@ class MessageProcessorTestCase(unittest.TestCase):
 
         task_args = {
             'name': 'processor-processor-current-batch-3',
-            'url': '/_ah/queue/async/something',
+            'url': '/_queue/async/something',
             'countdown': 30,
             'headers': {},
             'retry_options': task_retry_object,
