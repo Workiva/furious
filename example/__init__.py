@@ -40,13 +40,17 @@ from .grep import GrepHandler
 from .simple_workflow import SimpleWorkflowHandler
 from .limits import LimitHandler
 
+from furious.handlers.webapp import AsyncJobHandler
+
 config = {
     'webapp2_extras.jinja2': {
         'template_path': 'example/templates'
     }
 }
 
+
 app = webapp2.WSGIApplication([
+    ('/_queue/async.*', AsyncJobHandler),
     ('/', AsyncIntroHandler),
     ('/abort_and_restart', AbortAndRestartHandler),
     ('/context', ContextIntroHandler),
