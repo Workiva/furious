@@ -56,7 +56,8 @@ You can group jobs together,
 
 It is possible to set options, like the target queue,
 
-    from furious import context, defaults
+    from furious import context
+    from furious.async import defaults
 
     @defaults(queue='square')
     def square_a_number(number):
