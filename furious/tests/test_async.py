@@ -1028,6 +1028,22 @@ class TestAsync(unittest.TestCase):
 
         self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
 
+    def test_process_results_encoded_and_decoded(self):
+        """Ensure _process_results is correctly encoded to and decoded from
+        an Async options dict.
+        """
+        from furious.async import Async
+
+        async_job = Async("something", _process_results=locals)
+
+        encoded_async = async_job.to_dict()
+        self.assertEqual(encoded_async['__process_results'], 'locals')
+
+        new_async_job = Async.from_dict(encoded_async)
+        self.assertEqual(new_async_job.get_options()['_process_results'], locals)
+
+        self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
     def test_retry_value_is_decodable(self):
         """Ensure that from_dict is the inverse of to_dict when retry options
         are given.

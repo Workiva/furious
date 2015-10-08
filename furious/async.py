@@ -605,6 +605,10 @@ def encode_async_options(async):
         _checker = options.pop('_context_checker')
         options['__context_checker'] = reference_to_path(_checker)
 
+    if '_process_results' in options:
+        _processor = options.pop('_process_results')
+        options['__process_results'] = reference_to_path(_processor)
+
     return options
 
 
@@ -628,6 +632,9 @@ def decode_async_options(options):
         _checker = options['__context_checker']
         async_options['_context_checker'] = path_to_reference(_checker)
 
+    if '__process_results' in options:
+        _processor = options['__process_results']
+        async_options['_process_results'] = path_to_reference(_processor)
     return async_options
 
 
