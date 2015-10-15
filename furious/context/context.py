@@ -55,6 +55,9 @@ from furious import errors
 DEFAULT_TASK_BATCH_SIZE = 100
 RETRY_SLEEP_SECS = 4
 
+# Copied from async
+ASYNC_DEFAULT_QUEUE = "default"
+
 
 class Context(object):
     """Furious context object.
@@ -72,6 +75,8 @@ class Context(object):
         if self._persistence_engine:
             options['persistence_engine'] = reference_to_path(
                 self._persistence_engine)
+
+        self._default_queue = options.get('queue', ASYNC_DEFAULT_QUEUE)
 
         self._options = options
 
@@ -243,6 +248,10 @@ class Context(object):
             target = Async(target, args, kwargs, **options)
 
         target.update_options(_context_id=self.id)
+
+        if target.get_queue() == ASYNC_DEFAULT_QUEUE and (
+            self._default_queue != ASYNC_DEFAULT_QUEUE):
+            target.update_options(queue=self._default_queue)
 
         if self.persist_async_results:
             target.update_options(persist_result=True)
