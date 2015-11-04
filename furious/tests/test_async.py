@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import json
-
+from collections import deque
+import functools
 import unittest
 
+import json
 import mock
+
+from furious.async import Async
 
 
 class TestDefaultsDecorator(unittest.TestCase):
@@ -1071,6 +1073,71 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
 
 
+def _foo_stub():
+    TestAsync_decorate_job.foo_values.append('bar')
+
+
+class FooAsync(Async):
+    def _decorate_job(self):
+        return super(FooAsync, self)._decorate_job()
+
+
+class FizzAsync(Async):
+    @staticmethod
+    def fizz(func):
+        @functools.wraps(func)
+        def wrapper():
+            TestAsync_decorate_job.foo_values.append('fizz')
+            func()
+            TestAsync_decorate_job.foo_values.append('bang')
+        return wrapper
+
+    def _decorate_job(self):
+        return self.fizz(super(FizzAsync, self)._decorate_job())
+
+
+class TestAsync_decorate_job(unittest.TestCase):
+    """Tests `Async._decorate_job`.
+
+    These tests will run the tasks to ensure that the decorated function is
+    what gets invoked.
+    """
+    foo_values = deque()
+
+    def setUp(self):
+        from google.appengine.ext.testbed import (
+            TASKQUEUE_SERVICE_NAME,
+            Testbed,
+        )
+        testbed = Testbed()
+        testbed.activate()
+
+        self.addCleanup(testbed.deactivate)
+        self.addCleanup(TestAsync_decorate_job.foo_values.clear)
+
+        testbed.init_taskqueue_stub()
+        self._taskq_service = testbed.get_stub(TASKQUEUE_SERVICE_NAME)
+
+    def run_taskq(self):
+        from furious.test_stubs.appengine.queues import run
+        run(self._taskq_service)
+
+    def test_runs_undecorated_job(self):
+        """By default, doesn't decorate the function with anything."""
+        FooAsync(_foo_stub).start()
+        self.run_taskq()
+        self.assertSequenceEqual(['bar'], TestAsync_decorate_job.foo_values)
+
+    def test_runs_decorated_job(self):
+        """Subclass can override `Async._decorate_job` to wrap the original
+        target.
+        """
+        FizzAsync(_foo_stub).start()
+        self.run_taskq()
+        self.assertSequenceEqual(
+            ['fizz', 'bar', 'bang'], TestAsync_decorate_job.foo_values)
+
+
 class TestAsyncFromOptions(unittest.TestCase):
     """Ensure async_from_options() works correctly."""
 
@@ -1115,4 +1182,3 @@ class TestAsyncFromOptions(unittest.TestCase):
         result = async_from_options(options)
 
         self.assertIsInstance(result, MessageProcessor)
-

@@ -173,6 +173,16 @@ class Async(object):
         return self._persistence_engine.store_async_result(
             self.id, self.result)
 
+    def _decorate_job(self):
+        """Returns the job function.
+
+        A subclass may override `Async._decorate_job` in order to wrap the
+        original target using a decorator function.
+        """
+        function_path = self.job[0]
+        func = path_to_reference(function_path)
+        return func
+
     @property
     def function_path(self):
         return self.job[0]

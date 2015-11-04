@@ -42,7 +42,7 @@ def run_job():
     if not job:
         raise Exception('This async contains no job to execute!')
 
-    function_path, args, kwargs = job
+    __, args, kwargs = job
 
     if args is None:
         args = ()
@@ -50,7 +50,7 @@ def run_job():
     if kwargs is None:
         kwargs = {}
 
-    function = path_to_reference(function_path)
+    function = async._decorate_job()
 
     try:
         async.executing = True
