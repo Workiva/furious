@@ -21,20 +21,20 @@ Usage
 
 In the simplest form, usage looks like:
 
-    from furious import Async
+    from furious.async import Async
 
     # Create an Async object.
     async = Async(
         target="your.module.func",
         args=("positional", "args"),
-        kwargs={"kwargs": "too"})
+        kwargs={"foo": "bar"})
 
     # Tell the async to insert itself to be run.
     async.start()
 
 This inserts a task that will make the following call:
 
-    your.module.func("pos", "args", kwarg="too")
+    your.module.func("positional", "args", foo="bar")
 
 
 ### Grouping async jobs
@@ -90,7 +90,7 @@ Tasks targeted at the same queue will be batch inserted.
 
 Contexts allow you to build workflows easily,
 
-    from furious import Async
+    from furious.async import Async
     from furious.context import get_current_context, new
 
     def square_a_number(number):
@@ -122,7 +122,7 @@ Contexts allow you to build workflows easily,
 
 Asyncs and Contexts maybe nested to build more complex workflows.
 
-    from furious import Async
+    from furious.async import Async
     from furious.context import new
 
     def do_some_work(number):
