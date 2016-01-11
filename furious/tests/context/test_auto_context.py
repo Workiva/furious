@@ -74,7 +74,7 @@ class TestAutoContextTestCase(unittest.TestCase):
             # Ensure the first two jobs were inserted in the first batch.
             self.assertIsInstance(job1, Async)
             self.assertIsInstance(job2, Async)
-            queue_add_mock.assert_called_once()
+            self.assertEqual(1, queue_add_mock.call_count)
             #Ensure only two tasks were inserted
             tasks_added = queue_add_mock.call_args[0][0]
             self.assertEqual(2, len(tasks_added))
