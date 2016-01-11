@@ -143,7 +143,7 @@ class TestContext(unittest.TestCase):
 
         self.assertIsInstance(job, Async)
         self.assertEqual(1, ctx.insert_success)
-        queue_add_mock.assert_called_once()
+        self.assertEqual(1, queue_add_mock.call_count)
 
     @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
     def test_bubbling_exceptions(self, queue_add_mock):
@@ -187,7 +187,7 @@ class TestContext(unittest.TestCase):
             for _ in range(10):
                 ctx.add('test', args=[1, 2])
 
-        queue_add_mock.assert_called_once()
+        self.assertEqual(1, queue_add_mock.call_count)
         self.assertEqual(10, len(queue_add_mock.call_args[0][0]))
         self.assertEqual(10, ctx.insert_success)
 
