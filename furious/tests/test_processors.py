@@ -268,6 +268,32 @@ class TestRunJob(unittest.TestCase):
 
         logging.getLogger().removeHandler(AbortLogHandler())
 
+    @patch('__builtin__.dir')
+    def test_BaseException(self, dir_mock):
+        """Ensure exceptions inheriting from BaseException, such as
+        DeadlineExceededError, trigger the error handler.
+        """
+
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+        from google.appengine.runtime import DeadlineExceededError
+
+        dir_mock.side_effect = DeadlineExceededError
+
+        mock_success = Mock()
+        mock_error = Mock()
+
+        work = Async(target='dir',
+                     callbacks={'success': mock_success,
+                                'error': mock_error})
+
+        with _ExecutionContext(work):
+            run_job()
+
+        self.assertFalse(mock_success.called)
+        self.assertEqual(mock_error.call_count, 1)
+
 
 class TestHandleResults(unittest.TestCase):
     """Test that _handle_results does the Right Things."""
@@ -334,7 +360,7 @@ class TestContextCompletionChecker(unittest.TestCase):
         # Ensure each test looks like it is in a new request.
         os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
 
-    def test_no_comletion(self):
+    def test_no_completion(self):
         """Ensure does not fail if there's no completion checker."""
         from furious.async import Async
         from furious.processors import _handle_context_completion_check
