@@ -132,7 +132,7 @@ class TestContext(unittest.TestCase):
 
         self.assertEqual(0, Context().insert_failed)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_add_job_to_context_works(self, queue_add_mock):
         """Ensure adding a job works."""
         from furious.async import Async
@@ -145,7 +145,7 @@ class TestContext(unittest.TestCase):
         self.assertEqual(1, ctx.insert_success)
         self.assertEqual(1, queue_add_mock.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_bubbling_exceptions(self, queue_add_mock):
         """Ensure exceptions cause tasks to not insert."""
         from furious.context import Context
@@ -161,7 +161,7 @@ class TestContext(unittest.TestCase):
         self.assertRaises(TestError, wrapper)
         self.assertEqual(0, queue_add_mock.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_nested_context_works(self, queue_add_mock):
         """Ensure adding a job works."""
         from furious.async import Async
@@ -178,7 +178,7 @@ class TestContext(unittest.TestCase):
         self.assertEqual(1, ctx2.insert_success)
         self.assertEqual(2, queue_add_mock.call_count)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_add_multiple_jobs_to_context_works(self, queue_add_mock):
         """Ensure adding multiple jobs works."""
         from furious.context import Context
@@ -191,7 +191,7 @@ class TestContext(unittest.TestCase):
         self.assertEqual(10, len(queue_add_mock.call_args[0][0]))
         self.assertEqual(10, ctx.insert_success)
 
-    @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_added_asyncs_get_context_id(self, queue_mock):
         """Ensure Asyncs added to context get context id."""
         from furious.async import Async
@@ -206,7 +206,7 @@ class TestContext(unittest.TestCase):
 
         self.assertEqual(10, ctx.insert_success)
 
-    @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_added_to_correct_queue(self, queue_mock):
         """Ensure jobs are added to the correct queue."""
         from furious.context import Context
@@ -247,7 +247,7 @@ class TestContext(unittest.TestCase):
         self.assertEqual(1, len(queue_registry['C']._calls[0][0][0]))
         self.assertEqual(4, ctx.insert_success)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_add_task_fails(self, queue_add_mock):
         """Ensure insert_failed and insert_success are calculated correctly."""
         from google.appengine.api.taskqueue import TaskAlreadyExistsError
@@ -465,7 +465,7 @@ class TestInsertTasks(unittest.TestCase):
 
         self.assertEqual(0, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_queue_name_is_honored(self, queue_mock):
         """Ensure the Queue is instantiated with the name."""
         from furious.context.context import _insert_tasks
@@ -474,7 +474,7 @@ class TestInsertTasks(unittest.TestCase):
         queue_mock.assert_called_once_with(name='AbCd')
         self.assertEqual(1, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_tasks_are_passed_along(self, queue_add_mock):
         """Ensure the list of tasks are passed along."""
         from furious.context.context import _insert_tasks
@@ -485,7 +485,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(4, inserted)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_add_error_TransientError(self, queue_add_mock, mock_sleep):
         """Ensure a TransientError gets raised from add if we've specified not
         to retry those errors."""
@@ -501,7 +501,7 @@ class TestInsertTasks(unittest.TestCase):
         queue_add_mock.assert_called_once_with(('A',), transactional=False)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_add_error_TransientError_with_delay(self, queue_add_mock,
                                                       mock_sleep):
         """Ensure a TransientError gets retried with the retry_delay that we
@@ -522,7 +522,7 @@ class TestInsertTasks(unittest.TestCase):
         mock_sleep.assert_called_once_with(12)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_add_error_TransientError_transactional(self, queue_add_mock,
                                                          mock_sleep):
         """Ensure a TransientError gets re-raised when transactional=True"""
@@ -544,7 +544,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(mock_sleep.call_count, 0)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_batches_get_split_TransientError(self, queue_add_mock, mock_sleep):
         """Ensure TransientErrors retries once, and correctly returns the number
         of inserted tasks."""
@@ -560,7 +560,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(3, inserted)
         self.assertEqual(mock_sleep.call_count, 1)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_add_error_BadTaskStateError(self, queue_add_mock):
         """Ensure a BadTaskStateError doesn't get raised from add."""
         from furious.context.context import _insert_tasks
@@ -575,7 +575,7 @@ class TestInsertTasks(unittest.TestCase):
         queue_add_mock.assert_called_once_with(('A',), transactional=False)
         self.assertEqual(0, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_batches_get_split_BadTaskStateError(self, queue_add_mock):
         """Ensure a batches get split and retried on BadTaskStateErrors."""
         from furious.context.context import _insert_tasks
@@ -591,7 +591,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(5, queue_add_mock.call_count)
         self.assertEqual(0, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_add_error_TaskAlreadyExistsError(self, queue_add_mock):
         """Ensure a TaskAlreadyExistsError doesn't get raised from add."""
         from furious.context.context import _insert_tasks
@@ -606,7 +606,7 @@ class TestInsertTasks(unittest.TestCase):
         queue_add_mock.assert_called_once_with(('A',), transactional=False)
         self.assertEqual(0, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_batches_get_split_TaskAlreadyExistsError(self, queue_add_mock):
         """Ensure a batches get split and retried on TaskAlreadyExistsErrors.
         """
@@ -623,7 +623,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(5, queue_add_mock.call_count)
         self.assertEqual(0, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_add_error_TombstonedTaskError(self, queue_add_mock):
         """Ensure a TombstonedTaskError doesn't get raised from add."""
         from furious.context.context import _insert_tasks
@@ -638,7 +638,7 @@ class TestInsertTasks(unittest.TestCase):
         queue_add_mock.assert_called_once_with(('A',), transactional=False)
         self.assertEqual(0, inserted)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_batches_get_split_TombstonedTaskError(self, queue_add_mock):
         """Ensure a batches get split and retried on TombstonedTaskErrors."""
         from furious.context.context import _insert_tasks
@@ -655,7 +655,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(0, inserted)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_single_task_gets_retried(self, queue_add_mock, mock_sleep):
         """Ensure a single task failing causes a retry.
         """
@@ -670,7 +670,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(inserted, 1)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_tasks_not_enqueued_get_retried(self, queue_add_mock, mock_sleep):
         """Ensure if a taskqueue add causes a TransientError, only the tasks
         which were not enqueued are retried.
@@ -693,7 +693,7 @@ class TestInsertTasks(unittest.TestCase):
         self.assertEqual(inserted, 3)
 
     @patch('time.sleep')
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_single_task_reraises_after_failure(self, queue_add_mock,
                                                 mock_sleep):
         """Ensure a repeated failure on add re-raises the exception after
@@ -709,7 +709,7 @@ class TestInsertTasks(unittest.TestCase):
                           _insert_tasks, (taskqueue.Task('A'),), 'AbDc')
         self.assertEqual(queue_add_mock.call_count, 2)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_batches_get_split_dont_reinsert_enqueued(self, queue_add_mock):
         """Ensure a batch gets split and retried on error but only tasks which
         were not enqueued are retried.

@@ -27,7 +27,7 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
 
         mock_tasks.assert_called_once_with(['1'], 'queue', 'arg1', foo='bar')
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_insert_tasks_ignore_duplicate_names_raises(self, mock_add):
         """Ensure if `DuplicateTaskNameError` raised, that each task is
         retried.
@@ -51,7 +51,7 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
         for task in tasks:
             mock_add.assert_any_call([task], transactional=False)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_insert_tasks_ignore_duplicate_names_partial_errors(self, mock_add):
         """Ensure if `DuplicateTaskNameError` raised, that each task is
         retried, and count is correct if some tasks could be re-inserted.
@@ -72,7 +72,7 @@ class TestInsertTasksIgnoreDuplicateNames(unittest.TestCase):
         for task in tasks:
             mock_add.assert_any_call([task], transactional=False)
 
-    @patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_insert_tasks_ignore_duplicate_names_was_enqueued(self, mock_add):
         """Ensure only tasks that were not enqueued on the initial BulkAdd() are
         re-inserted.
