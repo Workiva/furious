@@ -23,10 +23,10 @@ $(BUILD_DIR)/pip-dev.log: requirements_dev.txt
 	$(PIP) install -Ur requirements_dev.txt | tee $(BUILD_DIR)/pip-dev.log
 
 unit: clean
-	nosetests --with-coverage
+	nosetests
 
 integrations:
-	nosetests --logging-level=ERROR -a slow 
+	nosetests --logging-level=ERROR -a slow --with-coverage
 
-test: clean unit integrations
+test: clean integrations
 

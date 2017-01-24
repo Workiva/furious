@@ -150,7 +150,10 @@ def decode_callbacks(encoded_callbacks):
     callbacks = {}
     for event, callback in encoded_callbacks.iteritems():
         if isinstance(callback, dict):
-            callback = Async.from_dict(callback)
+            async_type = Async
+            if '_type' in callback:
+                async_type = path_to_reference(callback['_type'])
+            callback = async_type.from_dict(callback)
         else:
             callback = path_to_reference(callback)
 

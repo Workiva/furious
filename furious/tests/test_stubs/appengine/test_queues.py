@@ -47,7 +47,7 @@ class TestExecuteTask(unittest.TestCase):
         async_options = {'job': ('time.ctime', None, None)}
 
         body = base64.b64encode(json.dumps(async_options))
-        url = '/_ah/queue/async'
+        url = '/_queue/async'
 
         task = {'url': url, 'body': body, 'headers': {}}
 
@@ -79,7 +79,7 @@ class TestExecuteTask(unittest.TestCase):
                                  args, kwargs)}
 
         body = base64.b64encode(json.dumps(async_options))
-        url = '/_ah/queue/async'
+        url = '/_queue/async'
 
         task = {'url': url, 'body': body, 'headers': {}}
 
@@ -603,7 +603,7 @@ class TestNamesFromQueueService(unittest.TestCase):
 
         names = get_push_queue_names(self.taskqueue_service)
 
-        self.assertEqual(names, ['default'])
+        self.assertEqual(names, ['default', 'example'])
 
     def test_get_queue_names(self):
         """Ensure the correct queue names are returned from get_queue_names."""
@@ -612,7 +612,7 @@ class TestNamesFromQueueService(unittest.TestCase):
 
         names = get_queue_names(self.taskqueue_service)
 
-        self.assertEqual(names, ['default', 'default-pull'])
+        self.assertEqual(names, ['default', 'default-pull', 'example'])
 
 
 @attr('slow')
@@ -1101,9 +1101,9 @@ class IsFuriousTaskTestCase(unittest.TestCase):
     def test_url_not_url_prefixes(self):
         """Ensure task url not in non_furious_url_prefixes True is returned."""
         task = {
-            'url': '/_ah/queue/async'
+            'url': '/_queue/async'
         }
-        furious_url_prefixes = ('/_ah/queue/defer',)
+        furious_url_prefixes = ('/_queue/defer',)
         non_furious_handler = None
 
         result = _is_furious_task(task, furious_url_prefixes,
@@ -1115,9 +1115,9 @@ class IsFuriousTaskTestCase(unittest.TestCase):
         """Ensure task url not in furious_url_prefixes True is returned but the
         handler is not called."""
         task = {
-            'url': '/_ah/queue/defer'
+            'url': '/_queue/defer'
         }
-        furious_url_prefixes = ('/_ah/queue/defer',)
+        furious_url_prefixes = ('/_queue/defer',)
         non_furious_handler = None
 
         result = _is_furious_task(task, furious_url_prefixes,
@@ -1130,9 +1130,9 @@ class IsFuriousTaskTestCase(unittest.TestCase):
         the handler is called.
         """
         task = {
-            'url': '/_ah/queue/defer',
+            'url': '/_queue/defer',
         }
-        furious_url_prefixes = ('/_ah/queue/defer',)
+        furious_url_prefixes = ('/_queue/defer',)
 
         non_furious_handler = Mock()
 

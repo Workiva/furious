@@ -39,6 +39,7 @@ Usage:
 """
 
 from furious.context import _local
+from furious.context.auto_context import AutoContext
 from furious.context.context import Context
 
 from furious.context import _execution
@@ -49,10 +50,16 @@ from furious import errors
 execution_context_from_async = _execution.execution_context_from_async
 
 
-def new():
-    """Get a new furious context and add it to the registry."""
+def new(batch_size=None, **options):
+    """Get a new furious context and add it to the registry. If a batch size is
+    specified, use an AutoContext which inserts tasks in batches as they are
+    added to the context.
+    """
 
-    new_context = Context()
+    if batch_size:
+        new_context = AutoContext(batch_size=batch_size, **options)
+    else:
+        new_context = Context(**options)
 
     _local.get_local_context().registry.append(new_context)
 
@@ -81,3 +88,18 @@ def get_current_context():
 
     raise errors.NotInContextError('Not in a Context.')
 
+
+def get_current_async_with_context():
+    """Return a reference to the currently executing Async job object and it's
+    triggering context. Return None for the async if not in an Async job and
+    None for the context if the Async was not triggered within a context.
+    """
+    async = get_current_async()
+
+    if not async:
+        return None, None
+
+    if not async.context_id:
+        return async, None
+
+    return async, Context.load(async.context_id)

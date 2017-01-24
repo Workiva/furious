@@ -50,6 +50,27 @@ def get_default_persistence_engine(known_modules=PERSISTENCE_MODULES):
     return _get_configured_module('persistence', known_modules=known_modules)
 
 
+def get_completion_cleanup_queue():
+    """Get the default queue that completion should use to cleanup markers on.
+    """
+    config = get_config()
+    return config.get('cleanupqueue')
+
+
+def get_completion_default_queue():
+    """Get the default queue that completion should use to cleanup markers on.
+    """
+    config = get_config()
+    return config.get('defaultqueue')
+
+
+def get_completion_cleanup_delay():
+    """Get the default queue that completion should use to cleanup markers on.
+    """
+    config = get_config()
+    return config.get('cleanupdelay')
+
+
 def _get_configured_module(option_name, known_modules=None):
     """Get the module specified by the value of option_name. The value of the
     configuration option will be used to load the module by name from the known
@@ -88,10 +109,10 @@ def find_furious_yaml(config_file=__file__):
         the path of furious.yaml or None if not found
     """
     checked = set()
-    yaml = _find_furious_yaml(os.path.dirname(config_file), checked)
-    if not yaml:
-        yaml = _find_furious_yaml(os.getcwd(), checked)
-    return yaml
+    result = _find_furious_yaml(os.path.dirname(config_file), checked)
+    if not result:
+        result = _find_furious_yaml(os.getcwd(), checked)
+    return result
 
 
 def _find_furious_yaml(start, checked):
@@ -131,6 +152,9 @@ def default_config():
     return {'secret_key':
             '931b8-i-f44330b4a5-am-3b9b733f-not-secure-043e96882',
             'persistence': 'ndb',
+            'cleanupqueue': 'default',
+            'cleanupdelay': 7600,
+            'defaultqueue': 'default',
             'task_system': 'appengine_taskqueue'}
 
 
@@ -155,9 +179,12 @@ def _parse_yaml_config(config_data=None):
     data_map = default_config()
 
     # If we were given config data to use, use it.  Otherwise, see if there is
-    # a furious.yaml to read the config from.
-    config_data = config_data or _load_yaml_config()
+    # a furious.yaml to read the config from.  Note that the empty string will
+    # result in the default config being used.
     if config_data is None:
+        config_data = _load_yaml_config()
+
+    if not config_data:
         logging.debug("No custom furious config, using default config.")
         return data_map
 
@@ -181,4 +208,3 @@ def get_config():
     return _config
 
 _config = _parse_yaml_config()
-

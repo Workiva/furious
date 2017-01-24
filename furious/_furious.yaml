@@ -1,1 +1,4 @@
 persistence: ndb
+cleanupqueue: low-priority
+cleanupdelay: 7600
+defaultqueue: default

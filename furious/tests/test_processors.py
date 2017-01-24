@@ -111,7 +111,7 @@ class TestRunJob(unittest.TestCase):
         with _ExecutionContext(work):
             self.assertRaises(TypeError, run_job)
 
-        self.assertIsInstance(work.result, AsyncException)
+        self.assertIsInstance(work.result.payload, AsyncException)
 
     def test_calls_success_callback(self):
         """Ensure run_job calls the success callback after a successful run."""
@@ -268,6 +268,232 @@ class TestRunJob(unittest.TestCase):
 
         logging.getLogger().removeHandler(AbortLogHandler())
 
+    @patch('__builtin__.dir')
+    def test_BaseException(self, dir_mock):
+        """Ensure exceptions inheriting from BaseException, such as
+        DeadlineExceededError, trigger the error handler.
+        """
+
+        from furious.async import Async
+        from furious.context._execution import _ExecutionContext
+        from furious.processors import run_job
+        from google.appengine.runtime import DeadlineExceededError
+
+        dir_mock.side_effect = DeadlineExceededError
+
+        mock_success = Mock()
+        mock_error = Mock()
+
+        work = Async(target='dir',
+                     callbacks={'success': mock_success,
+                                'error': mock_error})
+
+        with _ExecutionContext(work):
+            run_job()
+
+        self.assertFalse(mock_success.called)
+        self.assertEqual(mock_error.call_count, 1)
+
+
+class TestHandleResults(unittest.TestCase):
+    """Test that _handle_results does the Right Things."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    @patch('furious.processors._process_results')
+    def test_defaults_to_process_results(self, processor_mock):
+        """Ensure _handle_results calls _process_results if not given."""
+        from furious.processors import _handle_results
+
+        _handle_results({})
+
+        processor_mock.assert_called_once_with()
+
+    def test_runs_given_function(self):
+        """Ensure _handle_results calls the given results processor."""
+        from furious.processors import _handle_results
+
+        processor = Mock()
+
+        _handle_results({'_process_results': processor})
+
+        processor.assert_called_once_with()
+
+    def test_runs_returned_async(self):
+        """Ensure _handle_results runs Async returned by results processor."""
+        from furious.async import Async
+        from furious.processors import _handle_results
+
+        processor = Mock()
+        processor.return_value = Mock(spec=Async)
+
+        _handle_results({'_process_results': processor})
+
+        processor.return_value.start.assert_called_once_with()
+
+    def test_starts_returned_context(self):
+        """Ensure _handle_results starts Context returned by results processor.
+        """
+        from furious.context.context import Context
+        from furious.processors import _handle_results
+
+        processor = Mock()
+        processor.return_value = Mock(spec=Context)
+
+        _handle_results({'_process_results': processor})
+
+        processor.return_value.start.assert_called_once_with()
+
+
+class TestContextCompletionChecker(unittest.TestCase):
+    """Test that _handle_context_completion_check does the Right Things."""
+
+    def setUp(self):
+        import os
+        import uuid
+
+        # Ensure each test looks like it is in a new request.
+        os.environ['REQUEST_ID_HASH'] = uuid.uuid4().hex
+
+    def test_no_completion(self):
+        """Ensure does not fail if there's no completion checker."""
+        from furious.async import Async
+        from furious.processors import _handle_context_completion_check
+
+        async = Async(dir)
+
+        _handle_context_completion_check(async)
+
+    def test_checker_called_with_async(self):
+        """Ensure checker called with id as argument."""
+        from furious.async import Async
+        from furious.processors import _handle_context_completion_check
+
+        async = Async(dir)
+        checker = Mock()
+        async.update_options(_context_checker=checker)
+
+        _handle_context_completion_check(async)
+
+        checker.assert_called_once_with(async)
+
+    @unittest.skip('not yet implemented.')
+    def test_async_checker_called_with_id(self):
+        """Ensure an Async checker called with id as argument."""
+        from furious.async import Async
+        from furious.processors import _handle_context_completion_check
+
+        async = Async(dir)
+        checker = Mock(spec=Async)
+        async.update_options(_context_checker=checker)
+
+        _handle_context_completion_check(async)
+
+        checker.update_options.assert_called_once_with(args=['someid'])
+        checker.start.assert_called_once_with()
+
+        # Make sure didn't try to "call" the Async.
+        self.assertEqual(checker.call_count, 0)
+
+
+@patch('furious.processors.get_current_async')
+class ProcessResultsTestCase(unittest.TestCase):
+
+    def test_is_success_with_callback(self, get_current_async):
+        """Ensure a sucessful process executes the sucess callback."""
+        from furious.processors import _process_results
+
+        async = Mock()
+        success_callback = Mock()
+
+        async.get_callbacks.return_value = {
+            'success': success_callback
+        }
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, success_callback.return_value)
+
+    def test_is_success_with_async_callback(self, get_current_async):
+        """Ensure a sucessful process executes the sucess callback and returns
+        an async if it's callback is an async.
+        """
+        from furious.async import Async
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+        success_callback = Mock(spec=Async)
+
+        async.get_callbacks.return_value = {
+            'success': success_callback
+        }
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, success_callback.start.return_value)
+
+    def test_is_success_with_no_callback(self, get_current_async):
+        """Ensure a sucessful process with no success callback returns the
+        async result payload if one exists.
+        """
+        from furious.async import Async
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+
+        async.get_callbacks.return_value = {}
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, async.result.payload)
+
+    def test_is_error_with_callback(self, get_current_async):
+        """Ensure an error process executes the error callback."""
+        from furious.async import Async
+        from furious.processors import AsyncException
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+        async.result.payload = AsyncException("", "", "", "")
+        error_callback = Mock(spec=Async)
+
+        async.get_callbacks.return_value = {
+            'error': error_callback
+        }
+        get_current_async.return_value = async
+
+        result = _process_results()
+
+        self.assertEqual(result, error_callback.start.return_value)
+
+    def test_is_error_with_no_callback(self, get_current_async):
+        """Ensure an error process with no callback raises the error."""
+        from furious.async import Async
+        from furious.async import AsyncResult
+        from furious.processors import encode_exception
+        from furious.processors import _process_results
+
+        async = Mock(spec=Async)
+
+        try:
+            raise Exception()
+        except Exception, e:
+            async.result = AsyncResult(payload=encode_exception(e),
+                                       status=AsyncResult.ERROR)
+
+        async.get_callbacks.return_value = {}
+        get_current_async.return_value = async
+
+        self.assertRaises(Exception, _process_results)
+
 
 def _fake_async_returning_target(async_to_return):
     return async_to_return
@@ -276,5 +502,5 @@ def _fake_async_returning_target(async_to_return):
 def _fake_result_returning_callback():
     from furious.context import get_current_async
 
-    return get_current_async().result
+    return get_current_async().result.payload
 

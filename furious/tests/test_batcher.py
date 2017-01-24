@@ -6,32 +6,57 @@ from mock import Mock, patch
 
 class MessageTestCase(unittest.TestCase):
 
-    def test_options_are_set(self):
+    def test_id_is_passed_in_with_options(self):
+        """Ensure id is set with options passed to init are set on the message.
+        """
+        from furious.batcher import Message
+
+        _id = "id"
+
+        options = {'id': _id, 'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+
+        message = Message(id=_id, value=1, other='zzz', nested={1: 1})
+
+        self.assertEqual(options, message._options)
+
+    @patch('furious.batcher.uuid.uuid4')
+    def test_options_are_set(self, get_uuid):
         """Ensure options passed to init are set on the message."""
         from furious.batcher import Message
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        _id = "id"
+        get_uuid.return_value.hex = _id
+
+        options = {'id': _id, 'value': 1, 'other': 'zzz', 'nested': {1: 1}}
 
         message = Message(value=1, other='zzz', nested={1: 1})
 
         self.assertEqual(options, message._options)
 
-    def test_update_options(self):
+    @patch('furious.batcher.uuid.uuid4')
+    def test_update_options(self, get_uuid):
         """Ensure update_options updates the options."""
         from furious.batcher import Message
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        _id = "id"
+        get_uuid.return_value.hex = _id
+
+        options = {'id': _id, 'value': 1, 'other': 'zzz', 'nested': {1: 1}}
 
         message = Message()
         message.update_options(**options.copy())
 
         self.assertEqual(options, message._options)
 
-    def test_update_options_supersede_init_opts(self):
+    @patch('furious.batcher.uuid.uuid4')
+    def test_update_options_supersede_init_opts(self, get_uuid):
         """Ensure update_options supersedes the options set in init."""
         from furious.batcher import Message
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}}
+        _id = "id"
+        get_uuid.return_value.hex = _id
+
+        options = {'id': _id, 'value': 1, 'other': 'zzz', 'nested': {1: 1}}
 
         message = Message(**options)
 
@@ -90,14 +115,18 @@ class MessageTestCase(unittest.TestCase):
 
         self.assertEqual({}, message.get_task_args())
 
-    def test_to_dict(self):
+    @patch('furious.batcher.uuid.uuid4')
+    def test_to_dict(self, get_uuid):
         """Ensure to_dict returns a dictionary representation of the
         Message.
         """
         from furious.batcher import Message
 
+        _id = "id"
+        get_uuid.return_value.hex = _id
+
         task_args = {'other': 'zzz', 'nested': 1}
-        options = {'task_args': task_args}
+        options = {'id': _id, 'task_args': task_args}
 
         message = Message(**options.copy())
 
@@ -109,18 +138,23 @@ class MessageTestCase(unittest.TestCase):
 
         task_args = {'other': 'zzz', 'nested': 1}
 
-        options = {'task_args': task_args}
+        options = {'id': 'id', 'task_args': task_args}
 
         message = Message.from_dict(options)
 
         self.assertEqual(task_args, message.get_task_args())
+        self.assertEqual(message.id, 'id')
 
-    def test_reconstitution(self):
+    @patch('furious.batcher.uuid.uuid4')
+    def test_reconstitution(self, get_uuid):
         """Ensure to_dict(job.from_dict()) returns the same thing."""
         from furious.batcher import Message
 
+        _id = "id"
+        get_uuid.return_value.hex = _id
+
         task_args = {'other': 'zzz', 'nested': 1}
-        options = {'task_args': task_args}
+        options = {'id': _id, 'task_args': task_args}
 
         message = Message.from_dict(options)
 
@@ -319,30 +353,18 @@ class MessageProcessorTestCase(unittest.TestCase):
         task_retry.return_value = task_retry_object
 
         processor = MessageProcessor('something', queue='test_queue',
-                                     id='someid')
+                                     id='someid', parent_id='parentid',
+                                     context_id="contextid")
 
         processor.to_task()
 
         task_args = {
-            'url': '/_ah/queue/async/something',
-            'headers': {},
-            'payload': json.dumps({
-                'queue': 'test_queue',
-                'job': ("something", None, None),
-                'id': 'someid',
-                'task_args': {
-                    'countdown': 30,
-                    'name': 'processor-processor-current-batch-3'
-                },
-                '_recursion': {
-                    'current': 1,
-                    'max': 100
-                },
-                '_type': 'furious.batcher.MessageProcessor',
-            }),
-            'countdown': 30,
             'name': 'processor-processor-current-batch-3',
-            'retry_options': task_retry_object
+            'url': '/_queue/async/something',
+            'countdown': 30,
+            'headers': {},
+            'retry_options': task_retry_object,
+            'payload': json.dumps(processor.to_dict())
         }
 
         task.assert_called_once_with(**task_args)

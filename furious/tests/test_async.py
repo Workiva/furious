@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import json
-
+from collections import deque
+import functools
 import unittest
 
+import json
 import mock
+
+from furious.async import Async
 
 
 class TestDefaultsDecorator(unittest.TestCase):
@@ -196,6 +198,17 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(job.id, id)
         self.assertEqual(job.get_options()['id'], id)
 
+    def test_generates_one_id(self):
+        """Ensure only one random id is auto-generated if not specified."""
+        from furious.async import Async
+
+        job = Async('somehting')
+
+        id1 = job.id
+        id2 = job.id
+        self.assertEqual(id1, id2)
+        self.assertEqual(job.id, id1)
+
     def test_uses_given_id(self):
         """Ensure an id passed in is used."""
         from furious.async import Async
@@ -215,12 +228,28 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(job.id, 'newid')
         self.assertEqual(job.get_options()['id'], 'newid')
 
+    def test_context_id(self):
+        """Ensure context_id returns the context_id."""
+        from furious.async import Async
+
+        job = Async('somehting')
+        job.update_options(context_id='blarghahahaha')
+        self.assertEqual(job.context_id, 'blarghahahaha')
+
+    def test_no_context_id(self):
+        """Ensure calling context_id when none exists returns None."""
+        from furious.async import Async
+
+        job = Async('somehting')
+        self.assertIsNone(job.context_id)
+
     def test_decorated_options(self):
         """Ensure the defaults decorator sets Async options."""
         from furious.async import Async
         from furious.async import defaults
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'thing'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'thing',
+                   'context_id': None, 'parent_id': 'parentid'}
 
         @defaults(**options.copy())
         def some_function():
@@ -238,7 +267,8 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
         from furious.async import defaults
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong',
+                   'context_id': None, 'parent_id': 'parentid'}
 
         @defaults(**options.copy())
         def some_function():
@@ -282,7 +312,8 @@ class TestAsync(unittest.TestCase):
         """Ensure update_options updates the options."""
         from furious.async import Async
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'xx'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'xx',
+                   'context_id': None, 'parent_id': 'parentid'}
 
         job = Async("nonexistant")
         job.update_options(**options.copy())
@@ -297,7 +328,8 @@ class TestAsync(unittest.TestCase):
         """Ensure update_options supersedes the options set in init."""
         from furious.async import Async
 
-        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong'}
+        options = {'value': 1, 'other': 'zzz', 'nested': {1: 1}, 'id': 'wrong',
+                   'context_id': None, 'parent_id': 'parentid'}
 
         job = Async("nonexistant", **options.copy())
 
@@ -395,7 +427,8 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'other': 'zzz', 'nested': 1}
         headers = {'some': 'thing', 'fun': 1}
-        options = {'headers': headers, 'task_args': task_args, 'id': 'me'}
+        options = {'headers': headers, 'task_args': task_args, 'id': 'me',
+                   'context_id': None, 'parent_id': 'parentid'}
 
         job = Async('nonexistant', **options.copy())
 
@@ -410,10 +443,13 @@ class TestAsync(unittest.TestCase):
         from furious.async import Async
 
         options = {'id': 'anident',
+                   'context_id': 'contextid',
+                   'parent_id': 'parentid',
                    'callbacks': {
                        'success': self.__class__.test_to_dict_with_callbacks,
                        'failure': "failure_function",
-                       'exec': Async(target=dir, id='subidnet'),
+                       'exec': Async(target=dir, id='subidnet',
+                                     parent_id='parentid'),
                    }}
 
         job = Async('nonexistant', **options.copy())
@@ -425,6 +461,8 @@ class TestAsync(unittest.TestCase):
             'failure': "failure_function",
             'exec': {'job': ('dir', None, None),
                      'id': 'subidnet',
+                     'context_id': None,
+                     'parent_id': 'parentid',
                      '_recursion': {'current': 0, 'max': 100},
                      '_type': 'furious.async.Async'}
         }
@@ -448,6 +486,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(headers, async_job.get_headers())
         self.assertEqual(task_args, async_job.get_task_args())
         self.assertEqual(job[0], async_job._function_path)
+        self.assertEqual(job[0], async_job.function_path)
 
     def test_from_dict_with_callbacks(self):
         """Ensure from_dict reconstructs callbacks correctly."""
@@ -458,10 +497,11 @@ class TestAsync(unittest.TestCase):
             'success': ("furious.tests.test_async."
                         "TestAsync.test_to_dict_with_callbacks"),
             'failure': "dir",
-            'exec': {'job': ('dir', None, None), 'id': 'petey'}
+            'exec': {'job': ('dir', None, None), 'id': 'petey',
+                     'parent_id': 'parentid'}
         }
 
-        options = {'job': job, 'callbacks': callbacks}
+        options = {'job': job, 'callbacks': callbacks, 'parent_id': 'parentid'}
 
         async_job = Async.from_dict(options)
 
@@ -475,6 +515,8 @@ class TestAsync(unittest.TestCase):
 
         correct_options = {'job': ('dir', None, None),
                            'id': 'petey',
+                           'parent_id': 'parentid',
+                           'context_id': None,
                            '_recursion': {'current': 0, 'max': 100},
                            '_type': 'furious.async.Async'}
 
@@ -496,6 +538,8 @@ class TestAsync(unittest.TestCase):
             'persistence_engine': 'furious.extras.appengine.ndb_persistence',
             '_recursion': {'current': 1, 'max': 100},
             '_type': 'furious.async.Async',
+            'context_id': None,
+            'parent_id': 'parentid'
         }
 
         async_job = Async.from_dict(options)
@@ -528,7 +572,8 @@ class TestAsync(unittest.TestCase):
 
         task_args = {'eta': eta_posix}
         options = {'job': job, 'headers': headers, 'task_args': task_args,
-                   'id': 'ident'}
+                   'id': 'ident', 'context_id': 'contextid',
+                   'parent_id': 'parentid'}
 
         task = Async.from_dict(options).to_task()
 
@@ -621,7 +666,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(persistence_engine.store_async_result.call_count, 0)
 
     def test_setting_result_calls_persist(self):
-        """Ensure setting the result calls the persis_result method."""
+        """Ensure setting the result calls the persist_result method."""
         from furious.async import Async
 
         result = "here be the results."
@@ -640,8 +685,9 @@ class TestAsync(unittest.TestCase):
         persistence_engine.store_async_result.assert_called_once_with(job.id,
                                                                       result)
 
+    @mock.patch('time.sleep')
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
-    def test_start_hits_transient_error(self, queue_mock):
+    def test_start_hits_transient_error(self, queue_mock, mock_sleep):
         """Ensure the task retries if a transient error is hit."""
         from google.appengine.api.taskqueue import TransientError
         from furious.async import Async
@@ -660,6 +706,72 @@ class TestAsync(unittest.TestCase):
 
         queue_mock.assert_called_with(name='my_queue')
         self.assertEqual(2, queue_mock.return_value.add.call_count)
+        self.assertEqual(1, mock_sleep.call_count)
+
+    @mock.patch('time.sleep')
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_transient_error_retry_disabled(self, queue_mock,
+                                                       sleep_mock):
+        """Ensure if transient error retries are disabled, that those errors are
+        re-raised immediately without any attempt to re-insert.
+        """
+        from google.appengine.api.taskqueue import TransientError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TransientError()
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=False)
+
+        self.assertRaises(TransientError, async_job.start)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+
+        # Try again with the option enabled, this should cause a retry after a
+        # delay, which we have also specified.
+        queue_mock.reset_mock()
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True,
+                          retry_delay=12)
+
+        self.assertRaises(TransientError, async_job.start)
+        self.assertEqual(2, queue_mock.return_value.add.call_count)
+        sleep_mock.assert_called_once_with(12)
+
+    @mock.patch('time.sleep')
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_transient_error_transactional(self, queue_mock,
+                                                      sleep_mock):
+        """Ensure if caller is specifying transactional, that Transient errors
+        are immediately re-raised.
+        """
+        from google.appengine.api.taskqueue import TransientError
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = TransientError()
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True)
+
+        self.assertRaises(TransientError, async_job.start,
+                          transactional=True)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
+        self.assertEqual(0, sleep_mock.call_count)
+
+    @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
+    def test_start_hits_other_error_retry_enabled(self, queue_mock):
+        """Ensure if transient error retries are enabled, that other errors are
+        not retried.
+        """
+
+        from furious.async import Async
+
+        queue_mock.return_value.add.side_effect = (Exception(), None)
+
+        async_job = Async("something", queue='my_queue',
+                          retry_transient_errors=True)
+
+        self.assertRaises(Exception, async_job.start)
+        self.assertEqual(1, queue_mock.return_value.add.call_count)
 
     @mock.patch('google.appengine.api.taskqueue.Queue', autospec=True)
     def test_start_hits_task_already_exists_error_error(self, queue_mock):
@@ -892,6 +1004,48 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(
             5, options['task_args']['retry_options']['task_retry_limit'])
 
+    def test_context_checker_encoded(self):
+        """Ensure the _context_checker is correctly encoded in options dict."""
+        from furious.async import Async
+        from furious.async import encode_async_options
+
+        async_job = Async("something", _context_checker=dir)
+        options = encode_async_options(async_job)
+
+        self.assertEqual('dir', options['__context_checker'])
+
+    def test_context_checker_encoded_and_decoded(self):
+        """Ensure the _context_checker is correctly encoded to and decoded from
+        an Async options dict.
+        """
+        from furious.async import Async
+
+        async_job = Async("something", _context_checker=dir)
+
+        encoded_async = async_job.to_dict()
+        self.assertEqual(encoded_async['__context_checker'], 'dir')
+
+        new_async_job = Async.from_dict(encoded_async)
+        self.assertEqual(new_async_job.get_options()['_context_checker'], dir)
+
+        self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
+    def test_process_results_encoded_and_decoded(self):
+        """Ensure _process_results is correctly encoded to and decoded from
+        an Async options dict.
+        """
+        from furious.async import Async
+
+        async_job = Async("something", _process_results=locals)
+
+        encoded_async = async_job.to_dict()
+        self.assertEqual(encoded_async['__process_results'], 'locals')
+
+        new_async_job = Async.from_dict(encoded_async)
+        self.assertEqual(new_async_job.get_options()['_process_results'], locals)
+
+        self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
     def test_retry_value_is_decodable(self):
         """Ensure that from_dict is the inverse of to_dict when retry options
         are given.
@@ -917,6 +1071,71 @@ class TestAsync(unittest.TestCase):
         new_async_job = Async.from_dict(async_job.to_dict())
 
         self.assertEqual(async_job.to_dict(), new_async_job.to_dict())
+
+
+def _foo_stub():
+    TestAsync_decorate_job.foo_values.append('bar')
+
+
+class FooAsync(Async):
+    def _decorate_job(self):
+        return super(FooAsync, self)._decorate_job()
+
+
+class FizzAsync(Async):
+    @staticmethod
+    def fizz(func):
+        @functools.wraps(func)
+        def wrapper():
+            TestAsync_decorate_job.foo_values.append('fizz')
+            func()
+            TestAsync_decorate_job.foo_values.append('bang')
+        return wrapper
+
+    def _decorate_job(self):
+        return self.fizz(super(FizzAsync, self)._decorate_job())
+
+
+class TestAsync_decorate_job(unittest.TestCase):
+    """Tests `Async._decorate_job`.
+
+    These tests will run the tasks to ensure that the decorated function is
+    what gets invoked.
+    """
+    foo_values = deque()
+
+    def setUp(self):
+        from google.appengine.ext.testbed import (
+            TASKQUEUE_SERVICE_NAME,
+            Testbed,
+        )
+        testbed = Testbed()
+        testbed.activate()
+
+        self.addCleanup(testbed.deactivate)
+        self.addCleanup(TestAsync_decorate_job.foo_values.clear)
+
+        testbed.init_taskqueue_stub()
+        self._taskq_service = testbed.get_stub(TASKQUEUE_SERVICE_NAME)
+
+    def run_taskq(self):
+        from furious.test_stubs.appengine.queues import run
+        run(self._taskq_service)
+
+    def test_runs_undecorated_job(self):
+        """By default, doesn't decorate the function with anything."""
+        FooAsync(_foo_stub).start()
+        self.run_taskq()
+        self.assertSequenceEqual(['bar'], TestAsync_decorate_job.foo_values)
+
+    def test_runs_decorated_job(self):
+        """Subclass can override `Async._decorate_job` to wrap the original
+        target.
+        """
+        FizzAsync(_foo_stub).start()
+        self.run_taskq()
+        self.assertSequenceEqual(
+            ['fizz', 'bar', 'bang'], TestAsync_decorate_job.foo_values)
 
 
 class TestAsyncFromOptions(unittest.TestCase):
@@ -963,4 +1182,3 @@ class TestAsyncFromOptions(unittest.TestCase):
         result = async_from_options(options)
 
         self.assertIsInstance(result, MessageProcessor)
-
