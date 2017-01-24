@@ -1,16 +1,26 @@
+sudo: false
 language: python
 python:
-  - "2.7"
+    - "2.7"
 
-# Setup the GAE SDK.
-before_script:
-  - wget http://googleappengine.googlecode.com/files/google_appengine_1.7.7.zip -nv
-  - unzip -q google_appengine_1.7.7.zip
+# Cache our Gcloud SDK between commands
+cache:
+  directories:
+  - "$HOME/google-cloud-sdk/"
 
-# command to install dependencies
-install: "pip install -r requirements_dev.txt --use-mirrors"
+env:
+# Make sure gcloud command is on our PATH and the App Engine SDK is in the Python path
+- GAE_PYTHONPATH=${HOME}/.cache/google_appengine PATH=$PATH:${HOME}/google-cloud-sdk/bin PYTHONPATH=${PYTHONPATH}:${GAE_PYTHONPATH} CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
-# command to run tests
+before_install:
+# Install Google App Engine Python SDK
+- if [ ! -d "${GAE_PYTHONPATH}" ]; then
+    python scripts/fetch_gae_sdk.py $(dirname "${GAE_PYTHONPATH}");
+  fi
+
+install:
+- pip install -r requirements_dev.txt
+
 script:
   - nosetests --gae-lib-path=./google_appengine --with-coverage
   - python setup.py sdist

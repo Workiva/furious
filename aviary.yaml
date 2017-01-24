@@ -1,0 +1,15 @@
+version: 1
+
+exclude:
+  - tests?/
+
+raven_monitored_classes: null
+
+raven_monitored_files:
+  ^furious/extras/xsrf.py$:
+    reason: CSRF protection helper methods
+
+raven_monitored_functions: null
+
+raven_monitored_keywords: null
+
