@@ -18,9 +18,9 @@ deps: py_dev_deps
 
 py_dev_deps: $(BUILD_DIR)/pip-dev.log
 
-$(BUILD_DIR)/pip-dev.log: requirements.txt
+$(BUILD_DIR)/pip-dev.log: requirements_dev.txt
 	@mkdir -p .build
-	$(PIP) install -Ur requirements.txt | tee $(BUILD_DIR)/pip-dev.log
+	$(PIP) install -Ur requirements_dev.txt | tee $(BUILD_DIR)/pip-dev.log
 
 unit: clean
 	nosetests
