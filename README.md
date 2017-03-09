@@ -41,6 +41,16 @@ Contrast that with the [deferred lib](https://cloud.google.com/appengine/article
 which allows any picklable type 
 (see [What can be pickled and unpickled?](https://docs.python.org/2/library/pickle.html#what-can-be-pickled-and-unpickled)).
 
+Why did furious choose this limitation?
+When a python object that is pickled gets moved in the code base, 
+attempts to unpickle it will blow up. Furious tasks can run on 
+different instances at a future time by which there may have 
+been a code deploy done. References:
+
+* [Alex Gaynor: Pickles are for Delis, not Software - PyCon 2014 - YouTube](https://www.youtube.com/watch?v=7KnfGDajDQw&t=1292)
+* [Don't Pickle Your Data](http://www.benfrederickson.com/dont-pickle-your-data/)
+
+
 ### Grouping async jobs
 
 You can group jobs together,
