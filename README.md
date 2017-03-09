@@ -36,6 +36,10 @@ This inserts a task that will make the following call:
 
     your.module.func("positional", "args", foo="bar")
 
+**CAUTION**: Arguments **must** be json-serializable. 
+Contrast that with the [deferred lib](https://cloud.google.com/appengine/articles/deferred), 
+which allows any picklable type 
+(see [What can be pickled and unpickled?](https://docs.python.org/2/library/pickle.html#what-can-be-pickled-and-unpickled)).
 
 ### Grouping async jobs
 
