@@ -206,18 +206,17 @@ def run(taskq_service=None, queue_names=None, max_iterations=None,
 
     iterations = 0
     tasks_processed = 0
-    processed = (max_iterations is None or max_iterations > 0)
+    no_limit = max_iterations is None
+    continue_running = no_limit or max_iterations > 0
 
     # Keep processing if we have processed any tasks and are under our limit.
-    while processed:
+    while continue_running:
 
         processed = _run(taskq_service, queue_names, non_furious_url_prefixes,
                          non_furious_handler, enable_retries)
         tasks_processed += processed
         iterations += 1
-
-        if max_iterations and iterations >= max_iterations:
-            break
+        continue_running = no_limit or iterations < max_iterations
 
     return {'iterations': iterations, 'tasks_processed': tasks_processed}
 
