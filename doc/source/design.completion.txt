@@ -1,0 +1,50 @@
+Completion
+=============================================
+
+
+***********************
+Goal
+***********************
+
+Make tracking completion of a context's tasks simple. Make it
+work for the most basic use cases first. Do it without the Marker
+concept, persisting only a Context representation and Async representations.
+
+***********************
+Simple Solution Idea
+***********************
+
+Context's completion
+------------------------------------------------
+
+A Context would call it's success callback when it knows
+it has reached completion.
+
+Asyncs registered
+------------------------------------------------
+An Async could have it's done is True state registered as required
+for a Context's completion, having an id assigned to it and be
+grouped with other Asyncs by common id prefix. These Async ids
+can be saved as a property of the persisted Context. The Context
+could store about 10,000 task ids. Each task would know it's id
+and it's context id.
+
+
+Task runs and Sends Context a 'done' event
+------------------------------------------------
+When a task runs, the Context is loaded by the context id in the task
+payload and sent a 'done' event. The Context would check if that
+task's group is done, if so, persist that fact then check
+if all groups are done and call the success callback if so.
+
+The persistence layer would provide functions to do these done
+checks, using memory caching such as memcache along with more
+permanent storage such as the datastore to save the done state
+of the ids and id prefix groups.
+
+Result Storage
+------------------------------------------------
+Storage of an Async's results can be persisted by id with functions
+provided the persistence layer and retrieved by id as they are saved
+by the Context.
+

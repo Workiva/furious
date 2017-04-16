@@ -1,0 +1,11 @@
+design
+===============
+
+Subpackages
+-----------
+
+.. toctree::
+
+    design.structure
+    design.completion
+    design.marker
