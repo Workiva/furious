@@ -32,14 +32,15 @@ class TestLogTaskInfo(unittest.TestCase):
         headers = {
             'X-Appengine-Taskretrycount': 'blue',
             'X-Appengine-Taskexecutioncount': 'yellow',
-            'X-Appengine-Tasketa': '0.50'
+            'X-Appengine-Tasketa': '0.50',
+            'X-Cloud-Trace-Context': "atrace"
         }
 
         handlers._log_task_info(headers)
 
         expected_logs = (
             '{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, '
-            '"task_eta": 0.5, "execution_count": "yellow"}')
+            '"task_eta": 0.5, "execution_count": "yellow", "trace": "atrace"}')
 
         debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
 
