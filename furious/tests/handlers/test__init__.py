@@ -72,7 +72,7 @@ class TestLogTaskInfo(unittest.TestCase):
         handlers._log_task_info(headers)
 
         expected_logs = (
-            '{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, '
-            '"task_eta": 0.5, "execution_count": "yellow"}')
+            '{"ran": 1.5, "retry_count": "blue", "gae_latency_seconds": 1.0, 
+            "task_eta": 0.5, "execution_count": "yellow", "trace": "atrace"}')
 
         debug_mock.assert_called_with('TASK-INFO: %s', expected_logs)
