@@ -1,7 +1,7 @@
 name: Publish to pypi
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
+  Publish:
     runs-on: ubuntu-latest
     steps:
       - name: Publish package
