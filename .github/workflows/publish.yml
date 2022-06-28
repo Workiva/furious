@@ -4,6 +4,16 @@ jobs:
   Publish:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 2.x
+      - name: Install dependencies
+        run: >-
+          python -m pip install --user --upgrade setuptools wheel
+      - name: Build
+        run: >-
+          python setup.py sdist bdist_wheel
       - name: Publish package
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@release/v1
