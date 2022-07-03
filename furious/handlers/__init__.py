@@ -43,6 +43,7 @@ def process_async_task(headers, request_body):
 def _log_task_info(headers, extra_task_info=None):
     """Processes the header from task requests to log analytical data."""
     ran_at = time.time()
+    trace = headers.get("X-Cloud-Trace-Context")
     task_eta = float(headers.get('X-Appengine-Tasketa', 0.0))
     task_info = {
         'retry_count': headers.get('X-Appengine-Taskretrycount', ''),
@@ -51,6 +52,8 @@ def _log_task_info(headers, extra_task_info=None):
         'ran': ran_at,
         'gae_latency_seconds': ran_at - task_eta
     }
+    if trace:
+        task_info['trace'] = trace
 
     if extra_task_info:
         task_info['extra'] = extra_task_info
