@@ -815,7 +815,7 @@ class TestAsync(unittest.TestCase):
         # TODO: Check that the task is the same.
         # self.assertEqual(task, queue_mock.add.call_args)
 
-    @mock.patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_transactional(self, queue_add_mock):
         """Ensure the task is added transactional when start is
         called with transactional."""
@@ -829,7 +829,7 @@ class TestAsync(unittest.TestCase):
         self.assertIn('transactional', call_kwargs)
         self.assertTrue(call_kwargs['transactional'])
 
-    @mock.patch('google.appengine.api.taskqueue.Queue.add', auto_spec=True)
+    @mock.patch('google.appengine.api.taskqueue.Queue.add', autospec=True)
     def test_task_non_transactional(self, queue_add_mock):
         """Ensure the task is added transactional when start is
         called with transactional."""
@@ -844,7 +844,7 @@ class TestAsync(unittest.TestCase):
         self.assertFalse(call_kwargs['transactional'])
 
     @mock.patch('google.appengine.api.taskqueue.Queue.add_async',
-                auto_spec=True)
+                autospec=True)
     def test_start_async_no_rpc(self, queue_add_async_mock):
         """Ensure that when the task is called with async=True, that the
         add_async method is called with the default rpc=None.
@@ -858,7 +858,7 @@ class TestAsync(unittest.TestCase):
         self.assertEqual(None, queue_add_async_mock.call_args[1]['rpc'])
 
     @mock.patch('google.appengine.api.taskqueue.Queue.add_async',
-                auto_spec=True)
+                autospec=True)
     def test_start_async_with_rpc(self, queue_add_async_mock):
         """Ensure that when the task is called with async=True and an rpc is
         provided, that the add_async method is called with the correct rpc.
