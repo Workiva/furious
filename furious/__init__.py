@@ -30,4 +30,4 @@ def csrf_check(request):
     if in_prod and request.environ.get("REMOTE_ADDR") != "0.1.0.2":
       logging.error("Detected an attempted XSRF attack. This request did "
                     "not originate from Task Queue.")
-      webapp2.abort(400)
+      webapp2.abort(403)
