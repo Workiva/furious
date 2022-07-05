@@ -17,7 +17,7 @@ import webapp2
 
 from furious.handlers import process_async_task
 from furious.errors import AbortAndRestart
-
+from furious.config import get_csrf_check
 
 class AsyncJobHandler(webapp2.RequestHandler):
     """Handles requests for the webapp framework."""
@@ -29,6 +29,9 @@ class AsyncJobHandler(webapp2.RequestHandler):
 
     def _handle_task(self):
         """Pass request info to the async framework."""
+        # Check for CSRF
+        get_csrf_check()(self.request)
+
         headers = self.request.headers
 
         message = None
