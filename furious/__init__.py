@@ -14,10 +14,6 @@
 # limitations under the License.
 #
 
-import logging
-
-import webapp2
-
 
 def csrf_check(request):
     """
@@ -25,6 +21,9 @@ def csrf_check(request):
 
     https://cloud.google.com/appengine/docs/standard/python/refdocs/modules/google/appengine/ext/deferred/deferred
     """
+    import logging
+    import webapp2
+    
     in_prod = (
         not request.environ.get("SERVER_SOFTWARE").startswith("Devel"))
     if in_prod and request.environ.get("REMOTE_ADDR") != "0.1.0.2":
