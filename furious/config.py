@@ -71,6 +71,15 @@ def get_completion_cleanup_delay():
     return config.get('cleanupdelay')
 
 
+def get_csrf_check():
+    """Get the CSRF check function, which takes one arg (webapp2.Reqeust)
+    and returns None, throwing an exception if a CSRF attack is detected.
+    """
+    from furious.job_utils import path_to_reference
+
+    return path_to_reference(get_config().get('csrf_check'))
+
+
 def _get_configured_module(option_name, known_modules=None):
     """Get the module specified by the value of option_name. The value of the
     configuration option will be used to load the module by name from the known
@@ -155,7 +164,8 @@ def default_config():
             'cleanupqueue': 'default',
             'cleanupdelay': 7600,
             'defaultqueue': 'default',
-            'task_system': 'appengine_taskqueue'}
+            'task_system': 'appengine_taskqueue',
+            'csrf_check': 'furious.csrf_check'}
 
 
 def _load_yaml_config(path=None):
