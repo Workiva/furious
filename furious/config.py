@@ -75,6 +75,8 @@ def get_csrf_check():
     """Get the CSRF check function, which takes one arg (webapp2.Reqeust)
     and returns None, throwing an exception if a CSRF attack is detected.
     """
+    from furious.job_utils import path_to_reference
+
     return path_to_reference(get_config().get('csrf_check'))
 
 
