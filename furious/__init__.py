@@ -21,13 +21,13 @@ import webapp2
 
 def csrf_check(request):
     """
-    Throws an HTTP 400 error if a CSRF attack is detected, same logic as the deferred module.
+    Throws an HTTP 403 error if a CSRF attack is detected, same logic as the deferred module.
 
     https://cloud.google.com/appengine/docs/standard/python/refdocs/modules/google/appengine/ext/deferred/deferred
     """
     in_prod = (
         not request.environ.get("SERVER_SOFTWARE").startswith("Devel"))
     if in_prod and request.environ.get("REMOTE_ADDR") != "0.1.0.2":
-      logging.error("Detected an attempted XSRF attack. This request did "
-                    "not originate from Task Queue.")
+      logging.error("Detected an attempted CSRF attack from {}. This request did "
+                    "not originate from Task Queue.".format(request.environ.get("REMOTE_ADDR")))
       webapp2.abort(403)
