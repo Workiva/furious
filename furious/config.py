@@ -165,7 +165,7 @@ def default_config():
             'cleanupdelay': 7600,
             'defaultqueue': 'default',
             'task_system': 'appengine_taskqueue',
-            'csrf_check': 'furious.csrf_check'}
+            'csrf_check': 'furious.handlers.webapp.csrf_check'}
 
 
 def _load_yaml_config(path=None):
